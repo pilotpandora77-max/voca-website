@@ -2,6 +2,7 @@ import './globals.css';
 import { AuthProvider } from '@/lib/auth';
 import Navbar from '@/components/Navbar';
 import { GoogleOAuthProvider } from '@react-oauth/google';
+import LayoutShell from '@/components/LayoutShell';
 
 export const metadata = {
   title: 'voca — Хятад хэл сурах',
@@ -16,20 +17,7 @@ export default function RootLayout({ children }) {
       <body>
         <GoogleOAuthProvider clientId={GOOGLE_CLIENT_ID}>
           <AuthProvider>
-            <div style={{ display: 'flex', minHeight: '100vh' }}>
-              <Navbar />
-              <main
-                className="main-content"
-                style={{
-                  flex: 1,
-                  marginLeft: 'var(--sidebar-w)',
-                  minHeight: '100vh',
-                  overflow: 'auto',
-                }}
-              >
-                {children}
-              </main>
-            </div>
+            <LayoutShell>{children}</LayoutShell>
           </AuthProvider>
         </GoogleOAuthProvider>
       </body>

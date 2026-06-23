@@ -3,6 +3,24 @@ import { useState, useEffect, Suspense } from 'react';
 import { useSearchParams } from 'next/navigation';
 import { useAuth } from '@/lib/auth';
 import { GoogleLogin } from '@react-oauth/google';
+import Mascot from '@/components/Mascot';
+
+const FEATURES = [
+  { icon: '🏆', title: 'Тоглоомоор суралц', desc: 'Сонирхолтой тоглоомуул, сорилтуудыг дavan, шинэ үгсийг хялбархан цээжил.' },
+  { icon: '👥', title: 'Нийгэмдээ нэгд',    desc: 'Бусадтай харилцаж, мэдлэгээ хуваалцаж, хамтдаа өсэж дэвшээрэй.' },
+  { icon: '👑', title: 'Эрэмбэнд тэргүүл',  desc: 'Оноо цуглуулж, эрэмбэнд авирч, шилдэг хэрэглэгч болоорой.' },
+];
+
+const STATS = [
+  { val: '120K+', label: 'Хэрэглэгч',                   icon: '👥' },
+  { val: '50+',   label: 'Тоглоом',                      icon: '🎮' },
+  { val: '10K+',  label: 'Өдөр тутмын идэвхтэй хэрэглэгч', icon: '🏆' },
+];
+
+const TILES = [
+  { char: '学', x: '62%', y: '22%', rot: -12, size: 52 },
+  { char: '語', x: '78%', y: '48%', rot: 8,   size: 48 },
+];
 
 export default function LoginPage() {
   return <Suspense><LoginInner /></Suspense>;
@@ -47,32 +65,113 @@ function LoginInner() {
   }
 
   return (
-    <div style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', background: '#08051A', fontFamily: 'inherit', position: 'relative', overflow: 'hidden' }}>
+    <div style={{ minHeight: '100vh', display: 'flex', background: '#08051A', fontFamily: 'inherit' }}>
 
-      {/* Background glow orbs */}
-      <div style={{ position: 'absolute', width: 500, height: 500, borderRadius: '50%', top: -120, left: -100, background: 'radial-gradient(circle, rgba(124,58,237,0.2) 0%, transparent 70%)', pointerEvents: 'none' }} />
-      <div style={{ position: 'absolute', width: 400, height: 400, borderRadius: '50%', bottom: -80, right: -80, background: 'radial-gradient(circle, rgba(88,28,135,0.25) 0%, transparent 70%)', pointerEvents: 'none' }} />
-
-      {/* Stars */}
-      {[...Array(24)].map((_, i) => (
-        <div key={i} style={{
-          position: 'absolute',
-          left: `${(i * 37 + 11) % 95}%`, top: `${(i * 53 + 7) % 90}%`,
-          width: i % 5 === 0 ? 3 : 1.5, height: i % 5 === 0 ? 3 : 1.5,
-          borderRadius: '50%', background: 'rgba(255,255,255,0.5)',
-          animation: `twinkle ${2 + (i % 4) * 0.7}s ease-in-out ${(i * 0.3) % 2}s infinite`,
-        }} />
-      ))}
-
-      {/* Form card */}
+      {/* ── Left panel ── */}
       <div style={{
-        width: '100%', maxWidth: 440,
-        background: 'rgba(255,255,255,0.03)',
-        border: '1px solid rgba(124,58,237,0.25)',
-        borderRadius: 24, padding: '40px 40px',
-        backdropFilter: 'blur(20px)',
-        position: 'relative', zIndex: 1,
-        margin: '24px 16px',
+        flex: 1, position: 'relative', overflow: 'hidden',
+        background: 'linear-gradient(140deg, #100828 0%, #1E0B40 60%, #0D0520 100%)',
+        display: 'flex', flexDirection: 'column', padding: '36px 40px',
+      }} className="auth-left">
+
+        {/* Stars */}
+        {[...Array(28)].map((_, i) => (
+          <div key={i} style={{
+            position: 'absolute',
+            left: `${(i * 37 + 11) % 92}%`, top: `${(i * 53 + 7) % 88}%`,
+            width: i % 5 === 0 ? 3 : i % 3 === 0 ? 2 : 1.5,
+            height: i % 5 === 0 ? 3 : i % 3 === 0 ? 2 : 1.5,
+            borderRadius: '50%', background: 'rgba(255,255,255,0.55)',
+            animation: `twinkle ${2 + (i % 4) * 0.7}s ease-in-out ${(i * 0.3) % 2}s infinite`,
+          }} />
+        ))}
+
+        {/* Glow orbs */}
+        <div style={{ position: 'absolute', width: 380, height: 380, borderRadius: '50%', top: -100, left: -80, background: 'radial-gradient(circle, rgba(124,58,237,0.22) 0%, transparent 70%)', pointerEvents: 'none' }} />
+        <div style={{ position: 'absolute', width: 280, height: 280, borderRadius: '50%', bottom: 60, right: -60, background: 'radial-gradient(circle, rgba(88,28,135,0.3) 0%, transparent 70%)', pointerEvents: 'none' }} />
+
+        {/* Floating planet */}
+        <div style={{ position: 'absolute', bottom: '18%', left: '8%', width: 70, height: 70, borderRadius: '50%', background: 'radial-gradient(circle at 35% 35%, #6D28D9, #2D1558)', boxShadow: '0 0 30px rgba(109,40,217,0.4)', animation: 'planet-float 6s ease-in-out infinite' }} />
+        <div style={{ position: 'absolute', bottom: '15%', left: '3%', width: 120, height: 18, borderRadius: '50%', background: 'rgba(109,40,217,0.2)', transform: 'rotateX(70deg)', filter: 'blur(2px)' }} />
+
+        {/* Small planet */}
+        <div style={{ position: 'absolute', top: '15%', right: '18%', width: 28, height: 28, borderRadius: '50%', background: 'radial-gradient(circle at 35% 35%, #F59E0B, #92400E)', boxShadow: '0 0 14px rgba(245,158,11,0.4)', animation: 'planet-float 4s ease-in-out 1s infinite' }} />
+
+        {/* Floating hanzi tiles */}
+        {TILES.map((t, i) => (
+          <div key={i} style={{
+            position: 'absolute', left: t.x, top: t.y,
+            width: t.size + 10, height: t.size + 10,
+            background: 'rgba(124,58,237,0.18)',
+            border: '1.5px solid rgba(124,58,237,0.35)',
+            backdropFilter: 'blur(8px)',
+            borderRadius: 14, display: 'flex', alignItems: 'center', justifyContent: 'center',
+            fontSize: t.size * 0.65, fontWeight: 900, color: '#DDD6FE',
+            transform: `rotate(${t.rot}deg)`,
+            animation: `tile-float ${4 + i}s ease-in-out ${i * 1.2}s infinite`,
+            boxShadow: '0 8px 24px rgba(124,58,237,0.2)',
+          }}>{t.char}</div>
+        ))}
+
+        {/* Logo */}
+        <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 'auto', position: 'relative', zIndex: 2 }}>
+          <div style={{ width: 36, height: 36, borderRadius: 10, background: 'linear-gradient(135deg, #7C3AED, #4C1D95)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 18, fontWeight: 900, color: '#fff' }}>V</div>
+          <span style={{ fontSize: 20, fontWeight: 900, color: '#fff', letterSpacing: -0.5 }}>voca</span>
+        </div>
+
+        {/* Main content */}
+        <div style={{ position: 'relative', zIndex: 2, flex: 1, display: 'flex', flexDirection: 'column', justifyContent: 'center', paddingBottom: 20 }}>
+          <h1 style={{ fontSize: 38, fontWeight: 900, color: '#fff', lineHeight: 1.15, marginBottom: 10, letterSpacing: -1 }}>
+            <span style={{ color: '#A78BFA' }}>Үгтэй</span> бол хүчтэй ⚡
+          </h1>
+          <p style={{ fontSize: 14, color: 'rgba(255,255,255,0.55)', marginBottom: 32, fontWeight: 500, lineHeight: 1.6 }}>
+            Voca-д нэгдэж, үгийн сангаа өргөжүүлж,<br />дэлхийн хаанаас ч өрсөлдөөрэй!
+          </p>
+
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 18 }}>
+            {FEATURES.map((f, i) => (
+              <div key={i} style={{ display: 'flex', gap: 14, alignItems: 'flex-start' }}>
+                <div style={{ width: 40, height: 40, borderRadius: 12, background: 'rgba(124,58,237,0.22)', border: '1px solid rgba(124,58,237,0.35)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 18, flexShrink: 0 }}>{f.icon}</div>
+                <div>
+                  <div style={{ fontWeight: 800, color: '#C4B5FD', fontSize: 14, marginBottom: 3 }}>{f.title}</div>
+                  <div style={{ fontSize: 12, color: 'rgba(255,255,255,0.45)', lineHeight: 1.55 }}>{f.desc}</div>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+
+        {/* Mascot */}
+        <div style={{ position: 'absolute', right: '4%', top: '50%', transform: 'translateY(-50%)', filter: 'drop-shadow(0 12px 40px rgba(124,58,237,0.45))', animation: 'mascot-float 4s ease-in-out infinite', zIndex: 2 }}>
+          <Mascot size={180} />
+        </div>
+
+        {/* Stats bar */}
+        <div style={{
+          position: 'relative', zIndex: 2,
+          display: 'flex', gap: 0,
+          background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.1)',
+          borderRadius: 16, overflow: 'hidden',
+        }}>
+          {STATS.map((s, i) => (
+            <div key={i} style={{
+              flex: 1, padding: '14px 16px', textAlign: 'center',
+              borderRight: i < STATS.length - 1 ? '1px solid rgba(255,255,255,0.08)' : 'none',
+            }}>
+              <div style={{ fontSize: 18, marginBottom: 2 }}>{s.icon}</div>
+              <div style={{ fontWeight: 900, color: '#fff', fontSize: 16, letterSpacing: -0.5 }}>{s.val}</div>
+              <div style={{ fontSize: 10, color: 'rgba(255,255,255,0.4)', fontWeight: 500, lineHeight: 1.3 }}>{s.label}</div>
+            </div>
+          ))}
+        </div>
+      </div>
+
+      {/* ── Right panel ── */}
+      <div style={{
+        width: 480, display: 'flex', alignItems: 'center', justifyContent: 'center',
+        padding: '32px 40px', background: '#0F0826',
+        borderLeft: '1px solid rgba(124,58,237,0.2)',
+        position: 'relative', zIndex: 1, overflowY: 'auto',
       }}>
         <div style={{ width: '100%', maxWidth: 380 }}>
           <h2 style={{ fontSize: 24, fontWeight: 900, color: '#fff', marginBottom: 5 }}>
@@ -201,11 +300,25 @@ function LoginInner() {
       </div>
 
       <style>{`
+        .auth-left { display: flex; }
         @keyframes twinkle {
-          0%, 100% { opacity: 0.4; transform: scale(1); }
-          50%       { opacity: 1;   transform: scale(1.5); }
+          0%, 100% { opacity: 0.6; transform: scale(1); }
+          50%       { opacity: 1;   transform: scale(1.4); }
+        }
+        @keyframes planet-float {
+          0%, 100% { transform: translateY(0px); }
+          50%       { transform: translateY(-14px); }
+        }
+        @keyframes tile-float {
+          0%, 100% { transform: rotate(var(--rot, -12deg)) translateY(0px); }
+          50%       { transform: rotate(var(--rot, -12deg)) translateY(-10px); }
+        }
+        @keyframes mascot-float {
+          0%, 100% { transform: translateY(-50%) translateY(0px); }
+          50%       { transform: translateY(-50%) translateY(-14px); }
         }
         input::placeholder { color: rgba(255,255,255,0.3) !important; }
+        @media (max-width: 768px) { .auth-left { display: none !important; } }
       `}</style>
     </div>
   );
