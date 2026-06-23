@@ -103,22 +103,23 @@ export default function DictionaryPage() {
     setLoading(true); setSearched(true); setSelected(null);
 
     try {
-      // Primary search
-      const { data } = await api.get(`/api/dictionary?q=${encodeURIComponent(q)}`);
-      let list = Array.isArray(data) ? data : (data && !data.error ? [data] : []);
+      const lang = detectLang(q);
+      let list = [];
 
-      // If no results: try direct Mongolian→Chinese mapping first, then partial
-      if (list.length === 0) {
-        const qLower = q.toLowerCase();
-        const zhFallback = MN_ZH[qLower];
-        if (zhFallback) {
-          // Exact Chinese character lookup
-          const { data: data2 } = await api.get(`/api/dictionary?q=${encodeURIComponent(zhFallback)}`);
-          list = Array.isArray(data2) ? data2 : [];
-        } else {
-          // Last resort: try partial Mongolian matches via backend mn field search
-          // (backend now searches mn field after the recent fix)
+      // Монгол үг бол эхлээд MN_ZH direct mapping шалгана — backend-ийн
+      // буруу English partial match-аас урьдчилан сэргийлнэ
+      if (lang === 'mn') {
+        const zhChar = MN_ZH[q.toLowerCase()];
+        if (zhChar) {
+          const { data } = await api.get(`/api/dictionary?q=${encodeURIComponent(zhChar)}`);
+          list = Array.isArray(data) ? data : [];
         }
+      }
+
+      // MN_ZH-д олдоогүй бол backend-рүү хайна (ханз/pinyin/backend mn field)
+      if (list.length === 0) {
+        const { data } = await api.get(`/api/dictionary?q=${encodeURIComponent(q)}`);
+        list = Array.isArray(data) ? data : (data && !data.error ? [data] : []);
       }
 
       setResults(list);
