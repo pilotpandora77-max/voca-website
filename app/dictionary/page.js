@@ -20,11 +20,6 @@ function HanziAnimate({ char, size = 230 }) {
         outlineColor: '#DDD6FE',
         strokeAnimationSpeed: 1,
         delayBetweenStrokes: 300,
-        charDataLoader: (c, onLoad, onError) => {
-          fetch(`/api/hanzi-data/${encodeURIComponent(c)}`)
-            .then(r => { if (!r.ok) throw new Error(); return r.json(); })
-            .then(onLoad).catch(onError || console.error);
-        },
       });
       function loop() {
         if (cancelled) return;

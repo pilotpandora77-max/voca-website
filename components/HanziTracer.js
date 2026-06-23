@@ -36,12 +36,6 @@ export default function HanziTracer({ char, onComplete, size = 280 }) {
         drawingWidth: 4,
         strokeAnimationSpeed: 1.2,
         delayBetweenStrokes: 250,
-        charDataLoader: (c, onLoad, onError) => {
-          fetch(`/api/hanzi-data/${encodeURIComponent(c)}`)
-            .then(r => { if (!r.ok) throw new Error('not found'); return r.json(); })
-            .then(onLoad)
-            .catch(onError || console.error);
-        },
       });
 
       if (cancelled) return;
