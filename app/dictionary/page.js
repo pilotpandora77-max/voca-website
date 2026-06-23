@@ -48,15 +48,36 @@ export default function DictionaryPage() {
     return 'mn';
   }
 
+  // Mongolian → common English mappings for words not in mn field
+  const MN_EN = {
+    'сайн уу': 'hello', 'сайн': 'good', 'баярлалаа': 'thank', 'баяртай': 'goodbye',
+    'тийм': 'yes', 'үгүй': 'no', 'хүн': 'person', 'ус': 'water', 'хоол': 'food',
+    'ном': 'book', 'гэр': 'home', 'айл': 'family', 'нэр': 'name', 'өнөөдөр': 'today',
+    'маргааш': 'tomorrow', 'өчигдөр': 'yesterday', 'хайр': 'love', 'найз': 'friend',
+    'сурах': 'study', 'ажил': 'work', 'цаг': 'time', 'том': 'big', 'жижиг': 'small',
+    'олон': 'many', 'цөөн': 'few', 'үг': 'word', 'хэл': 'language', 'уншах': 'read',
+  };
+
   async function search(e) {
     e?.preventDefault();
     const q = query.trim();
     if (!q) return;
     setLoading(true); setSearched(true); setSelected(null);
-    const detected = detectLang(q);
+
     try {
-      const { data } = await api.get(`/api/dictionary?q=${encodeURIComponent(q)}&lang=${detected}`);
-      const list = Array.isArray(data) ? data : (data && !data.error ? [data] : []);
+      // Primary search
+      const { data } = await api.get(`/api/dictionary?q=${encodeURIComponent(q)}`);
+      let list = Array.isArray(data) ? data : (data && !data.error ? [data] : []);
+
+      // If Mongolian query returns nothing, try English fallback mapping
+      if (list.length === 0) {
+        const enFallback = MN_EN[q.toLowerCase()];
+        if (enFallback) {
+          const { data: data2 } = await api.get(`/api/dictionary?q=${encodeURIComponent(enFallback)}`);
+          list = Array.isArray(data2) ? data2 : [];
+        }
+      }
+
       setResults(list);
       if (list.length === 1) setSelected(list[0]);
     } catch {
