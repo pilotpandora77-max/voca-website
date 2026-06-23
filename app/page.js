@@ -101,7 +101,7 @@ export default function HomePage() {
           <span style={{ fontSize: 20 }}>🔥</span>
           <span style={{ fontSize: 18, fontWeight: 900, color: '#FF9600' }}>{streak}</span>
         </div>
-        <h1 style={{ fontSize: 20, fontWeight: 900, color: 'var(--text)' }}>OURLEARN</h1>
+        <h1 style={{ fontSize: 20, fontWeight: 900, color: 'var(--text)' }}>voca</h1>
       </div>
 
       {/* News / Leaderboard */}

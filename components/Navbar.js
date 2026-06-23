@@ -24,7 +24,7 @@ export default function Navbar() {
       display: 'flex', alignItems: 'center', paddingInline: 16, gap: 4,
     }}>
       <Link href="/" style={{ fontWeight: 900, fontSize: 17, color: '#3C3C3C', marginRight: 12, textDecoration: 'none' }}>
-        OURLEARN
+        voca
       </Link>
 
       {user && NAV.map(n => (

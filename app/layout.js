@@ -3,7 +3,7 @@ import { AuthProvider } from '@/lib/auth';
 import Navbar from '@/components/Navbar';
 
 export const metadata = {
-  title: 'OURLEARN — Хятад хэл сурах',
+  title: 'voca — Хятад хэл сурах',
   description: 'Хятад хэл сурах платформ',
 };
 

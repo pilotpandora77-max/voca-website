@@ -40,7 +40,7 @@ export default function RegisterPage() {
         <div style={{ textAlign: 'center', marginBottom: 24 }}>
           <div style={{ fontSize: 48, marginBottom: 8 }}>🌟</div>
           <h1 style={{ fontSize: 24, fontWeight: 900, color: 'var(--text)' }}>Бүртгүүлэх</h1>
-          <p style={{ color: 'var(--muted)', marginTop: 6, fontWeight: 600 }}>OURLEARN-д тавтай морилно уу</p>
+          <p style={{ color: 'var(--muted)', marginTop: 6, fontWeight: 600 }}>voca-д тавтай морилно уу</p>
         </div>
 
         <form onSubmit={submit} style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
