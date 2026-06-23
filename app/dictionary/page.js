@@ -1,10 +1,51 @@
 'use client';
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/lib/auth';
 import api from '@/lib/api';
 import PageHeader from '@/components/PageHeader';
-import HanziTracer from '@/components/HanziTracer';
+
+function HanziAnimate({ char, size = 230 }) {
+  const containerRef = useRef(null);
+  useEffect(() => {
+    if (!char || !containerRef.current) return;
+    containerRef.current.innerHTML = '';
+    let cancelled = false;
+    import('hanzi-writer').then(m => {
+      const HanziWriter = m.default;
+      const writer = HanziWriter.create(containerRef.current, char, {
+        width: size, height: size, padding: 24,
+        showOutline: true,
+        strokeColor: '#7C3AED',
+        outlineColor: '#DDD6FE',
+        strokeAnimationSpeed: 1,
+        delayBetweenStrokes: 300,
+        charDataLoader: (c, onLoad, onError) => {
+          fetch(`/api/hanzi-data/${encodeURIComponent(c)}`)
+            .then(r => { if (!r.ok) throw new Error(); return r.json(); })
+            .then(onLoad).catch(onError || console.error);
+        },
+      });
+      function loop() {
+        if (cancelled) return;
+        writer.animateCharacter({ onComplete: () => { if (!cancelled) setTimeout(loop, 900); } });
+      }
+      loop();
+    }).catch(console.error);
+    return () => { cancelled = true; };
+  }, [char]);
+
+  return (
+    <div style={{ position: 'relative', width: size, height: size }}>
+      <svg width={size} height={size} style={{ position: 'absolute', top: 0, left: 0, pointerEvents: 'none' }}>
+        <rect x={1} y={1} width={size-2} height={size-2} fill="none" stroke="#E5E5E5" strokeWidth={2} rx={12} />
+        <line x1={size/2} y1={0} x2={size/2} y2={size} stroke="#E5E5E5" strokeWidth={1} strokeDasharray="6,4" />
+        <line x1={0} y1={size/2} x2={size} y2={size/2} stroke="#E5E5E5" strokeWidth={1} strokeDasharray="6,4" />
+      </svg>
+      <div ref={containerRef} style={{ width: size, height: size, borderRadius: 12 }} />
+    </div>
+  );
+}
 
 const FILTER_TABS = ['Бүгд', 'Үг', 'Хэлц', 'Жишээ', 'Идиом'];
 const LANG_MODES  = [
@@ -457,7 +498,7 @@ export default function DictionaryPage() {
                     ))}
                   </div>
                 )}
-                <HanziTracer key={tracerChar} char={tracerChar} size={230} />
+                <HanziAnimate key={tracerChar} char={tracerChar} size={230} />
               </div>
             )}
 
