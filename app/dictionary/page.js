@@ -93,6 +93,9 @@ export default function DictionaryPage() {
     'яагаад': '为什么', 'хэрхэн': '怎么', 'хэд': '多少',
   };
 
+  // Chinese → Mongolian reverse mapping (auto-generated from MN_ZH)
+  const ZH_MN = Object.fromEntries(Object.entries(MN_ZH).map(([mn, zh]) => [zh, mn]));
+
   async function search(e) {
     e?.preventDefault();
     const q = query.trim();
@@ -228,8 +231,13 @@ export default function DictionaryPage() {
                     <div style={{ fontSize: 15, color: 'var(--purple)', fontWeight: 700, marginBottom: 3 }}>
                       {item.pinyin || item.reading}
                     </div>
-                    <div style={{ fontSize: 13, color: 'var(--text-sub)' }}>
-                      {Array.isArray(item.definitions) ? item.definitions.slice(0, 2).join(' · ') : (item.english || item.meaning || item.mn)}
+                    <div style={{ fontSize: 13, color: 'var(--text-sub)', lineHeight: 1.5 }}>
+                      <span>{Array.isArray(item.definitions) ? item.definitions.slice(0, 2).join(' · ') : (item.english || item.meaning || '')}</span>
+                      {(item.mn || ZH_MN[item.simplified] || ZH_MN[item.traditional]) && (
+                        <span style={{ color: 'var(--purple)', fontWeight: 600, marginLeft: 6 }}>
+                          · {item.mn || ZH_MN[item.simplified] || ZH_MN[item.traditional]}
+                        </span>
+                      )}
                     </div>
                   </div>
                   <span style={{ color: 'var(--muted)', fontSize: 20 }}>›</span>
@@ -305,10 +313,25 @@ export default function DictionaryPage() {
                       }}>🔊</button>
                       <span className="tag tag-purple">Үг</span>
                     </div>
-                    <div style={{ fontSize: 15, color: 'var(--text-sub)', fontWeight: 500, lineHeight: 1.55 }}>
-                      {Array.isArray(selected.definitions)
-                        ? selected.definitions.join(' / ')
-                        : (selected.english || selected.meaning || selected.mn || '')}
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: 5 }}>
+                      {/* English */}
+                      <div style={{ display: 'flex', gap: 8, alignItems: 'baseline' }}>
+                        <span style={{ fontSize: 10, fontWeight: 800, color: '#fff', background: '#6B7280', borderRadius: 5, padding: '2px 6px', flexShrink: 0 }}>EN</span>
+                        <span style={{ fontSize: 15, color: 'var(--text-sub)', fontWeight: 500, lineHeight: 1.55 }}>
+                          {Array.isArray(selected.definitions)
+                            ? selected.definitions.join(' / ')
+                            : (selected.english || selected.meaning || '')}
+                        </span>
+                      </div>
+                      {/* Mongolian */}
+                      {(selected.mn || ZH_MN[selected.simplified] || ZH_MN[selected.traditional]) && (
+                        <div style={{ display: 'flex', gap: 8, alignItems: 'baseline' }}>
+                          <span style={{ fontSize: 10, fontWeight: 800, color: '#fff', background: 'var(--purple)', borderRadius: 5, padding: '2px 6px', flexShrink: 0 }}>МН</span>
+                          <span style={{ fontSize: 15, color: 'var(--text)', fontWeight: 600, lineHeight: 1.55 }}>
+                            {selected.mn || ZH_MN[selected.simplified] || ZH_MN[selected.traditional]}
+                          </span>
+                        </div>
+                      )}
                     </div>
                   </div>
                 </div>

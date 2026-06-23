@@ -1,6 +1,8 @@
 import { readFileSync } from 'fs';
 import { join } from 'path';
 
+export const dynamic = 'force-dynamic';
+
 export async function GET(request, { params }) {
   const char = decodeURIComponent(params.char);
   try {
