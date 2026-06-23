@@ -130,7 +130,7 @@ function LoginInner() {
           zIndex: 2,
           filter: 'drop-shadow(0 24px 60px rgba(88,28,135,0.7)) drop-shadow(0 0 40px rgba(139,92,246,0.4))',
         }}>
-          <img src="/mascot.png" alt="Voca mascot" style={{ width: 300, height: 'auto', display: 'block' }} />
+          <img src="/mascot.png" alt="Voca mascot" style={{ width: 300, height: 'auto', display: 'block', mixBlendMode: 'screen' }} />
         </div>
 
         {/* Bottom text overlay */}
