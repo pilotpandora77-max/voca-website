@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation';
 import { useAuth } from '@/lib/auth';
 import api from '@/lib/api';
 import PageHeader from '@/components/PageHeader';
+import Mascot from '@/components/Mascot';
 
 const WORD_OF_DAY = { zh: '你好', pinyin: 'nǐ hǎo', mn: 'Сайн уу / Тавтай морил' };
 
@@ -122,10 +123,13 @@ export default function HomePage() {
             borderRadius: 20, padding: 22, position: 'relative', overflow: 'hidden',
             minHeight: 200,
           }}>
-            <div style={{ position: 'absolute', top: -20, right: -20, fontSize: 120, opacity: 0.08, lineHeight: 1, userSelect: 'none' }}>🐼</div>
-            <div style={{ position: 'absolute', bottom: 0, right: 0, fontSize: 80, lineHeight: 1, userSelect: 'none', filter: 'drop-shadow(0 4px 12px rgba(0,0,0,0.3))' }}>
-              🐼
+            <div style={{ position: 'absolute', bottom: -6, right: -4, opacity: 0.12, userSelect: 'none' }}>
+              <Mascot size={170} />
             </div>
+            <Mascot size={110} style={{
+              position: 'absolute', bottom: -4, right: 6,
+              filter: 'drop-shadow(0 6px 18px rgba(76,29,149,0.45))',
+            }} />
             <div style={{ position: 'relative', zIndex: 1 }}>
               <div style={{ fontSize: 11, fontWeight: 800, color: 'rgba(255,255,255,0.75)', letterSpacing: 1, textTransform: 'uppercase', marginBottom: 6 }}>
                 Таны түвшин
