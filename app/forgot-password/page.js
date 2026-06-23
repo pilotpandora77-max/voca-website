@@ -6,15 +6,15 @@ import api from '@/lib/api';
 
 export default function ForgotPasswordPage() {
   const router = useRouter();
-  const [step, setStep]         = useState('email'); // 'email' | 'code'
-  const [email, setEmail]       = useState('');
-  const [code, setCode]         = useState('');
-  const [devCode, setDevCode]   = useState(''); // dev: backend-с ирсэн код
-  const [newPass, setNewPass]   = useState('');
+  const [step, setStep]           = useState('email');
+  const [email, setEmail]         = useState('');
+  const [code, setCode]           = useState('');
+  const [devCode, setDevCode]     = useState('');
+  const [newPass, setNewPass]     = useState('');
   const [confirmPass, setConfirm] = useState('');
-  const [loading, setLoading]   = useState(false);
-  const [err, setErr]           = useState('');
-  const [success, setSuccess]   = useState('');
+  const [loading, setLoading]     = useState(false);
+  const [err, setErr]             = useState('');
+  const [success, setSuccess]     = useState('');
 
   async function sendCode(e) {
     e.preventDefault();
@@ -22,7 +22,7 @@ export default function ForgotPasswordPage() {
     setLoading(true);
     try {
       const { data } = await api.post('/api/auth/forgot-password', { email });
-      setDevCode(data.code); // dev орчинд кодыг харуулна
+      setDevCode(data.code);
       setStep('code');
     } catch (e) {
       setErr(e.response?.data?.error || 'Алдаа гарлаа');
@@ -33,14 +33,8 @@ export default function ForgotPasswordPage() {
   async function resetPassword(e) {
     e.preventDefault();
     setErr('');
-    if (newPass !== confirmPass) {
-      setErr('Нууц үгүүд таарахгүй байна');
-      return;
-    }
-    if (newPass.length < 4) {
-      setErr('Нууц үг хамгийн багадаа 4 тэмдэгт байна');
-      return;
-    }
+    if (newPass !== confirmPass) return setErr('Нууц үгүүд таарахгүй байна');
+    if (newPass.length < 4) return setErr('Нууц үг хамгийн багадаа 4 тэмдэгт байна');
     setLoading(true);
     try {
       await api.post('/api/auth/reset-password', { email, code, newPassword: newPass });
@@ -53,27 +47,47 @@ export default function ForgotPasswordPage() {
   }
 
   return (
-    <div style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 16 }}>
-      <div className="card" style={{ width: '100%', maxWidth: 400 }}>
+    <div style={{
+      minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center',
+      padding: 24, position: 'relative', overflow: 'hidden',
+    }}>
+      {/* Background glow */}
+      <div style={{
+        position: 'absolute', width: 500, height: 500, borderRadius: '50%',
+        background: 'radial-gradient(circle, rgba(155,109,255,0.08) 0%, transparent 70%)',
+        top: -150, left: '50%', transform: 'translateX(-50%)', pointerEvents: 'none',
+      }} />
+
+      <div className="card-glass anim-up" style={{ width: '100%', maxWidth: 420, padding: '36px 32px', position: 'relative', zIndex: 1 }}>
 
         {/* Header */}
         <div style={{ textAlign: 'center', marginBottom: 28 }}>
-          <div style={{ fontSize: 48, marginBottom: 8 }}>🔐</div>
-          <h1 style={{ fontSize: 22, fontWeight: 900 }}>Нууц үг сэргээх</h1>
-          <p style={{ color: 'var(--muted)', marginTop: 6, fontWeight: 600, fontSize: 14 }}>
-            {step === 'email'
-              ? 'Бүртгэлтэй имэйл хаягаа оруулна уу'
-              : 'Имэйлд ирсэн кодыг оруулна уу'}
+          <div style={{
+            display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
+            width: 60, height: 60, borderRadius: 18,
+            background: 'rgba(155,109,255,0.15)', border: '1px solid rgba(155,109,255,0.3)',
+            fontSize: 30, marginBottom: 16,
+            boxShadow: '0 0 24px rgba(155,109,255,0.2)',
+          }}>
+            🔐
+          </div>
+          <h1 style={{ fontSize: 22, fontWeight: 900, color: '#EDE9FF', letterSpacing: -0.5, marginBottom: 6 }}>
+            Нууц үг сэргээх
+          </h1>
+          <p style={{ color: 'var(--muted)', fontSize: 13, fontWeight: 500 }}>
+            {step === 'email' ? 'Бүртгэлтэй имэйл хаягаа оруулна уу' : 'Имэйлд ирсэн кодыг оруулна уу'}
           </p>
         </div>
 
         {/* Step indicator */}
         <div style={{ display: 'flex', gap: 8, marginBottom: 24 }}>
-          {['Имэйл', 'Код + нууц үг'].map((s, i) => (
-            <div key={i} style={{ flex: 1, textAlign: 'center' }}>
+          {['Имэйл', 'Шинэчлэх'].map((s, i) => (
+            <div key={i} style={{ flex: 1 }}>
               <div style={{
-                height: 4, borderRadius: 4, marginBottom: 4,
-                background: (step === 'email' ? i === 0 : i <= 1) ? 'var(--green)' : 'var(--border)',
+                height: 4, borderRadius: 4, marginBottom: 6,
+                background: (step === 'email' ? i === 0 : true)
+                  ? 'linear-gradient(90deg, #9B6DFF, #FF6B9D)'
+                  : 'rgba(255,255,255,0.07)',
               }} />
               <span style={{ fontSize: 11, fontWeight: 700, color: 'var(--muted)' }}>{s}</span>
             </div>
@@ -82,86 +96,83 @@ export default function ForgotPasswordPage() {
 
         {success ? (
           <div style={{
-            background: 'var(--green-bg)', border: '2px solid var(--green)',
-            borderRadius: 14, padding: 20, textAlign: 'center',
+            background: 'rgba(34,197,94,0.1)', border: '1px solid rgba(34,197,94,0.28)',
+            borderRadius: 16, padding: 24, textAlign: 'center',
           }}>
-            <div style={{ fontSize: 36, marginBottom: 8 }}>✅</div>
-            <p style={{ fontWeight: 800, color: 'var(--green)' }}>{success}</p>
-            <p style={{ color: 'var(--muted)', fontSize: 13, marginTop: 6 }}>Нэвтрэх хуудас руу шилжиж байна...</p>
+            <div style={{ fontSize: 36, marginBottom: 10 }}>✅</div>
+            <p style={{ fontWeight: 800, color: '#22C55E', fontSize: 15 }}>{success}</p>
+            <p style={{ color: 'var(--muted)', fontSize: 12, marginTop: 6 }}>Нэвтрэх хуудас руу шилжиж байна...</p>
           </div>
         ) : step === 'email' ? (
           <form onSubmit={sendCode} style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
             <div>
-              <label style={{ fontSize: 12, fontWeight: 800, color: 'var(--muted)', letterSpacing: 0.5 }}>ИМЭЙЛ ХАЯГ</label>
+              <label style={{ fontSize: 11, fontWeight: 800, color: 'var(--muted)', letterSpacing: 0.8, textTransform: 'uppercase', display: 'block', marginBottom: 7 }}>
+                Имэйл хаяг
+              </label>
               <input type="text" value={email} onChange={e => setEmail(e.target.value)}
-                placeholder="Бүртгэлтэй имэйлээ оруулна уу" required style={{ marginTop: 6 }} />
+                placeholder="Бүртгэлтэй имэйлээ оруулна уу" required />
             </div>
-
             {err && (
-              <div style={{ background: 'var(--red-light)', border: '2px solid var(--red)',
-                borderRadius: 12, padding: 12, color: 'var(--red)', fontWeight: 700, fontSize: 14 }}>
+              <div style={{ background: 'rgba(248,113,113,0.1)', border: '1px solid rgba(248,113,113,0.28)', borderRadius: 12, padding: '11px 14px', color: '#F87171', fontWeight: 700, fontSize: 13 }}>
                 {err}
               </div>
             )}
-
-            <button type="submit" className="btn btn-green" disabled={loading} style={{ width: '100%' }}>
-              {loading ? 'Илгээж байна...' : 'КОД АВАХ'}
+            <button type="submit" className="btn btn-purple" disabled={loading} style={{ width: '100%', padding: '13px 22px', fontSize: 15 }}>
+              {loading ? 'Илгээж байна...' : 'Код авах'}
             </button>
           </form>
         ) : (
           <form onSubmit={resetPassword} style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
-
-            {/* Dev: кодыг харуулах */}
             {devCode && (
               <div style={{
-                background: '#FFF0C0', border: '2px solid #FF9600',
-                borderRadius: 12, padding: 14, textAlign: 'center',
+                background: 'rgba(245,158,11,0.1)', border: '1px solid rgba(245,158,11,0.28)',
+                borderRadius: 14, padding: 16, textAlign: 'center',
               }}>
-                <p style={{ fontSize: 12, fontWeight: 800, color: '#CC7800', marginBottom: 4 }}>
-                  🧪 ТЕСТ КОД (prod-д имэйлээр явна)
+                <p style={{ fontSize: 11, fontWeight: 800, color: '#F59E0B', marginBottom: 6, letterSpacing: 0.5 }}>
+                  🧪 ТЕСТ КОД
                 </p>
-                <p style={{ fontSize: 28, fontWeight: 900, color: '#CC7800', letterSpacing: 4 }}>{devCode}</p>
+                <p style={{ fontSize: 28, fontWeight: 900, color: '#F59E0B', letterSpacing: 6 }}>{devCode}</p>
               </div>
             )}
-
             <div>
-              <label style={{ fontSize: 12, fontWeight: 800, color: 'var(--muted)', letterSpacing: 0.5 }}>6 ОРОНТОЙ КОД</label>
+              <label style={{ fontSize: 11, fontWeight: 800, color: 'var(--muted)', letterSpacing: 0.8, textTransform: 'uppercase', display: 'block', marginBottom: 7 }}>
+                6 оронтой код
+              </label>
               <input type="text" value={code} onChange={e => setCode(e.target.value)}
-                placeholder="Кодоо оруулна уу" maxLength={6} required style={{ marginTop: 6, letterSpacing: 4, fontSize: 18, textAlign: 'center' }} />
+                placeholder="______" maxLength={6} required
+                style={{ letterSpacing: 6, fontSize: 20, textAlign: 'center' }} />
             </div>
-
             <div>
-              <label style={{ fontSize: 12, fontWeight: 800, color: 'var(--muted)', letterSpacing: 0.5 }}>ШИНЭ НУУЦ ҮГ</label>
+              <label style={{ fontSize: 11, fontWeight: 800, color: 'var(--muted)', letterSpacing: 0.8, textTransform: 'uppercase', display: 'block', marginBottom: 7 }}>
+                Шинэ нууц үг
+              </label>
               <input type="password" value={newPass} onChange={e => setNewPass(e.target.value)}
-                placeholder="Шинэ нууц үгээ оруулна уу" required style={{ marginTop: 6 }} />
+                placeholder="••••••••" required />
             </div>
-
             <div>
-              <label style={{ fontSize: 12, fontWeight: 800, color: 'var(--muted)', letterSpacing: 0.5 }}>НУУЦ ҮГ ДАВТАХ</label>
+              <label style={{ fontSize: 11, fontWeight: 800, color: 'var(--muted)', letterSpacing: 0.8, textTransform: 'uppercase', display: 'block', marginBottom: 7 }}>
+                Нууц үг давтах
+              </label>
               <input type="password" value={confirmPass} onChange={e => setConfirm(e.target.value)}
-                placeholder="Нууц үгээ дахин оруулна уу" required style={{ marginTop: 6 }} />
+                placeholder="••••••••" required />
             </div>
-
             {err && (
-              <div style={{ background: 'var(--red-light)', border: '2px solid var(--red)',
-                borderRadius: 12, padding: 12, color: 'var(--red)', fontWeight: 700, fontSize: 14 }}>
+              <div style={{ background: 'rgba(248,113,113,0.1)', border: '1px solid rgba(248,113,113,0.28)', borderRadius: 12, padding: '11px 14px', color: '#F87171', fontWeight: 700, fontSize: 13 }}>
                 {err}
               </div>
             )}
-
-            <button type="submit" className="btn btn-green" disabled={loading} style={{ width: '100%' }}>
-              {loading ? 'Шинэчилж байна...' : 'НУУЦ ҮГ ШИНЭЧЛЭХ'}
+            <button type="submit" className="btn btn-purple" disabled={loading} style={{ width: '100%', padding: '13px 22px', fontSize: 15 }}>
+              {loading ? 'Шинэчилж байна...' : 'Нууц үг шинэчлэх'}
             </button>
-
             <button type="button" onClick={() => { setStep('email'); setErr(''); setDevCode(''); }}
-              style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--muted)', fontWeight: 700, fontSize: 14 }}>
+              style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--muted)', fontWeight: 700, fontSize: 13, fontFamily: 'inherit' }}>
               ← Имэйл дахин оруулах
             </button>
           </form>
         )}
 
-        <p style={{ textAlign: 'center', marginTop: 20, color: 'var(--muted)', fontWeight: 600 }}>
-          <Link href="/login" style={{ color: 'var(--blue)', fontWeight: 800, textDecoration: 'none' }}>
+        <p style={{ textAlign: 'center', marginTop: 22, color: 'var(--muted)', fontSize: 13 }}>
+          <Link href="/login" style={{ color: '#9B6DFF', fontWeight: 800, textDecoration: 'none' }}>
             ← Нэвтрэх хуудас руу буцах
           </Link>
         </p>

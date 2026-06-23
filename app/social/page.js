@@ -15,7 +15,6 @@ export default function SocialPage() {
   const [friends, setFriends]   = useState([]);
   const [groups, setGroups]     = useState([]);
   const [messages, setMessages] = useState([]);
-  const [rooms, setRooms]       = useState([]);
   const [activeRoom, setActiveRoom] = useState(null);
   const [msgText, setMsgText]   = useState('');
   const [loading, setLoading]   = useState(true);
@@ -35,23 +34,16 @@ export default function SocialPage() {
     if (!user) return;
     const socket = io(BASE);
     socketRef.current = socket;
-    socket.on('new-message', msg => {
-      setMessages(prev => [...prev, msg]);
-    });
+    socket.on('new-message', msg => setMessages(prev => [...prev, msg]));
     return () => socket.disconnect();
   }, [user]);
 
   async function load() {
     setLoading(true);
     try {
-      const [f, g, r] = await Promise.all([
-        api.get('/api/friends'),
-        api.get('/api/groups'),
-        api.get('/api/chat/rooms').catch(() => ({ data: [] })),
-      ]);
+      const [f, g] = await Promise.all([api.get('/api/friends'), api.get('/api/groups')]);
       setFriends(f.data);
       setGroups(g.data);
-      setRooms(r.data);
     } catch {}
     setLoading(false);
   }
@@ -69,10 +61,8 @@ export default function SocialPage() {
     if (!msgText.trim() || !activeRoom) return;
     const msg = {
       id: Date.now().toString(),
-      roomId: activeRoom,
-      userId: user.id,
-      username: user.username,
-      text: msgText.trim(),
+      roomId: activeRoom, userId: user.id,
+      username: user.username, text: msgText.trim(),
       createdAt: new Date().toISOString(),
     };
     socketRef.current?.emit('send-message', { roomId: activeRoom, message: msg });
@@ -82,113 +72,124 @@ export default function SocialPage() {
   }
 
   if (authLoad || loading) return (
-    <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '80vh' }}>
-      <div style={{ fontSize: 40 }}>⏳</div>
+    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '80vh' }}>
+      <div className="spinner" />
     </div>
   );
 
-  return (
-    <div style={{ maxWidth: 900, margin: '0 auto', padding: '24px 16px' }}>
-      <h1 style={{ fontSize: 22, fontWeight: 900, marginBottom: 20 }}>👥 Нийгэм</h1>
+  const TABS = [
+    { key: 'chat',    icon: '💬', label: 'Чат' },
+    { key: 'friends', icon: '👫', label: 'Найзууд' },
+    { key: 'groups',  icon: '🏘', label: 'Групп' },
+  ];
 
-      <div style={{ display: 'flex', gap: 8, marginBottom: 24 }}>
-        {['chat', 'friends', 'groups'].map(t => (
-          <button key={t} onClick={() => setTab(t)} style={{
-            padding: '8px 18px', borderRadius: 10, fontWeight: 800, fontSize: 14, cursor: 'pointer',
-            background: tab === t ? 'var(--green-bg)' : 'var(--bg-alt)',
-            border: `2px solid ${tab === t ? 'var(--green)' : 'var(--border)'}`,
-            color: tab === t ? 'var(--green)' : 'var(--muted)',
+  return (
+    <div style={{ padding: '28px 28px 40px', maxWidth: 920, margin: '0 auto' }}>
+
+      <div style={{ marginBottom: 24 }}>
+        <h1 style={{ fontSize: 24, fontWeight: 900, color: '#EDE9FF', letterSpacing: -0.5, marginBottom: 6 }}>Нийгэм</h1>
+        <p style={{ color: 'var(--muted)', fontSize: 13 }}>Найзуудтайгаа хичээллэцгээе</p>
+      </div>
+
+      {/* Tabs */}
+      <div style={{ display: 'flex', gap: 6, marginBottom: 22 }}>
+        {TABS.map(t => (
+          <button key={t.key} onClick={() => setTab(t.key)} style={{
+            padding: '9px 18px', borderRadius: 12, fontWeight: 700, fontSize: 13.5,
+            cursor: 'pointer', fontFamily: 'inherit', transition: 'all 0.15s',
+            background: tab === t.key ? 'rgba(155,109,255,0.15)' : 'rgba(255,255,255,0.03)',
+            border: `1px solid ${tab === t.key ? 'rgba(155,109,255,0.3)' : 'rgba(255,255,255,0.06)'}`,
+            color: tab === t.key ? '#C4AAFF' : 'var(--muted)',
           }}>
-            {t === 'chat' ? '💬 Чат' : t === 'friends' ? '👫 Найзууд' : '🏘 Групп'}
+            {t.icon} {t.label}
           </button>
         ))}
       </div>
 
-      {tab === 'friends' && (
-        <div>
-          <FriendSearch user={user} friends={friends} onUpdate={load} />
-          <h3 style={{ fontWeight: 800, marginBottom: 12, marginTop: 20 }}>Найзуудын жагсаалт ({friends.length})</h3>
-          {friends.length === 0 ? (
-            <div className="card" style={{ textAlign: 'center', padding: 32 }}>
-              <div style={{ fontSize: 40, marginBottom: 8 }}>👥</div>
-              <p style={{ color: 'var(--muted)', fontWeight: 600 }}>Одоогоор найз байхгүй байна</p>
-            </div>
-          ) : (
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-              {friends.map(f => (
-                <div key={f.id} className="card" style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
-                  <span style={{ fontSize: 28 }}>{f.avatarEmoji || f.username?.[0]}</span>
-                  <div>
-                    <div style={{ fontWeight: 800 }}>{f.username}</div>
-                    <div style={{ color: 'var(--muted)', fontSize: 13, fontWeight: 600 }}>🔥 {f.streak} өдөр streak</div>
-                  </div>
-                </div>
-              ))}
-            </div>
-          )}
-        </div>
-      )}
-
-      {tab === 'groups' && (
-        <GroupsTab groups={groups} user={user} onUpdate={load} />
-      )}
-
+      {/* Chat */}
       {tab === 'chat' && (
-        <div style={{ display: 'flex', gap: 16, height: 500 }}>
-          <div style={{ width: 240, flexShrink: 0, display: 'flex', flexDirection: 'column', gap: 8, overflowY: 'auto' }}>
-            {groups.map(g => (
+        <div style={{ display: 'flex', gap: 16, height: 520 }}>
+          {/* Room list */}
+          <div style={{
+            width: 220, flexShrink: 0, display: 'flex', flexDirection: 'column', gap: 6,
+            overflowY: 'auto',
+          }}>
+            {groups.length === 0 ? (
+              <p style={{ color: 'var(--muted)', fontSize: 13, fontWeight: 600, padding: '8px 0' }}>
+                Группд нэгдэж чат хийнэ үү
+              </p>
+            ) : groups.map(g => (
               <button key={g.id} onClick={() => joinRoom(g.id)} style={{
-                padding: '12px 14px', borderRadius: 14, fontWeight: 800, fontSize: 14,
-                border: `2px solid ${activeRoom === g.id ? 'var(--blue)' : 'var(--border)'}`,
-                background: activeRoom === g.id ? 'var(--blue-light)' : 'var(--bg-alt)',
-                color: activeRoom === g.id ? 'var(--blue)' : 'var(--text)',
-                cursor: 'pointer', textAlign: 'left',
+                padding: '12px 14px', borderRadius: 14, fontWeight: 700, fontSize: 14,
+                border: `1px solid ${activeRoom === g.id ? 'rgba(155,109,255,0.35)' : 'rgba(255,255,255,0.06)'}`,
+                background: activeRoom === g.id ? 'rgba(155,109,255,0.15)' : 'rgba(255,255,255,0.03)',
+                color: activeRoom === g.id ? '#C4AAFF' : 'var(--text-sub)',
+                cursor: 'pointer', textAlign: 'left', transition: 'all 0.15s', fontFamily: 'inherit',
               }}>
                 🏘 {g.name}
               </button>
             ))}
-            {groups.length === 0 && (
-              <p style={{ color: 'var(--muted)', fontWeight: 600, fontSize: 13, padding: '8px 0' }}>
-                Группд нэгдэж чат хийнэ үү
-              </p>
-            )}
           </div>
 
+          {/* Chat window */}
           <div style={{
             flex: 1, display: 'flex', flexDirection: 'column',
-            border: '2px solid var(--border)', borderRadius: 16, overflow: 'hidden',
+            border: '1px solid rgba(255,255,255,0.06)', borderRadius: 20, overflow: 'hidden',
+            background: 'var(--bg-card)',
           }}>
             {!activeRoom ? (
-              <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                <p style={{ color: 'var(--muted)', fontWeight: 600 }}>Группийн чатыг сонгоно уу</p>
+              <div style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 10 }}>
+                <div style={{ fontSize: 40, opacity: 0.3 }}>💬</div>
+                <p style={{ color: 'var(--muted)', fontWeight: 600, fontSize: 14 }}>Группийн чатыг сонгоно уу</p>
               </div>
             ) : (
               <>
-                <div style={{ flex: 1, overflowY: 'auto', padding: 16, display: 'flex', flexDirection: 'column', gap: 8 }}>
+                <div style={{ flex: 1, overflowY: 'auto', padding: '16px', display: 'flex', flexDirection: 'column', gap: 10 }}>
                   {messages.map(m => {
                     const isMe = m.userId === user.id;
                     return (
-                      <div key={m.id} style={{ display: 'flex', justifyContent: isMe ? 'flex-end' : 'flex-start' }}>
-                        <div style={{
-                          maxWidth: '70%', padding: '10px 14px', borderRadius: 16,
-                          background: isMe ? 'var(--blue)' : 'var(--bg-alt)',
-                          color: isMe ? '#fff' : 'var(--text)',
-                          borderBottomRightRadius: isMe ? 4 : 16,
-                          borderBottomLeftRadius: isMe ? 16 : 4,
-                        }}>
-                          {!isMe && <div style={{ fontSize: 11, fontWeight: 800, marginBottom: 4, opacity: 0.7 }}>{m.username}</div>}
-                          <div style={{ fontWeight: 600 }}>{m.text}</div>
+                      <div key={m.id} style={{ display: 'flex', justifyContent: isMe ? 'flex-end' : 'flex-start', gap: 8, alignItems: 'flex-end' }}>
+                        {!isMe && (
+                          <div style={{
+                            width: 28, height: 28, borderRadius: '50%', fontSize: 16,
+                            background: 'rgba(155,109,255,0.15)', border: '1px solid rgba(155,109,255,0.2)',
+                            display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0,
+                          }}>
+                            {m.username?.[0]?.toUpperCase()}
+                          </div>
+                        )}
+                        <div style={{ maxWidth: '70%' }}>
+                          {!isMe && (
+                            <div style={{ fontSize: 11, color: 'var(--muted)', fontWeight: 700, marginBottom: 4, marginLeft: 4 }}>
+                              {m.username}
+                            </div>
+                          )}
+                          <div style={{
+                            padding: '10px 14px', borderRadius: 16,
+                            background: isMe ? 'linear-gradient(135deg, #9B6DFF, #7B4FE0)' : 'rgba(255,255,255,0.05)',
+                            color: '#EDE9FF',
+                            borderBottomRightRadius: isMe ? 4 : 16,
+                            borderBottomLeftRadius: isMe ? 16 : 4,
+                            border: isMe ? 'none' : '1px solid rgba(255,255,255,0.07)',
+                            boxShadow: isMe ? '0 4px 16px rgba(155,109,255,0.3)' : 'none',
+                          }}>
+                            <span style={{ fontWeight: 600, fontSize: 14 }}>{m.text}</span>
+                          </div>
                         </div>
                       </div>
                     );
                   })}
                   <div ref={bottomRef} />
                 </div>
-                <div style={{ padding: '12px 16px', borderTop: '2px solid var(--border)', display: 'flex', gap: 8 }}>
+                <div style={{
+                  padding: '12px 16px', borderTop: '1px solid rgba(255,255,255,0.05)',
+                  display: 'flex', gap: 10, background: 'rgba(255,255,255,0.02)',
+                }}>
                   <input type="text" value={msgText} onChange={e => setMsgText(e.target.value)}
-                    placeholder="Мессеж бичих..." style={{ flex: 1 }}
-                    onKeyDown={e => e.key === 'Enter' && sendMessage()} />
-                  <button className="btn btn-blue" onClick={sendMessage} style={{ padding: '10px 18px' }}>
+                    placeholder="Мессеж бичих..."
+                    onKeyDown={e => e.key === 'Enter' && sendMessage()}
+                    style={{ flex: 1 }} />
+                  <button className="btn btn-purple" onClick={sendMessage} style={{ padding: '10px 18px' }}>
                     ➤
                   </button>
                 </div>
@@ -197,12 +198,53 @@ export default function SocialPage() {
           </div>
         </div>
       )}
+
+      {/* Friends */}
+      {tab === 'friends' && (
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+          <FriendSearch user={user} onUpdate={load} />
+          <h3 style={{ fontWeight: 800, fontSize: 15, color: '#EDE9FF' }}>
+            Найзуудын жагсаалт ({friends.length})
+          </h3>
+          {friends.length === 0 ? (
+            <div className="card" style={{ textAlign: 'center', padding: 40 }}>
+              <div style={{ fontSize: 40, marginBottom: 12, opacity: 0.4 }}>👥</div>
+              <p style={{ color: 'var(--muted)', fontWeight: 600, fontSize: 14 }}>Одоогоор найз байхгүй байна</p>
+            </div>
+          ) : (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+              {friends.map(f => (
+                <div key={f.id} className="card" style={{ display: 'flex', alignItems: 'center', gap: 14, padding: '14px 18px' }}>
+                  <div style={{
+                    width: 42, height: 42, borderRadius: '50%', fontSize: 22,
+                    background: 'rgba(155,109,255,0.12)', border: '1px solid rgba(155,109,255,0.2)',
+                    display: 'flex', alignItems: 'center', justifyContent: 'center',
+                  }}>
+                    {f.avatarEmoji || f.username?.[0]}
+                  </div>
+                  <div style={{ flex: 1 }}>
+                    <div style={{ fontWeight: 800, fontSize: 15, color: '#EDE9FF' }}>{f.username}</div>
+                    <div style={{ color: 'var(--muted)', fontSize: 12, fontWeight: 600, marginTop: 2 }}>
+                      🔥 {f.streak} өдөр streak
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* Groups */}
+      {tab === 'groups' && (
+        <GroupsTab groups={groups} user={user} onUpdate={load} />
+      )}
     </div>
   );
 }
 
-function FriendSearch({ user, friends, onUpdate }) {
-  const [q, setQ]     = useState('');
+function FriendSearch({ user, onUpdate }) {
+  const [q, setQ]   = useState('');
   const [res, setRes] = useState([]);
   const [loading, setL] = useState(false);
 
@@ -224,22 +266,26 @@ function FriendSearch({ user, friends, onUpdate }) {
 
   return (
     <div className="card">
-      <h3 style={{ fontWeight: 800, marginBottom: 12 }}>Найз нэмэх</h3>
-      <form onSubmit={search} style={{ display: 'flex', gap: 8 }}>
-        <input type="text" value={q} onChange={e => setQ(e.target.value)} placeholder="Хэрэглэгч хайх..." />
-        <button type="submit" className="btn btn-blue" disabled={loading} style={{ whiteSpace: 'nowrap', padding: '10px 16px' }}>
+      <h3 style={{ fontWeight: 800, fontSize: 14, marginBottom: 14, color: '#EDE9FF' }}>Найз нэмэх</h3>
+      <form onSubmit={search} style={{ display: 'flex', gap: 10 }}>
+        <input type="text" value={q} onChange={e => setQ(e.target.value)} placeholder="Хэрэглэгч хайх..." style={{ flex: 1 }} />
+        <button type="submit" className="btn btn-purple" disabled={loading} style={{ padding: '11px 20px', fontSize: 13 }}>
           Хайх
         </button>
       </form>
-      {res.map(u => (
-        <div key={u.id} style={{ display: 'flex', alignItems: 'center', gap: 12, marginTop: 10 }}>
-          <span style={{ fontSize: 24 }}>{u.avatarEmoji || u.username?.[0]}</span>
-          <span style={{ fontWeight: 700, flex: 1 }}>{u.username}</span>
-          <button className="btn btn-green" onClick={() => addFriend(u.id)} style={{ padding: '6px 14px', fontSize: 13 }}>
-            + Нэмэх
-          </button>
+      {res.length > 0 && (
+        <div style={{ marginTop: 12, display: 'flex', flexDirection: 'column', gap: 8 }}>
+          {res.map(u => (
+            <div key={u.id} style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '10px 0' }}>
+              <span style={{ fontSize: 22 }}>{u.avatarEmoji || u.username?.[0]}</span>
+              <span style={{ fontWeight: 700, flex: 1, color: '#EDE9FF', fontSize: 14 }}>{u.username}</span>
+              <button className="btn btn-green" onClick={() => addFriend(u.id)} style={{ padding: '7px 16px', fontSize: 13 }}>
+                + Нэмэх
+              </button>
+            </div>
+          ))}
         </div>
-      ))}
+      )}
     </div>
   );
 }
@@ -266,15 +312,15 @@ function GroupsTab({ groups, user, onUpdate }) {
   return (
     <div>
       <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: 16 }}>
-        <button className="btn btn-green" onClick={() => setSF(s => !s)} style={{ padding: '10px 18px', fontSize: 14 }}>
-          + Групп үүсгэх
+        <button className="btn btn-purple" onClick={() => setSF(s => !s)} style={{ fontSize: 13, padding: '10px 18px' }}>
+          {showForm ? '✕ Болих' : '+ Групп үүсгэх'}
         </button>
       </div>
       {showForm && (
-        <div className="card" style={{ marginBottom: 16, background: 'var(--green-bg)', borderColor: 'var(--green)' }}>
+        <div className="card anim-scale" style={{ marginBottom: 16, border: '1px solid rgba(155,109,255,0.2)' }}>
           <form onSubmit={createGroup} style={{ display: 'flex', gap: 10 }}>
-            <input type="text" value={name} onChange={e => setName(e.target.value)} placeholder="Группийн нэр" />
-            <button type="submit" className="btn btn-green" disabled={creating} style={{ whiteSpace: 'nowrap', padding: '10px 18px' }}>
+            <input type="text" value={name} onChange={e => setName(e.target.value)} placeholder="Группийн нэр" style={{ flex: 1 }} />
+            <button type="submit" className="btn btn-green" disabled={creating} style={{ padding: '11px 20px', fontSize: 14 }}>
               {creating ? '...' : 'Үүсгэх'}
             </button>
           </form>
@@ -282,28 +328,39 @@ function GroupsTab({ groups, user, onUpdate }) {
       )}
       {groups.length === 0 ? (
         <div className="card" style={{ textAlign: 'center', padding: 40 }}>
-          <div style={{ fontSize: 40, marginBottom: 8 }}>🏘</div>
-          <p style={{ color: 'var(--muted)', fontWeight: 600 }}>Групп байхгүй байна</p>
+          <div style={{ fontSize: 40, marginBottom: 12, opacity: 0.4 }}>🏘</div>
+          <p style={{ color: 'var(--muted)', fontWeight: 600, fontSize: 14 }}>Групп байхгүй байна</p>
         </div>
       ) : (
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
           {groups.map(g => {
             const isMember = g.members?.includes(user.id);
             return (
-              <div key={g.id} className="card" style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
+              <div key={g.id} className="card" style={{ display: 'flex', alignItems: 'center', gap: 14, padding: '16px 20px' }}>
+                <div style={{
+                  width: 42, height: 42, borderRadius: 12, fontSize: 20,
+                  background: 'rgba(155,109,255,0.1)', border: '1px solid rgba(155,109,255,0.2)',
+                  display: 'flex', alignItems: 'center', justifyContent: 'center',
+                }}>
+                  🏘
+                </div>
                 <div style={{ flex: 1 }}>
-                  <div style={{ fontWeight: 800, fontSize: 16 }}>🏘 {g.name}</div>
-                  <div style={{ color: 'var(--muted)', fontSize: 13, fontWeight: 600 }}>
+                  <div style={{ fontWeight: 800, fontSize: 15, color: '#EDE9FF' }}>{g.name}</div>
+                  <div style={{ color: 'var(--muted)', fontSize: 12, fontWeight: 600, marginTop: 2 }}>
                     {g.members?.length || 0} гишүүн
                   </div>
                 </div>
-                {!isMember && (
+                {isMember ? (
+                  <span style={{
+                    background: 'rgba(34,197,94,0.12)', border: '1px solid rgba(34,197,94,0.25)',
+                    color: '#22C55E', borderRadius: 100, padding: '5px 12px', fontSize: 12, fontWeight: 800,
+                  }}>
+                    ✓ Гишүүн
+                  </span>
+                ) : (
                   <button className="btn btn-blue" onClick={() => joinGroup(g.id)} style={{ padding: '8px 16px', fontSize: 13 }}>
                     Нэгдэх
                   </button>
-                )}
-                {isMember && (
-                  <span style={{ color: 'var(--green)', fontWeight: 800, fontSize: 13 }}>✓ Гишүүн</span>
                 )}
               </div>
             );

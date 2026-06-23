@@ -5,7 +5,7 @@ import { GoogleOAuthProvider } from '@react-oauth/google';
 
 export const metadata = {
   title: 'voca — Хятад хэл сурах',
-  description: 'Хятад хэл сурах платформ',
+  description: 'Хятад хэлийг хялбархан, хурдан сурах платформ',
 };
 
 const GOOGLE_CLIENT_ID = '963221731155-sfi0kc8kccit4mgbr3kok3piduufo2be.apps.googleusercontent.com';
@@ -16,10 +16,21 @@ export default function RootLayout({ children }) {
       <body>
         <GoogleOAuthProvider clientId={GOOGLE_CLIENT_ID}>
           <AuthProvider>
-            <Navbar />
-            <main style={{ minHeight: 'calc(100vh - 60px)', paddingTop: 60 }}>
-              {children}
-            </main>
+            <div style={{ display: 'flex', minHeight: '100vh' }}>
+              <Navbar />
+              <main
+                className="main-content"
+                style={{
+                  flex: 1,
+                  marginLeft: 'var(--sidebar-w)',
+                  minHeight: '100vh',
+                  overflow: 'auto',
+                  position: 'relative',
+                }}
+              >
+                {children}
+              </main>
+            </div>
           </AuthProvider>
         </GoogleOAuthProvider>
       </body>
