@@ -2,9 +2,10 @@
 import { useState } from 'react';
 import Link from 'next/link';
 import { useAuth } from '@/lib/auth';
+import { GoogleLogin } from '@react-oauth/google';
 
 export default function LoginPage() {
-  const { login }           = useAuth();
+  const { login, loginWithGoogle } = useAuth();
   const [email, setEmail]   = useState('');
   const [password, setPass] = useState('');
   const [err, setErr]       = useState('');
@@ -22,6 +23,17 @@ export default function LoginPage() {
     setLoad(false);
   }
 
+  async function handleGoogle(credentialResponse) {
+    setErr('');
+    setLoad(true);
+    try {
+      await loginWithGoogle(credentialResponse.credential);
+    } catch (e) {
+      setErr(e.response?.data?.error || 'Google нэвтрэлт амжилтгүй');
+    }
+    setLoad(false);
+  }
+
   return (
     <div style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 16 }}>
       <div className="card" style={{ width: '100%', maxWidth: 400 }}>
@@ -29,6 +41,24 @@ export default function LoginPage() {
           <div style={{ fontSize: 48, marginBottom: 8 }}>🦉</div>
           <h1 style={{ fontSize: 24, fontWeight: 900, color: 'var(--text)' }}>Нэвтрэх</h1>
           <p style={{ color: 'var(--muted)', marginTop: 6, fontWeight: 600 }}>voca дахин тавтай морилно уу</p>
+        </div>
+
+        <div style={{ display: 'flex', justifyContent: 'center', marginBottom: 16 }}>
+          <GoogleLogin
+            onSuccess={handleGoogle}
+            onError={() => setErr('Google нэвтрэлт амжилтгүй')}
+            text="signin_with"
+            shape="rectangular"
+            size="large"
+            width="368"
+            locale="mn"
+          />
+        </div>
+
+        <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 20 }}>
+          <div style={{ flex: 1, height: 1, background: 'var(--border)' }} />
+          <span style={{ color: 'var(--muted)', fontSize: 13, fontWeight: 700 }}>эсвэл</span>
+          <div style={{ flex: 1, height: 1, background: 'var(--border)' }} />
         </div>
 
         <form onSubmit={submit} style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>

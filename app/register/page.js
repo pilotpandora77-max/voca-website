@@ -2,6 +2,7 @@
 import { useState } from 'react';
 import Link from 'next/link';
 import { useAuth } from '@/lib/auth';
+import { GoogleLogin } from '@react-oauth/google';
 
 const EMOJIS = ['🐼','🦊','🐨','🦁','🐯','🐸','🦄','🐙','🦋','🐬'];
 const COLORS  = [
@@ -13,7 +14,7 @@ const COLORS  = [
 ];
 
 export default function RegisterPage() {
-  const { register }          = useAuth();
+  const { register, loginWithGoogle } = useAuth();
   const [username, setUser]   = useState('');
   const [email, setEmail]     = useState('');
   const [password, setPass]   = useState('');
@@ -34,6 +35,17 @@ export default function RegisterPage() {
     setLoad(false);
   }
 
+  async function handleGoogle(credentialResponse) {
+    setErr('');
+    setLoad(true);
+    try {
+      await loginWithGoogle(credentialResponse.credential);
+    } catch (e) {
+      setErr(e.response?.data?.error || 'Google бүртгэлт амжилтгүй');
+    }
+    setLoad(false);
+  }
+
   return (
     <div style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 16 }}>
       <div className="card" style={{ width: '100%', maxWidth: 420 }}>
@@ -41,6 +53,24 @@ export default function RegisterPage() {
           <div style={{ fontSize: 48, marginBottom: 8 }}>🌟</div>
           <h1 style={{ fontSize: 24, fontWeight: 900, color: 'var(--text)' }}>Бүртгүүлэх</h1>
           <p style={{ color: 'var(--muted)', marginTop: 6, fontWeight: 600 }}>voca-д тавтай морилно уу</p>
+        </div>
+
+        <div style={{ display: 'flex', justifyContent: 'center', marginBottom: 16 }}>
+          <GoogleLogin
+            onSuccess={handleGoogle}
+            onError={() => setErr('Google бүртгэлт амжилтгүй')}
+            text="signup_with"
+            shape="rectangular"
+            size="large"
+            width="388"
+            locale="mn"
+          />
+        </div>
+
+        <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 20 }}>
+          <div style={{ flex: 1, height: 1, background: 'var(--border)' }} />
+          <span style={{ color: 'var(--muted)', fontSize: 13, fontWeight: 700 }}>эсвэл имэйлээр</span>
+          <div style={{ flex: 1, height: 1, background: 'var(--border)' }} />
         </div>
 
         <form onSubmit={submit} style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
