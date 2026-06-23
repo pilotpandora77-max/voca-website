@@ -4,6 +4,7 @@ import { useRouter } from 'next/navigation';
 import { useAuth } from '@/lib/auth';
 import api from '@/lib/api';
 import PageHeader from '@/components/PageHeader';
+import HanziTracer from '@/components/HanziTracer';
 
 const FILTER_TABS = ['Бүгд', 'Үг', 'Хэлц', 'Жишээ', 'Идиом'];
 const LANG_MODES  = [
@@ -35,11 +36,17 @@ export default function DictionaryPage() {
   const [langMode, setLang]     = useState('auto');
   const [addedMsg, setAdded]    = useState('');
   const [speaking, setSpeaking] = useState(false);
+  const [tracerChar, setTracerChar] = useState('');
 
   useEffect(() => {
     if (!authLoad && !user) router.push('/login');
     if (user) api.get('/api/streak').then(r => setStreak(r.data.streak || 0)).catch(() => {});
   }, [authLoad, user]);
+
+  useEffect(() => {
+    const chars = selected?.simplified || selected?.traditional || '';
+    setTracerChar(chars[0] || '');
+  }, [selected]);
 
   function detectLang(q) {
     if (langMode !== 'auto') return langMode;
@@ -431,6 +438,29 @@ export default function DictionaryPage() {
         {/* Right sidebar */}
         {selected && (
           <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+
+            {/* Ханз зурлагын дараалал */}
+            {tracerChar && (
+              <div className="card" style={{ padding: '16px 12px' }}>
+                <div style={{ fontWeight: 900, fontSize: 14, marginBottom: 10 }}>汉 Зурлагын дараалал</div>
+                {/* Олон тэмдэгт бол сонгох товч */}
+                {(selected.simplified || selected.traditional || '').length > 1 && (
+                  <div style={{ display: 'flex', gap: 6, marginBottom: 12, flexWrap: 'wrap' }}>
+                    {[...(selected.simplified || selected.traditional || '')].map((c, i) => (
+                      <button key={i} onClick={() => setTracerChar(c)} style={{
+                        width: 36, height: 36, borderRadius: 8, border: '1.5px solid',
+                        borderColor: tracerChar === c ? 'var(--purple)' : 'var(--border)',
+                        background: tracerChar === c ? 'var(--purple)' : '#fff',
+                        color: tracerChar === c ? '#fff' : 'var(--text)',
+                        fontWeight: 800, fontSize: 17, cursor: 'pointer', fontFamily: 'inherit',
+                      }}>{c}</button>
+                    ))}
+                  </div>
+                )}
+                <HanziTracer key={tracerChar} char={tracerChar} size={230} />
+              </div>
+            )}
+
             {/* Цээжлэхэд туслах */}
             <div className="card">
               <div style={{ fontWeight: 900, fontSize: 14, marginBottom: 14 }}>Цээжлэхэд туслах</div>
