@@ -132,16 +132,19 @@ export default function DictionaryPage() {
 
   async function addToVocab(word) {
     try {
-      const front = word.simplified || word.traditional || word.word || word.hanzi || query;
-      const back  = Array.isArray(word.definitions) ? word.definitions.join('; ') : (word.english || word.meaning || word.mn || '');
-      const hint  = word.pinyin || word.reading || '';
-      if (!front || !back) {
+      const wordVal   = word.simplified || word.traditional || word.word || word.hanzi || query;
+      const mnMeaning = word.mn || ZH_MN[word.simplified] || ZH_MN[word.traditional] || '';
+      const enMeaning = Array.isArray(word.definitions) ? word.definitions.join('; ') : (word.english || word.meaning || '');
+      const meaning   = mnMeaning || enMeaning;
+      const reading   = word.pinyin || word.reading || '';
+
+      if (!wordVal || !meaning) {
         setAdded('⚠️ Мэдээлэл дутуу байна');
         setTimeout(() => setAdded(''), 2500);
         return;
       }
-      await api.post('/api/words', { front, back, hint });
-      setAdded('✓ Үгийн санд нэмэгдлэ!');
+      await api.post('/api/words', { word: wordVal, meaning, meaningEn: enMeaning, reading, lang: 'zh' });
+      setAdded('✓ Нэмэгдлэ!');
       setTimeout(() => setAdded(''), 2500);
     } catch (e) {
       const msg = e.response?.data?.error || e.message || 'Алдаа гарлаа';
