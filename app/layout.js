@@ -25,7 +25,6 @@ export default function RootLayout({ children }) {
                   marginLeft: 'var(--sidebar-w)',
                   minHeight: '100vh',
                   overflow: 'auto',
-                  position: 'relative',
                 }}
               >
                 {children}

@@ -54,24 +54,24 @@ export default function ForgotPasswordPage() {
       {/* Background glow */}
       <div style={{
         position: 'absolute', width: 500, height: 500, borderRadius: '50%',
-        background: 'radial-gradient(circle, rgba(155,109,255,0.08) 0%, transparent 70%)',
+        background: 'radial-gradient(circle, rgba(124,58,237,0.08) 0%, transparent 70%)',
         top: -150, left: '50%', transform: 'translateX(-50%)', pointerEvents: 'none',
       }} />
 
-      <div className="card-glass anim-up" style={{ width: '100%', maxWidth: 420, padding: '36px 32px', position: 'relative', zIndex: 1 }}>
+      <div className="card anim-up" style={{ width: '100%', maxWidth: 420, padding: '36px 32px', position: 'relative', zIndex: 1 }}>
 
         {/* Header */}
         <div style={{ textAlign: 'center', marginBottom: 28 }}>
           <div style={{
             display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
             width: 60, height: 60, borderRadius: 18,
-            background: 'rgba(155,109,255,0.15)', border: '1px solid rgba(155,109,255,0.3)',
+            background: 'var(--purple-light)', border: '1.5px solid var(--purple-mid)',
             fontSize: 30, marginBottom: 16,
-            boxShadow: '0 0 24px rgba(155,109,255,0.2)',
+            boxShadow: '0 0 24px rgba(124,58,237,0.15)',
           }}>
             🔐
           </div>
-          <h1 style={{ fontSize: 22, fontWeight: 900, color: '#EDE9FF', letterSpacing: -0.5, marginBottom: 6 }}>
+          <h1 style={{ fontSize: 22, fontWeight: 900, color: 'var(--text)', letterSpacing: -0.5, marginBottom: 6 }}>
             Нууц үг сэргээх
           </h1>
           <p style={{ color: 'var(--muted)', fontSize: 13, fontWeight: 500 }}>
@@ -86,8 +86,8 @@ export default function ForgotPasswordPage() {
               <div style={{
                 height: 4, borderRadius: 4, marginBottom: 6,
                 background: (step === 'email' ? i === 0 : true)
-                  ? 'linear-gradient(90deg, #9B6DFF, #FF6B9D)'
-                  : 'rgba(255,255,255,0.07)',
+                  ? 'linear-gradient(90deg, var(--purple), var(--purple-dark))'
+                  : 'var(--border)',
               }} />
               <span style={{ fontSize: 11, fontWeight: 700, color: 'var(--muted)' }}>{s}</span>
             </div>
@@ -113,7 +113,7 @@ export default function ForgotPasswordPage() {
                 placeholder="Бүртгэлтэй имэйлээ оруулна уу" required />
             </div>
             {err && (
-              <div style={{ background: 'rgba(248,113,113,0.1)', border: '1px solid rgba(248,113,113,0.28)', borderRadius: 12, padding: '11px 14px', color: '#F87171', fontWeight: 700, fontSize: 13 }}>
+              <div style={{ background: '#FEF2F2', border: '1.5px solid #FECACA', borderRadius: 12, padding: '11px 14px', color: '#EF4444', fontWeight: 700, fontSize: 13 }}>
                 {err}
               </div>
             )}
@@ -157,7 +157,7 @@ export default function ForgotPasswordPage() {
                 placeholder="••••••••" required />
             </div>
             {err && (
-              <div style={{ background: 'rgba(248,113,113,0.1)', border: '1px solid rgba(248,113,113,0.28)', borderRadius: 12, padding: '11px 14px', color: '#F87171', fontWeight: 700, fontSize: 13 }}>
+              <div style={{ background: '#FEF2F2', border: '1.5px solid #FECACA', borderRadius: 12, padding: '11px 14px', color: '#EF4444', fontWeight: 700, fontSize: 13 }}>
                 {err}
               </div>
             )}
@@ -172,7 +172,7 @@ export default function ForgotPasswordPage() {
         )}
 
         <p style={{ textAlign: 'center', marginTop: 22, color: 'var(--muted)', fontSize: 13 }}>
-          <Link href="/login" style={{ color: '#9B6DFF', fontWeight: 800, textDecoration: 'none' }}>
+          <Link href="/login" style={{ color: 'var(--purple)', fontWeight: 800, textDecoration: 'none' }}>
             ← Нэвтрэх хуудас руу буцах
           </Link>
         </p>

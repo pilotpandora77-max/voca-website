@@ -4,35 +4,47 @@ import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/lib/auth';
 import api from '@/lib/api';
+import PageHeader from '@/components/PageHeader';
 
-const HSK_LEVELS = [
-  { level: 1, words: 150, gradient: 'linear-gradient(135deg, #22C55E, #16A34A)', glow: 'rgba(34,197,94,0.35)', label: 'Эхлэгч' },
-  { level: 2, words: 150, gradient: 'linear-gradient(135deg, #38BDF8, #0EA5E9)', glow: 'rgba(56,189,248,0.35)', label: 'Суурь' },
-  { level: 3, words: 300, gradient: 'linear-gradient(135deg, #9B6DFF, #7B4FE0)', glow: 'rgba(155,109,255,0.35)', label: 'Дунд' },
-  { level: 4, locked: true, label: 'Дунд+' },
-  { level: 5, locked: true, label: 'Ахисан' },
-  { level: 6, locked: true, label: 'Мэргэжлийн' },
+const WORD_OF_DAY = { zh: '你好', pinyin: 'nǐ hǎo', mn: 'Сайн уу / Тавтай морил' };
+
+const DAILY_GOALS = [
+  { icon: '🔥', title: 'Өдрийн чек-ин', desc: 'Өнөөдөр апп-д нэвтэрч ор.', xp: 10, key: 'checkin', total: 1 },
+  { icon: '🃏', title: '5 карт давтах', desc: '5 давтах карт гүйцэтгэ.', xp: 20, key: 'reviews', total: 5 },
+  { icon: '✏️', title: 'Шинэ үг нэмэх', desc: 'Шинэ 1 үг нэм.', xp: 15, key: 'words', total: 1 },
 ];
 
-const QUALITY = [
-  { q: 1, label: 'Дахин', icon: '↩', color: '#F87171', bg: 'rgba(248,113,113,0.12)', border: 'rgba(248,113,113,0.3)' },
-  { q: 3, label: 'Хэцүү', icon: '😅', color: '#F59E0B', bg: 'rgba(245,158,11,0.12)', border: 'rgba(245,158,11,0.3)' },
-  { q: 5, label: 'Амархан', icon: '⚡', color: '#22C55E', bg: 'rgba(34,197,94,0.12)', border: 'rgba(34,197,94,0.3)' },
+const QUICK_ACTIONS = [
+  { icon: '🃏', label: 'Давтах', sub: 'Карт давтах', href: '/vocab/practice', color: '#7C3AED', bg: '#EDE9FF' },
+  { icon: '🎮', label: 'Тоглоом', sub: 'Суралцаж тоглоё', href: '/reel', color: '#10B981', bg: '#ECFDF5' },
+  { icon: '🎓', label: 'Хичээл', sub: 'Сэдвээр суралцах', href: '/grammar', color: '#3B82F6', bg: '#EFF6FF' },
+  { icon: '📖', label: 'Толь', sub: 'Хайх & олох', href: '/dictionary', color: '#F59E0B', bg: '#FEF3C7' },
 ];
+
+function getLevel(xp = 0) {
+  const thresholds = [0, 100, 300, 600, 1000, 1500, 2200, 3000];
+  let level = 1;
+  for (let i = 1; i < thresholds.length; i++) {
+    if (xp >= thresholds[i]) level = i + 1;
+    else break;
+  }
+  const lvlXp = thresholds[Math.min(level - 1, thresholds.length - 1)];
+  const nextXp = thresholds[Math.min(level, thresholds.length - 1)] || lvlXp + 200;
+  return { level, current: xp - lvlXp, needed: nextXp - lvlXp };
+}
 
 export default function HomePage() {
   const { user, loading: authLoad } = useAuth();
   const router = useRouter();
 
-  const [streak, setStreak]     = useState(0);
-  const [dueCards, setDue]      = useState([]);
-  const [current, setCurrent]   = useState(null);
-  const [showBack, setShowBack] = useState(false);
-  const [news, setNews]         = useState([]);
-  const [leaderboard, setLB]    = useState([]);
-  const [tab, setTab]           = useState('news');
-  const [loading, setLoading]   = useState(true);
-  const [flipping, setFlipping] = useState(false);
+  const [streak, setStreak]       = useState(0);
+  const [dueCards, setDue]        = useState([]);
+  const [current, setCurrent]     = useState(null);
+  const [showBack, setShowBack]   = useState(false);
+  const [stats, setStats]         = useState(null);
+  const [news, setNews]           = useState([]);
+  const [leaderboard, setLB]      = useState([]);
+  const [loading, setLoading]     = useState(true);
 
   useEffect(() => {
     if (!authLoad && !user) router.push('/login');
@@ -42,32 +54,26 @@ export default function HomePage() {
   async function load() {
     setLoading(true);
     try {
-      const [s, cards, n] = await Promise.all([
-        api.get('/api/streak'), api.get('/api/cards/due'), api.get('/api/news'),
+      const [s, cards, st, lb] = await Promise.all([
+        api.get('/api/streak'),
+        api.get('/api/cards/due'),
+        api.get('/api/stats').catch(() => ({ data: {} })),
+        api.get('/api/stats/leaderboard').catch(() => ({ data: [] })),
       ]);
       setStreak(s.data.streak || 0);
       setDue(cards.data);
       setCurrent(cards.data[0] || null);
-      setNews(n.data);
+      setStats(st.data);
+      setLB(lb.data.slice(0, 5));
     } catch {}
     setLoading(false);
   }
 
-  async function loadLB() {
+  async function addWordToVocab() {
     try {
-      const { data } = await api.get('/api/stats/leaderboard');
-      setLB(data);
+      await api.post('/api/words', { front: WORD_OF_DAY.zh, back: WORD_OF_DAY.mn, hint: WORD_OF_DAY.pinyin });
+      alert('Үгийн санд нэмэгдлэ! ✅');
     } catch {}
-  }
-
-  function switchTab(t) {
-    setTab(t);
-    if (t === 'rank' && leaderboard.length === 0) loadLB();
-  }
-
-  function revealBack() {
-    setFlipping(true);
-    setTimeout(() => { setShowBack(true); setFlipping(false); }, 150);
   }
 
   async function review(quality) {
@@ -76,9 +82,7 @@ export default function HomePage() {
       await api.patch(`/api/cards/${current.id}/review`, { quality });
       try { await api.post('/api/streak/checkin'); } catch {}
       const rest = dueCards.filter(c => c.id !== current.id);
-      setDue(rest);
-      setCurrent(rest[0] || null);
-      setShowBack(false);
+      setDue(rest); setCurrent(rest[0] || null); setShowBack(false);
     } catch {}
   }
 
@@ -89,286 +93,241 @@ export default function HomePage() {
   );
   if (!user) return null;
 
-  const doneCount = Math.max(0, (dueCards.findIndex(c => c?.id === current?.id)));
-  const totalDue  = dueCards.length;
-  const progress  = totalDue > 0 ? doneCount / totalDue : 1;
+  const lvl = getLevel(stats?.xp || 0);
+  const progress = Math.min((lvl.current / lvl.needed) * 100, 100);
+
+  const goalProgress = {
+    checkin: 1,
+    reviews: Math.min(stats?.reviewCount || 0, 5),
+    words: Math.min(stats?.wordCount || 0, 1),
+  };
 
   return (
-    <div style={{ padding: '28px 28px 40px', maxWidth: 860, margin: '0 auto' }} className="anim-up">
+    <div style={{ paddingBottom: 32 }}>
+      <PageHeader
+        title={`Сайн уу, ${user.username} 👋`}
+        subtitle="Өнөөдөр шинэ үгс сурч, өөрийгөө хөгжүүлэ!"
+        streak={streak}
+      />
 
-      {/* ── Top Header ── */}
-      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 28 }}>
-        <div>
-          <h1 style={{ fontSize: 26, fontWeight: 900, color: '#EDE9FF', letterSpacing: -0.5 }}>
-            Сайн байна уу, {user.username} 👋
-          </h1>
-          <p style={{ color: 'var(--muted)', fontSize: 14, marginTop: 3, fontWeight: 500 }}>
-            Өнөөдөр ч хичээллэцгээе
-          </p>
-        </div>
-        <div style={{
-          display: 'flex', alignItems: 'center', gap: 7,
-          background: 'rgba(245,158,11,0.12)',
-          border: '1px solid rgba(245,158,11,0.28)',
-          borderRadius: 100, padding: '8px 16px',
-          animation: 'streak-pulse 2s ease infinite',
-        }}>
-          <span style={{ fontSize: 22 }}>🔥</span>
-          <span style={{ fontSize: 20, fontWeight: 900, color: '#F59E0B' }}>{streak}</span>
-          <span style={{ fontSize: 12, color: 'rgba(245,158,11,0.7)', fontWeight: 600 }}>өдөр</span>
-        </div>
-      </div>
+      <div style={{ padding: '0 28px' }}>
 
-      {/* ── Two column layout ── */}
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 340px', gap: 20, marginBottom: 24 }}>
+        {/* ── Row 1: Level card + Stats ── */}
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 16, marginBottom: 16 }}>
 
-        {/* Left — Flashcard */}
-        <div>
-          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 14 }}>
-            <h2 style={{ fontSize: 15, fontWeight: 800, color: '#EDE9FF' }}>
-              📚 Өнөөдрийн давталт
-            </h2>
-            {totalDue > 0 && (
-              <span style={{
-                background: 'rgba(155,109,255,0.15)', border: '1px solid rgba(155,109,255,0.3)',
-                color: '#C4AAFF', borderRadius: 100, padding: '3px 12px',
-                fontSize: 12, fontWeight: 800,
-              }}>
-                {doneCount}/{totalDue} карт
-              </span>
-            )}
-          </div>
-
-          {current ? (
-            <div className="card" style={{ border: '1px solid rgba(155,109,255,0.2)' }}>
-              {/* Progress bar */}
-              <div style={{ height: 5, background: 'rgba(255,255,255,0.06)', borderRadius: 10, overflow: 'hidden', marginBottom: 22 }}>
-                <div style={{
-                  height: '100%',
-                  background: 'linear-gradient(90deg, #9B6DFF, #FF6B9D)',
-                  borderRadius: 10,
-                  width: `${Math.max(progress * 100, 4)}%`,
-                  transition: 'width 0.4s ease',
-                  boxShadow: '0 0 8px rgba(155,109,255,0.5)',
-                }} />
+          {/* Level card */}
+          <div style={{
+            gridColumn: '1', gridRow: '1 / 3',
+            background: 'linear-gradient(145deg, #8B5CF6 0%, #7C3AED 50%, #6D28D9 100%)',
+            borderRadius: 20, padding: 22, position: 'relative', overflow: 'hidden',
+            minHeight: 200,
+          }}>
+            <div style={{ position: 'absolute', top: -20, right: -20, fontSize: 120, opacity: 0.08, lineHeight: 1, userSelect: 'none' }}>🐼</div>
+            <div style={{ position: 'absolute', bottom: 0, right: 0, fontSize: 80, lineHeight: 1, userSelect: 'none', filter: 'drop-shadow(0 4px 12px rgba(0,0,0,0.3))' }}>
+              🐼
+            </div>
+            <div style={{ position: 'relative', zIndex: 1 }}>
+              <div style={{ fontSize: 11, fontWeight: 800, color: 'rgba(255,255,255,0.75)', letterSpacing: 1, textTransform: 'uppercase', marginBottom: 6 }}>
+                Таны түвшин
               </div>
-
-              {/* Card face */}
-              <div style={{
-                background: 'linear-gradient(135deg, rgba(155,109,255,0.08), rgba(255,107,157,0.05))',
-                borderRadius: 16,
-                border: '1px solid rgba(155,109,255,0.15)',
-                padding: '36px 20px',
-                textAlign: 'center',
-                marginBottom: 18,
-                minHeight: 170,
-                display: 'flex', flexDirection: 'column',
-                alignItems: 'center', justifyContent: 'center', gap: 10,
-                transition: 'opacity 0.15s',
-                opacity: flipping ? 0 : 1,
-              }}>
-                <span style={{
-                  fontSize: 84, fontWeight: 900, lineHeight: 1,
-                  background: 'linear-gradient(135deg, #EDE9FF, #C4AAFF)',
-                  WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent', backgroundClip: 'text',
-                }}>
-                  {current.front}
-                </span>
-                {current.hint && (
-                  <span style={{ color: 'var(--muted)', fontSize: 15, fontWeight: 600 }}>
-                    {current.hint}
-                  </span>
-                )}
+              <div style={{ fontSize: 34, fontWeight: 900, color: '#fff', marginBottom: 14 }}>
+                Level {lvl.level}
               </div>
-
-              {!showBack ? (
-                <button className="btn btn-purple" onClick={revealBack} style={{ width: '100%', padding: '13px 22px', fontSize: 14 }}>
-                  Хариулт харах
-                </button>
-              ) : (
-                <div className="anim-scale">
-                  <div style={{
-                    background: 'rgba(34,197,94,0.1)',
-                    border: '1px solid rgba(34,197,94,0.28)',
-                    borderRadius: 14, padding: '14px 20px',
-                    textAlign: 'center', marginBottom: 14,
-                  }}>
-                    <span style={{ fontSize: 20, fontWeight: 800, color: '#22C55E' }}>
-                      {current.back}
-                    </span>
-                  </div>
-                  <p style={{ fontSize: 11, fontWeight: 800, color: 'var(--muted)', textAlign: 'center', marginBottom: 10, letterSpacing: 0.8, textTransform: 'uppercase' }}>
-                    Хэр сайн санасан бэ?
-                  </p>
-                  <div style={{ display: 'flex', gap: 8 }}>
-                    {QUALITY.map(({ q, label, icon, color, bg, border }) => (
-                      <button key={q} onClick={() => review(q)} style={{
-                        flex: 1, borderRadius: 12, border: `1.5px solid ${border}`,
-                        background: bg, color, fontWeight: 800, fontSize: 13,
-                        padding: '12px 8px', cursor: 'pointer', fontFamily: 'inherit',
-                        transition: 'all 0.15s',
-                      }}
-                      onMouseEnter={e => { e.currentTarget.style.filter = 'brightness(1.2)'; }}
-                      onMouseLeave={e => { e.currentTarget.style.filter = ''; }}
-                      >
-                        <span style={{ fontSize: 16, display: 'block', marginBottom: 2 }}>{icon}</span>
-                        {label}
-                      </button>
-                    ))}
-                  </div>
+              <div style={{ marginBottom: 6 }}>
+                <div style={{ height: 8, background: 'rgba(255,255,255,0.25)', borderRadius: 8, overflow: 'hidden' }}>
+                  <div style={{ height: '100%', background: '#fff', borderRadius: 8, width: `${progress}%`, transition: 'width 0.6s' }} />
                 </div>
-              )}
-            </div>
-          ) : (
-            <div className="card" style={{
-              textAlign: 'center', padding: '44px 24px',
-              background: 'linear-gradient(135deg, rgba(34,197,94,0.08), rgba(34,197,94,0.04))',
-              border: '1px solid rgba(34,197,94,0.2)',
-            }}>
-              <div style={{ fontSize: 56, marginBottom: 12, animation: 'float 3s ease infinite' }}>🎉</div>
-              <h3 style={{ fontWeight: 900, fontSize: 20, color: '#22C55E', marginBottom: 6 }}>Маш сайн!</h3>
-              <p style={{ color: 'var(--muted)', fontWeight: 600, fontSize: 14, marginBottom: 20 }}>
-                Өнөөдрийн давталт бүрэн дууслаа
-              </p>
-              <div style={{
-                display: 'inline-flex', alignItems: 'center', gap: 6,
-                background: 'rgba(245,158,11,0.15)', border: '1px solid rgba(245,158,11,0.3)',
-                borderRadius: 100, padding: '8px 18px',
-              }}>
-                <span>⭐</span>
-                <span style={{ color: '#F59E0B', fontWeight: 900 }}>+10 XP</span>
+              </div>
+              <div style={{ fontSize: 12, color: 'rgba(255,255,255,0.75)', fontWeight: 600 }}>
+                {lvl.current} / {lvl.needed} XP
               </div>
             </div>
-          )}
-        </div>
-
-        {/* Right — News / Leaderboard */}
-        <div>
-          <div style={{ display: 'flex', gap: 6, marginBottom: 14 }}>
-            {[['news', '📣', 'Мэдээ'], ['rank', '🏆', 'Эрэмбэ']].map(([t, icon, label]) => (
-              <button key={t} onClick={() => switchTab(t)} style={{
-                flex: 1, padding: '8px 10px', borderRadius: 11, fontWeight: 700, fontSize: 12.5,
-                cursor: 'pointer', fontFamily: 'inherit', transition: 'all 0.15s',
-                background: tab === t ? 'rgba(155,109,255,0.15)' : 'rgba(255,255,255,0.03)',
-                border: `1px solid ${tab === t ? 'rgba(155,109,255,0.3)' : 'rgba(255,255,255,0.06)'}`,
-                color: tab === t ? '#C4AAFF' : 'var(--muted)',
-              }}>
-                {icon} {label}
-              </button>
-            ))}
           </div>
 
-          <div className="card" style={{ minHeight: 280, padding: 0, overflow: 'hidden' }}>
-            {tab === 'news' && (
-              <div style={{ padding: 16, display: 'flex', flexDirection: 'column', gap: 10 }}>
-                {news.length === 0 ? (
-                  <div style={{ textAlign: 'center', padding: '40px 0', color: 'var(--muted)', fontWeight: 600, fontSize: 14 }}>
-                    Одоогоор мэдээ байхгүй
-                  </div>
-                ) : news.map(item => (
-                  <div key={item.id} style={{
-                    display: 'flex', gap: 12, padding: '12px',
-                    background: 'rgba(255,255,255,0.02)', borderRadius: 12,
-                    border: '1px solid rgba(255,255,255,0.04)',
-                  }}>
-                    <div style={{
-                      width: 4, borderRadius: 4, flexShrink: 0,
-                      background: item.color || '#9B6DFF',
-                    }} />
-                    <div style={{ flex: 1, minWidth: 0 }}>
-                      <div style={{ fontSize: 18, marginBottom: 4 }}>{item.emoji}</div>
-                      <div style={{ fontWeight: 800, fontSize: 13, color: '#EDE9FF', marginBottom: 3 }}>{item.title}</div>
-                      <div style={{ color: 'var(--muted)', fontSize: 12, fontWeight: 500, lineHeight: 1.4 }}>{item.body}</div>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            )}
+          {/* Сурсан үг */}
+          <div className="card" style={{ display: 'flex', flexDirection: 'column', justifyContent: 'space-between' }}>
+            <div style={{ fontSize: 32, marginBottom: 4 }}>📚</div>
+            <div>
+              <div style={{ fontSize: 28, fontWeight: 900, color: 'var(--text)' }}>{stats?.wordCount || 0}</div>
+              <div style={{ fontSize: 13, color: 'var(--muted)', fontWeight: 600 }}>сурсан үг</div>
+            </div>
+            <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
+              <Link href="/vocab" style={{
+                width: 28, height: 28, borderRadius: '50%', background: 'var(--purple-light)',
+                display: 'flex', alignItems: 'center', justifyContent: 'center',
+                color: 'var(--purple)', fontWeight: 900, fontSize: 16, textDecoration: 'none',
+              }}>→</Link>
+            </div>
+          </div>
 
-            {tab === 'rank' && (
-              <div>
-                {leaderboard.length === 0 ? (
-                  <div style={{ textAlign: 'center', padding: '40px 0', color: 'var(--muted)', fontWeight: 600, fontSize: 14 }}>
-                    Өгөгдөл байхгүй
-                  </div>
-                ) : leaderboard.map((entry, idx) => {
-                  const medal = idx === 0 ? '🥇' : idx === 1 ? '🥈' : idx === 2 ? '🥉' : null;
-                  const isMe  = entry.id === user.id;
-                  return (
-                    <div key={entry.id} style={{
-                      display: 'flex', alignItems: 'center', gap: 10, padding: '11px 16px',
-                      borderBottom: '1px solid rgba(255,255,255,0.04)',
-                      background: isMe ? 'rgba(155,109,255,0.08)' : 'transparent',
-                    }}>
-                      <span style={{ width: 22, fontSize: 14, fontWeight: 800, color: 'var(--muted)', textAlign: 'center' }}>
-                        {medal || `${idx + 1}`}
-                      </span>
-                      <span style={{ fontSize: 20 }}>{entry.avatarEmoji || entry.username?.[0]}</span>
-                      <span style={{ fontWeight: 700, flex: 1, fontSize: 13, color: isMe ? '#C4AAFF' : '#EDE9FF' }}>
-                        {entry.username}
-                      </span>
-                      <span style={{ fontWeight: 900, color: '#F59E0B', fontSize: 13 }}>{entry.xp} XP</span>
-                    </div>
-                  );
-                })}
-              </div>
-            )}
+          {/* Давтах карт */}
+          <div className="card" style={{ display: 'flex', flexDirection: 'column', justifyContent: 'space-between' }}>
+            <div style={{ fontSize: 32, marginBottom: 4 }}>✅</div>
+            <div>
+              <div style={{ fontSize: 28, fontWeight: 900, color: 'var(--text)' }}>{dueCards.length}</div>
+              <div style={{ fontSize: 13, color: 'var(--muted)', fontWeight: 600 }}>давтах карт</div>
+            </div>
+            <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
+              <Link href="/vocab/practice" style={{
+                width: 28, height: 28, borderRadius: '50%', background: 'var(--green-light)',
+                display: 'flex', alignItems: 'center', justifyContent: 'center',
+                color: 'var(--green)', fontWeight: 900, fontSize: 16, textDecoration: 'none',
+              }}>→</Link>
+            </div>
+          </div>
+
+          {/* XP stat */}
+          <div className="card" style={{ display: 'flex', flexDirection: 'column', justifyContent: 'space-between' }}>
+            <div style={{ fontSize: 32, marginBottom: 4 }}>⭐</div>
+            <div>
+              <div style={{ fontSize: 28, fontWeight: 900, color: 'var(--text)' }}>{stats?.xp || 0}</div>
+              <div style={{ fontSize: 13, color: 'var(--muted)', fontWeight: 600 }}>нийт XP</div>
+            </div>
+            <Link href="/social" style={{ fontSize: 12, color: 'var(--purple)', fontWeight: 700, textDecoration: 'none' }}>
+              Өнөөдөр давт →
+            </Link>
           </div>
         </div>
-      </div>
 
-      {/* ── HSK Levels ── */}
-      <h2 style={{ fontSize: 15, fontWeight: 800, color: '#EDE9FF', marginBottom: 14 }}>
-        📖 HSK Хичээл
-      </h2>
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(6, 1fr)', gap: 12 }}>
-        {HSK_LEVELS.map(item =>
-          item.locked ? (
-            <div key={item.level} style={{
-              borderRadius: 18, border: '1px solid rgba(255,255,255,0.05)',
-              background: 'rgba(255,255,255,0.02)', padding: '18px 14px', textAlign: 'center',
-            }}>
-              <div style={{ fontSize: 24, marginBottom: 8, opacity: 0.4 }}>🔒</div>
-              <div style={{ fontSize: 11, fontWeight: 800, color: 'var(--muted)' }}>HSK {item.level}</div>
-              <div style={{ fontSize: 10, color: 'var(--muted)', marginTop: 2, opacity: 0.6 }}>{item.label}</div>
-            </div>
-          ) : (
-            <Link key={item.level} href={`/grammar/hsk/${item.level}`} style={{
-              borderRadius: 18, padding: '18px 14px', textAlign: 'center',
-              textDecoration: 'none', display: 'block',
-              background: 'rgba(255,255,255,0.03)',
-              border: '1px solid rgba(255,255,255,0.07)',
-              transition: 'all 0.18s',
-              position: 'relative', overflow: 'hidden',
+        {/* ── Quick Actions ── */}
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 12, marginBottom: 16 }}>
+          {QUICK_ACTIONS.map(a => (
+            <Link key={a.href} href={a.href} style={{
+              textDecoration: 'none', background: '#fff', border: '1.5px solid var(--border)',
+              borderRadius: 16, padding: '16px 14px', textAlign: 'center',
+              transition: 'all 0.15s', display: 'block',
             }}
-            onMouseEnter={e => { e.currentTarget.style.transform = 'translateY(-2px)'; e.currentTarget.style.boxShadow = item.glow ? `0 8px 28px ${item.glow}` : ''; e.currentTarget.style.borderColor = 'rgba(255,255,255,0.15)'; }}
-            onMouseLeave={e => { e.currentTarget.style.transform = ''; e.currentTarget.style.boxShadow = ''; e.currentTarget.style.borderColor = 'rgba(255,255,255,0.07)'; }}
+            onMouseEnter={e => { e.currentTarget.style.borderColor = a.color + '66'; e.currentTarget.style.transform = 'translateY(-2px)'; e.currentTarget.style.boxShadow = `0 6px 20px ${a.color}22`; }}
+            onMouseLeave={e => { e.currentTarget.style.borderColor = 'var(--border)'; e.currentTarget.style.transform = ''; e.currentTarget.style.boxShadow = ''; }}
             >
               <div style={{
-                fontSize: 11, fontWeight: 800, letterSpacing: 1,
-                background: item.gradient, WebkitBackgroundClip: 'text',
-                WebkitTextFillColor: 'transparent', backgroundClip: 'text',
-                marginBottom: 2,
-              }}>HSK</div>
-              <div style={{
-                fontSize: 42, fontWeight: 900, lineHeight: 1.1,
-                background: item.gradient, WebkitBackgroundClip: 'text',
-                WebkitTextFillColor: 'transparent', backgroundClip: 'text',
+                width: 48, height: 48, borderRadius: 14, background: a.bg, margin: '0 auto 10px',
+                display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 24,
               }}>
-                {item.level}
+                {a.icon}
               </div>
-              <div style={{ fontSize: 10, color: 'var(--muted)', fontWeight: 600, marginBottom: 10 }}>
-                {item.words} үг
-              </div>
-              <div style={{
-                borderRadius: 8, padding: '7px 0', fontSize: 11, fontWeight: 800,
-                background: item.gradient, color: '#fff',
-              }}>
-                Үзэх
-              </div>
+              <div style={{ fontWeight: 800, fontSize: 14, color: 'var(--text)', marginBottom: 3 }}>{a.label}</div>
+              <div style={{ fontSize: 11, color: 'var(--muted)', fontWeight: 500 }}>{a.sub}</div>
             </Link>
-          )
-        )}
+          ))}
+        </div>
+
+        {/* ── Row 3: Daily Goals + Right Panel ── */}
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 380px', gap: 16 }}>
+
+          {/* Daily Goals */}
+          <div className="card">
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 18 }}>
+              <h2 style={{ fontWeight: 900, fontSize: 16, color: 'var(--text)' }}>🎯 Өдрийн зорилт</h2>
+              <span style={{ fontSize: 13, color: 'var(--muted)', fontWeight: 700 }}>
+                {Object.values(goalProgress).filter((v, i) => v >= DAILY_GOALS[i]?.total).length}/{DAILY_GOALS.length}
+              </span>
+            </div>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+              {DAILY_GOALS.map(g => {
+                const done = goalProgress[g.key];
+                const pct  = Math.min((done / g.total) * 100, 100);
+                const isDone = done >= g.total;
+                return (
+                  <div key={g.key} style={{
+                    display: 'flex', alignItems: 'center', gap: 14, padding: '14px',
+                    background: isDone ? 'var(--green-light)' : 'var(--bg-alt)',
+                    borderRadius: 14, border: `1.5px solid ${isDone ? '#10B98133' : 'var(--border)'}`,
+                  }}>
+                    <div style={{
+                      width: 42, height: 42, borderRadius: 12, flexShrink: 0,
+                      background: isDone ? 'var(--green-bg)' : '#fff',
+                      border: `1.5px solid ${isDone ? '#10B98144' : 'var(--border)'}`,
+                      display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 20,
+                    }}>
+                      {g.icon}
+                    </div>
+                    <div style={{ flex: 1, minWidth: 0 }}>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 4 }}>
+                        <span style={{ fontWeight: 800, fontSize: 13, color: 'var(--text)' }}>{g.title}</span>
+                        <span style={{
+                          fontSize: 11, fontWeight: 800, color: isDone ? 'var(--green)' : 'var(--purple)',
+                          background: isDone ? 'var(--green-bg)' : 'var(--purple-light)',
+                          padding: '2px 8px', borderRadius: 100,
+                        }}>+{g.xp} XP</span>
+                      </div>
+                      <div style={{ fontSize: 11, color: 'var(--muted)', fontWeight: 500, marginBottom: 6 }}>{g.desc}</div>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                        <div style={{ flex: 1, height: 5, background: 'var(--border)', borderRadius: 4, overflow: 'hidden' }}>
+                          <div style={{ height: '100%', background: isDone ? 'var(--green)' : 'var(--purple)', borderRadius: 4, width: `${pct}%`, transition: 'width 0.5s' }} />
+                        </div>
+                        <span style={{ fontSize: 11, fontWeight: 800, color: 'var(--muted)' }}>{done}/{g.total}</span>
+                      </div>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+
+          {/* Right: Word of day + Leaderboard */}
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+
+            {/* Word of day */}
+            <div style={{
+              background: 'linear-gradient(145deg, #7C3AED, #6D28D9)',
+              borderRadius: 20, padding: 22, position: 'relative', overflow: 'hidden',
+            }}>
+              <div style={{ position: 'absolute', right: -10, top: '50%', transform: 'translateY(-50%)', fontSize: 80, opacity: 0.15, userSelect: 'none' }}>你好!</div>
+              <div style={{ fontSize: 11, color: 'rgba(255,255,255,0.75)', fontWeight: 800, letterSpacing: 1, marginBottom: 8 }}>✨ ӨНӨӨДРИЙН ҮГ</div>
+              <div style={{ fontSize: 44, fontWeight: 900, color: '#fff', marginBottom: 4, lineHeight: 1 }}>{WORD_OF_DAY.zh}</div>
+              <div style={{ fontSize: 16, color: 'rgba(255,255,255,0.8)', fontWeight: 600, marginBottom: 4 }}>{WORD_OF_DAY.pinyin}</div>
+              <div style={{ fontSize: 14, color: 'rgba(255,255,255,0.65)', marginBottom: 16 }}>{WORD_OF_DAY.mn}</div>
+              <button onClick={addWordToVocab} style={{
+                background: 'rgba(255,255,255,0.18)', border: '1.5px solid rgba(255,255,255,0.35)',
+                color: '#fff', borderRadius: 10, padding: '8px 16px',
+                fontWeight: 800, fontSize: 13, cursor: 'pointer', fontFamily: 'inherit',
+              }}>
+                📌 Үгийг хадгалах
+              </button>
+            </div>
+
+            {/* Leaderboard */}
+            <div className="card">
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 14 }}>
+                <h3 style={{ fontWeight: 900, fontSize: 15, color: 'var(--text)' }}>🏆 Эрэмбэ</h3>
+                <Link href="/social" style={{ fontSize: 12, color: 'var(--purple)', fontWeight: 700, textDecoration: 'none' }}>
+                  Бүгд харах →
+                </Link>
+              </div>
+              {leaderboard.length === 0 ? (
+                <p style={{ color: 'var(--muted)', fontSize: 13, textAlign: 'center', padding: '12px 0' }}>Өгөгдөл байхгүй</p>
+              ) : leaderboard.map((entry, idx) => {
+                const medal = idx === 0 ? '🥇' : idx === 1 ? '🥈' : idx === 2 ? '🥉' : null;
+                const isMe = entry.id === user.id;
+                return (
+                  <div key={entry.id} style={{
+                    display: 'flex', alignItems: 'center', gap: 10, padding: '9px 10px',
+                    borderRadius: 12, marginBottom: 4,
+                    background: isMe ? 'var(--purple-light)' : 'transparent',
+                  }}>
+                    <span style={{ fontSize: 16, width: 22, textAlign: 'center' }}>{medal || `${idx + 1}`}</span>
+                    <div style={{
+                      width: 30, height: 30, borderRadius: '50%', fontSize: 15,
+                      background: isMe ? 'var(--purple)' : 'var(--bg-alt)',
+                      border: `1.5px solid ${isMe ? 'var(--purple)' : 'var(--border)'}`,
+                      display: 'flex', alignItems: 'center', justifyContent: 'center',
+                      color: isMe ? '#fff' : 'var(--text)',
+                    }}>
+                      {entry.avatarEmoji || entry.username?.[0]?.toUpperCase()}
+                    </div>
+                    <span style={{ fontWeight: 700, flex: 1, fontSize: 13, color: isMe ? 'var(--purple)' : 'var(--text)' }}>
+                      {entry.username}{isMe ? ' (та)' : ''}
+                    </span>
+                    <span style={{ fontWeight: 900, color: isMe ? 'var(--purple)' : 'var(--text-sub)', fontSize: 13 }}>
+                      {entry.xp} XP
+                    </span>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        </div>
       </div>
     </div>
   );

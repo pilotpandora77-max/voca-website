@@ -2,255 +2,318 @@
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/lib/auth';
+import api from '@/lib/api';
+import PageHeader from '@/components/PageHeader';
 import HanziTracer from '@/components/HanziTracer';
-import SECTIONS from '@/lib/hanziSections';
+
+const HANZI_LIST = [
+  { char: '你', pinyin: 'nǐ', meaning: 'Чи (та)', strokes: 7, level: 'HSK 1', category: 'Үндсэн' },
+  { char: '好', pinyin: 'hǎo', meaning: 'Сайн', strokes: 6, level: 'HSK 1', category: 'Үндсэн' },
+  { char: '我', pinyin: 'wǒ', meaning: 'Би', strokes: 7, level: 'HSK 1', category: 'Үндсэн' },
+  { char: '是', pinyin: 'shì', meaning: 'Байна/тийм', strokes: 9, level: 'HSK 1', category: 'Үйл үг' },
+  { char: '的', pinyin: 'de', meaning: 'Хамааруулах тусгаарлагч', strokes: 8, level: 'HSK 1', category: 'Хэсэг' },
+  { char: '学', pinyin: 'xué', meaning: 'Суралцах', strokes: 8, level: 'HSK 1', category: 'Үйл үг' },
+  { char: '中', pinyin: 'zhōng', meaning: 'Дундад', strokes: 4, level: 'HSK 1', category: 'Үндсэн' },
+  { char: '文', pinyin: 'wén', meaning: 'Хэл, уран зохиол', strokes: 4, level: 'HSK 1', category: 'Үндсэн' },
+  { char: '汉', pinyin: 'hàn', meaning: 'Хань (хятад)', strokes: 5, level: 'HSK 1', category: 'Нэр' },
+  { char: '语', pinyin: 'yǔ', meaning: 'Хэл (яриа)', strokes: 9, level: 'HSK 1', category: 'Нэр' },
+  { char: '人', pinyin: 'rén', meaning: 'Хүн', strokes: 2, level: 'HSK 1', category: 'Үндсэн' },
+  { char: '大', pinyin: 'dà', meaning: 'Том', strokes: 3, level: 'HSK 1', category: 'Тэмдэг нэр' },
+  { char: '小', pinyin: 'xiǎo', meaning: 'Жижиг', strokes: 3, level: 'HSK 1', category: 'Тэмдэг нэр' },
+  { char: '山', pinyin: 'shān', meaning: 'Уул', strokes: 3, level: 'HSK 1', category: 'Байгаль' },
+  { char: '水', pinyin: 'shuǐ', meaning: 'Ус', strokes: 4, level: 'HSK 1', category: 'Байгаль' },
+  { char: '火', pinyin: 'huǒ', meaning: 'Гал', strokes: 4, level: 'HSK 1', category: 'Байгаль' },
+  { char: '木', pinyin: 'mù', meaning: 'Мод', strokes: 4, level: 'HSK 1', category: 'Байгаль' },
+  { char: '日', pinyin: 'rì', meaning: 'Нар, өдөр', strokes: 4, level: 'HSK 1', category: 'Байгаль' },
+  { char: '月', pinyin: 'yuè', meaning: 'Сар', strokes: 4, level: 'HSK 1', category: 'Байгаль' },
+  { char: '王', pinyin: 'wáng', meaning: 'Хаан', strokes: 4, level: 'HSK 2', category: 'Нэр' },
+];
+
+const LEVELS = ['Бүгд', 'HSK 1', 'HSK 2', 'HSK 3'];
+const CATS   = ['Бүгд', 'Үндсэн', 'Үйл үг', 'Тэмдэг нэр', 'Байгаль', 'Нэр', 'Хэсэг'];
 
 export default function HanziPage() {
   const { user, loading: authLoad } = useAuth();
   const router = useRouter();
-
-  const [view, setView]             = useState('sections');
-  const [activeSection, setSection] = useState(null);
-  const [charIndex, setCharIndex]   = useState(0);
-  const [completed, setCompleted]   = useState([]);
-  const [sessionStats, setStats]    = useState({ correct: 0, mistakes: 0 });
+  const [selected, setSelected] = useState(HANZI_LIST[0]);
+  const [streak, setStreak]     = useState(0);
+  const [search, setSearch]     = useState('');
+  const [lvl, setLvl]           = useState('Бүгд');
+  const [cat, setCat]           = useState('Бүгд');
+  const [practiced, setPrac]    = useState(new Set());
+  const [calDays, setCalDays]   = useState([]);
 
   useEffect(() => {
     if (!authLoad && !user) router.push('/login');
+    if (user) {
+      api.get('/api/streak').then(r => {
+        const s = r.data.streak || 0;
+        setStreak(s);
+        const today = new Date();
+        setCalDays(Array.from({ length: 7 }, (_, i) => {
+          const d = new Date(today);
+          d.setDate(today.getDate() - (6 - i));
+          return {
+            label: ['Ня', 'Да', 'Мя', 'Лх', 'Пү', 'Ба', 'Бя'][d.getDay()],
+            active: i >= 7 - s,
+            today: i === 6,
+          };
+        }));
+      }).catch(() => {});
+    }
   }, [authLoad, user]);
 
-  function startSection(section) {
-    setSection(section);
-    setCharIndex(0);
-    setCompleted([]);
-    setStats({ correct: 0, mistakes: 0 });
-    setView('practice');
-  }
+  const filtered = HANZI_LIST.filter(h => {
+    const matchLvl = lvl === 'Бүгд' || h.level === lvl;
+    const matchCat = cat === 'Бүгд' || h.category === cat;
+    const q = search.toLowerCase();
+    const matchSrch = !q || h.char.includes(q) || h.pinyin.toLowerCase().includes(q) || h.meaning.toLowerCase().includes(q);
+    return matchLvl && matchCat && matchSrch;
+  });
 
-  function handleComplete({ char, mistakes }) {
-    setCompleted(prev => [...prev, char]);
-    setStats(s => ({ correct: s.correct + (mistakes === 0 ? 1 : 0), mistakes: s.mistakes + mistakes }));
-  }
-
-  function next() {
-    if (!activeSection) return;
-    if (charIndex + 1 >= activeSection.chars.length) {
-      setView('done');
-    } else {
-      setCharIndex(i => i + 1);
-    }
-  }
+  const writingPct = Math.round((practiced.size / HANZI_LIST.length) * 100);
 
   if (authLoad) return null;
 
-  // Done screen
-  if (view === 'done') return (
-    <div style={{ maxWidth: 500, margin: '0 auto', padding: '60px 28px', textAlign: 'center' }}>
-      <div style={{ fontSize: 72, marginBottom: 16, animation: 'float 3s ease infinite' }}>🏆</div>
-      <h2 style={{
-        fontWeight: 900, fontSize: 28, marginBottom: 8,
-        background: 'linear-gradient(135deg, #F59E0B, #FF6B9D)',
-        WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent', backgroundClip: 'text',
-      }}>
-        Бүгдийг дуусгалаа!
-      </h2>
-      <p style={{ color: 'var(--muted)', fontWeight: 600, marginBottom: 28, fontSize: 14 }}>
-        {activeSection?.titleMn} · {activeSection?.chars.length} тэмдэгт
-      </p>
-      <div style={{ display: 'flex', gap: 14, justifyContent: 'center', marginBottom: 28 }}>
-        <div style={{
-          flex: 1, maxWidth: 140, padding: '20px 16px', textAlign: 'center', borderRadius: 18,
-          background: 'rgba(34,197,94,0.1)', border: '1px solid rgba(34,197,94,0.25)',
-        }}>
-          <div style={{ fontSize: 26, fontWeight: 900, color: '#22C55E' }}>⭐ {sessionStats.correct}</div>
-          <div style={{ color: 'var(--muted)', fontWeight: 700, fontSize: 12, marginTop: 4 }}>Алдаагүй</div>
-        </div>
-        <div style={{
-          flex: 1, maxWidth: 140, padding: '20px 16px', textAlign: 'center', borderRadius: 18,
-          background: 'rgba(248,113,113,0.1)', border: '1px solid rgba(248,113,113,0.25)',
-        }}>
-          <div style={{ fontSize: 26, fontWeight: 900, color: '#F87171' }}>✕ {sessionStats.mistakes}</div>
-          <div style={{ color: 'var(--muted)', fontWeight: 700, fontSize: 12, marginTop: 4 }}>Нийт алдаа</div>
-        </div>
-      </div>
-      <div style={{ display: 'flex', gap: 12, justifyContent: 'center' }}>
-        <button className="btn btn-purple" onClick={() => startSection(activeSection)} style={{ padding: '12px 24px', fontSize: 14 }}>
-          ↺ Дахин хийх
-        </button>
-        <button className="btn btn-ghost" onClick={() => setView('sections')} style={{ padding: '12px 24px', fontSize: 14 }}>
-          Буцах
-        </button>
-      </div>
-      <style>{`
-        @keyframes float { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-10px); } }
-      `}</style>
-    </div>
-  );
+  return (
+    <div style={{ paddingBottom: 32 }}>
+      <PageHeader
+        title="Ханз бичих дасгал 汉"
+        subtitle="Хятад тэмдэгтийн бичилт, зурааслал, утгыг судал."
+        streak={streak}
+      />
 
-  // Practice screen
-  if (view === 'practice' && activeSection) {
-    const char   = activeSection.chars[charIndex];
-    const total  = activeSection.chars.length;
-    const isDone = completed.includes(char);
-
-    return (
-      <div style={{ maxWidth: 580, margin: '0 auto', padding: '28px 28px 40px' }}>
-        {/* Progress */}
-        <div style={{ display: 'flex', alignItems: 'center', gap: 14, marginBottom: 24 }}>
-          <button onClick={() => setView('sections')} style={{
-            background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.08)',
-            borderRadius: 10, cursor: 'pointer', fontSize: 16, color: 'var(--muted)',
-            width: 36, height: 36, display: 'flex', alignItems: 'center', justifyContent: 'center',
-            fontFamily: 'inherit', transition: 'all 0.15s',
-          }}
-          onMouseEnter={e => { e.currentTarget.style.color = '#EDE9FF'; }}
-          onMouseLeave={e => { e.currentTarget.style.color = 'var(--muted)'; }}
-          >
-            ✕
-          </button>
-          <div style={{ flex: 1, height: 8, background: 'rgba(255,255,255,0.06)', borderRadius: 10, overflow: 'hidden' }}>
-            <div style={{
-              height: '100%',
-              background: 'linear-gradient(90deg, #9B6DFF, #22C55E)',
-              borderRadius: 10,
-              width: `${(completed.length / total) * 100}%`,
-              transition: 'width 0.4s ease',
-              boxShadow: '0 0 10px rgba(155,109,255,0.5)',
-            }} />
+      {/* Stats row */}
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 12, padding: '0 28px', marginBottom: 18 }}>
+        {[
+          { label: 'Нийт тэмдэгт',  value: HANZI_LIST.length, icon: '汉', color: 'var(--purple)', bg: 'var(--purple-light)' },
+          { label: 'Дасгалласан',    value: practiced.size,    icon: '✏️',  color: '#10B981',       bg: '#ECFDF5' },
+          { label: 'Өнөөдрийн зорилго', value: `${Math.min(practiced.size, 10)}/10`, icon: '🎯', color: '#F59E0B', bg: '#FEF3C7' },
+          { label: 'Цуваа',          value: streak,            icon: '🔥',  color: '#EF4444',       bg: '#FEF2F2' },
+        ].map((s, i) => (
+          <div key={i} className="card" style={{ padding: '16px 18px', display: 'flex', alignItems: 'center', gap: 12 }}>
+            <div style={{ width: 42, height: 42, borderRadius: 12, background: s.bg, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 18, fontWeight: 900, flexShrink: 0, color: s.color }}>{s.icon}</div>
+            <div>
+              <div style={{ fontSize: 22, fontWeight: 900, color: s.color, lineHeight: 1 }}>{s.value}</div>
+              <div style={{ fontSize: 11, color: 'var(--muted)', fontWeight: 600, marginTop: 2 }}>{s.label}</div>
+            </div>
           </div>
-          <span style={{
-            fontSize: 13, fontWeight: 800, color: 'var(--muted)',
-            background: 'rgba(255,255,255,0.05)', borderRadius: 8, padding: '4px 10px',
-          }}>
-            {completed.length}/{total}
-          </span>
+        ))}
+      </div>
+
+      <div style={{ padding: '0 28px', display: 'grid', gridTemplateColumns: '220px 1fr 248px', gap: 16 }}>
+
+        {/* Left: Character list */}
+        <div className="card" style={{ padding: 0, overflow: 'hidden', height: 'fit-content', maxHeight: 700 }}>
+          <div style={{ padding: '14px 14px 10px', borderBottom: '1.5px solid var(--border)' }}>
+            <div style={{ position: 'relative' }}>
+              <span style={{ position: 'absolute', left: 11, top: '50%', transform: 'translateY(-50%)', color: 'var(--muted)', fontSize: 14 }}>🔍</span>
+              <input type="search" value={search} onChange={e => setSearch(e.target.value)}
+                placeholder="Хайх..." style={{ paddingLeft: 36, fontSize: 12, padding: '9px 10px 9px 36px' }} />
+            </div>
+          </div>
+          {/* Level filter */}
+          <div style={{ display: 'flex', gap: 4, padding: '8px 10px', overflowX: 'auto', borderBottom: '1.5px solid var(--border)' }}>
+            {LEVELS.map(l => (
+              <button key={l} onClick={() => setLvl(l)} style={{
+                padding: '4px 10px', borderRadius: 100, fontSize: 11, fontWeight: 700, whiteSpace: 'nowrap',
+                cursor: 'pointer', fontFamily: 'inherit', border: 'none', transition: 'all 0.12s',
+                background: lvl === l ? 'var(--purple)' : 'var(--bg-alt)',
+                color: lvl === l ? '#fff' : 'var(--text-sub)',
+              }}>{l}</button>
+            ))}
+          </div>
+          {/* Character list */}
+          <div style={{ overflowY: 'auto', maxHeight: 540 }}>
+            {filtered.map(h => {
+              const isSel = selected?.char === h.char;
+              const isPrac = practiced.has(h.char);
+              return (
+                <div key={h.char} onClick={() => setSelected(h)} style={{
+                  display: 'flex', alignItems: 'center', gap: 10, padding: '11px 14px',
+                  cursor: 'pointer', borderBottom: '1px solid var(--border)', transition: 'background 0.12s',
+                  background: isSel ? 'var(--purple-light)' : 'transparent',
+                  borderLeft: isSel ? '3px solid var(--purple)' : '3px solid transparent',
+                }}
+                onMouseEnter={e => { if (!isSel) e.currentTarget.style.background = 'var(--bg-alt)'; }}
+                onMouseLeave={e => { if (!isSel) e.currentTarget.style.background = 'transparent'; }}
+                >
+                  <div style={{
+                    width: 38, height: 38, borderRadius: 10, flexShrink: 0,
+                    background: isSel ? 'var(--purple)' : 'var(--bg-alt)',
+                    border: `1.5px solid ${isSel ? 'var(--purple-dark)' : 'var(--border)'}`,
+                    display: 'flex', alignItems: 'center', justifyContent: 'center',
+                    fontSize: 20, fontWeight: 900,
+                    color: isSel ? '#fff' : 'var(--text)',
+                  }}>{h.char}</div>
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    <div style={{ fontWeight: 700, fontSize: 12, color: isSel ? 'var(--purple-dark)' : 'var(--text)' }}>{h.pinyin}</div>
+                    <div style={{ fontSize: 11, color: 'var(--muted)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{h.meaning}</div>
+                  </div>
+                  {isPrac && <span style={{ fontSize: 12, color: '#10B981' }}>✓</span>}
+                </div>
+              );
+            })}
+          </div>
         </div>
 
-        <h2 style={{ fontWeight: 900, fontSize: 22, marginBottom: 4, color: '#EDE9FF' }}>
-          Ханзийг зур
-        </h2>
-        <p style={{ color: 'var(--muted)', fontWeight: 600, marginBottom: 24, fontSize: 14 }}>
-          Зураасын дарааллыг дагаж зурна уу
-        </p>
+        {/* Center: Tracing canvas */}
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+          {selected ? (
+            <>
+              {/* Character header */}
+              <div className="card" style={{ padding: '18px 20px' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 16, marginBottom: 14 }}>
+                  <div style={{
+                    width: 70, height: 70, borderRadius: 18, background: 'linear-gradient(135deg, var(--purple), var(--purple-dark))',
+                    display: 'flex', alignItems: 'center', justifyContent: 'center',
+                    fontSize: 38, fontWeight: 900, color: '#fff', flexShrink: 0,
+                    boxShadow: '0 6px 20px rgba(124,58,237,0.35)',
+                  }}>{selected.char}</div>
+                  <div>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 4 }}>
+                      <span style={{ fontSize: 24, fontWeight: 900, color: 'var(--text)' }}>{selected.char}</span>
+                      <span className="tag tag-purple">{selected.level}</span>
+                      <span className="tag">{selected.category}</span>
+                    </div>
+                    <div style={{ fontSize: 18, fontWeight: 700, color: 'var(--purple)', marginBottom: 3 }}>{selected.pinyin}</div>
+                    <div style={{ fontSize: 14, color: 'var(--text-sub)' }}>{selected.meaning}</div>
+                  </div>
+                  <div style={{ marginLeft: 'auto', textAlign: 'center' }}>
+                    <div style={{ fontWeight: 900, fontSize: 22, color: 'var(--purple)' }}>{selected.strokes}</div>
+                    <div style={{ fontSize: 11, color: 'var(--muted)', fontWeight: 600 }}>зурааслал</div>
+                  </div>
+                </div>
+                <div style={{ display: 'flex', gap: 8 }}>
+                  <button className="btn btn-outline" style={{ fontSize: 13, padding: '8px 14px' }}>🔊 Дуу</button>
+                  <button className="btn btn-outline" style={{ fontSize: 13, padding: '8px 14px' }}>📋 Жишээ</button>
+                  <button className="btn btn-outline" style={{ fontSize: 13, padding: '8px 14px' }}>🔗 Холбоо</button>
+                  <button className="btn btn-purple" style={{ fontSize: 13, padding: '8px 14px', marginLeft: 'auto' }}
+                    onClick={() => setPrac(s => { const n = new Set(s); n.add(selected.char); return n; })}>
+                    ✓ Дасгалласан
+                  </button>
+                </div>
+              </div>
 
-        {/* Tracer */}
-        <div style={{
-          display: 'flex', justifyContent: 'center', marginBottom: 24,
-          background: 'rgba(255,255,255,0.02)', borderRadius: 24, padding: 20,
-          border: '1px solid rgba(155,109,255,0.15)',
-        }}>
-          <HanziTracer key={char} char={char} size={280} onComplete={handleComplete} />
+              {/* Tracer */}
+              <div className="card" style={{ padding: '18px 20px' }}>
+                <div style={{ fontWeight: 900, fontSize: 15, marginBottom: 14, display: 'flex', alignItems: 'center', gap: 8 }}>
+                  ✏️ Бичих дасгал
+                  <span style={{ fontSize: 12, color: 'var(--muted)', fontWeight: 600 }}>— зурааслалыг дага</span>
+                </div>
+                <div style={{ display: 'flex', justifyContent: 'center' }}>
+                  <HanziTracer character={selected.char} />
+                </div>
+                <div style={{ display: 'flex', justifyContent: 'center', gap: 10, marginTop: 14 }}>
+                  <button className="btn btn-ghost" style={{ fontSize: 13, padding: '8px 18px' }}>⟳ Дахин эхлэх</button>
+                  <button className="btn btn-purple" style={{ fontSize: 13, padding: '8px 18px' }}>▶ Зурааслал харах</button>
+                </div>
+              </div>
+            </>
+          ) : (
+            <div className="card" style={{ textAlign: 'center', padding: 64 }}>
+              <div style={{ fontSize: 64, marginBottom: 14 }}>汉</div>
+              <h3 style={{ fontWeight: 800, color: 'var(--text)' }}>Тэмдэгт сонгоно уу</h3>
+            </div>
+          )}
         </div>
 
-        {/* Character dots */}
-        <div className="card" style={{ textAlign: 'center', marginBottom: 20, padding: '18px 20px' }}>
-          <span style={{
-            fontSize: 44, fontWeight: 900,
-            background: 'linear-gradient(135deg, #EDE9FF, #C4AAFF)',
-            WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent', backgroundClip: 'text',
-          }}>
-            {char}
-          </span>
-          <div style={{ display: 'flex', justifyContent: 'center', gap: 8, marginTop: 14, flexWrap: 'wrap' }}>
-            {activeSection.chars.map((c, i) => (
-              <div key={c} style={{
-                width: 32, height: 32, borderRadius: '50%', fontSize: 14, fontWeight: 900,
-                display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
-                background: completed.includes(c)
-                  ? 'rgba(34,197,94,0.15)'
-                  : i === charIndex ? 'rgba(155,109,255,0.2)' : 'rgba(255,255,255,0.04)',
-                border: `1.5px solid ${completed.includes(c) ? 'rgba(34,197,94,0.4)' : i === charIndex ? 'rgba(155,109,255,0.45)' : 'rgba(255,255,255,0.08)'}`,
-                color: completed.includes(c) ? '#22C55E' : i === charIndex ? '#9B6DFF' : 'var(--muted)',
-                transition: 'all 0.2s',
+        {/* Right sidebar */}
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+          {/* Writing level */}
+          <div className="card">
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12 }}>
+              <div style={{ fontWeight: 900, fontSize: 14 }}>Бичилтийн түвшин</div>
+              <span className="tag tag-purple">Lv.4</span>
+            </div>
+            <div style={{ marginBottom: 8 }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 11, color: 'var(--muted)', fontWeight: 600, marginBottom: 5 }}>
+                <span>Дараагийн түвшин Lv.5</span>
+                <span>{writingPct}%</span>
+              </div>
+              <div style={{ height: 8, background: 'var(--border)', borderRadius: 100, overflow: 'hidden' }}>
+                <div style={{ height: '100%', width: `${writingPct}%`, background: 'linear-gradient(90deg, var(--purple), var(--purple-dark))', borderRadius: 100, transition: 'width 0.5s ease' }} />
+              </div>
+            </div>
+            <div style={{ fontSize: 12, color: 'var(--muted)' }}>{practiced.size} / {HANZI_LIST.length} тэмдэгт дасгалласан</div>
+          </div>
+
+          {/* Daily goal */}
+          <div className="card">
+            <div style={{ fontWeight: 900, fontSize: 14, marginBottom: 12 }}>🎯 Өдрийн зорилго</div>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 10 }}>
+              <div style={{
+                width: 52, height: 52, borderRadius: '50%', position: 'relative', flexShrink: 0,
+                background: `conic-gradient(var(--purple) ${Math.min(practiced.size, 10) * 36}deg, var(--border) 0deg)`,
+                display: 'flex', alignItems: 'center', justifyContent: 'center',
               }}>
-                {c}
+                <div style={{ width: 38, height: 38, borderRadius: '50%', background: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 14, fontWeight: 900, color: 'var(--purple)' }}>
+                  {Math.min(practiced.size, 10)}/10
+                </div>
+              </div>
+              <div>
+                <div style={{ fontWeight: 800, fontSize: 13, color: 'var(--text)', marginBottom: 3 }}>Тэмдэгт дасгалла</div>
+                <div style={{ fontSize: 11, color: 'var(--muted)' }}>10 тэмдэгт дасгаллаарай</div>
+              </div>
+            </div>
+            <div style={{ height: 8, background: 'var(--border)', borderRadius: 100, overflow: 'hidden' }}>
+              <div style={{ height: '100%', width: `${Math.min(practiced.size, 10) * 10}%`, background: 'linear-gradient(90deg, #10B981, #059669)', borderRadius: 100, transition: 'width 0.4s' }} />
+            </div>
+          </div>
+
+          {/* 7-day calendar */}
+          <div className="card">
+            <div style={{ fontWeight: 900, fontSize: 14, marginBottom: 12 }}>7 хоногийн идэвх</div>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', gap: 4, marginBottom: 8 }}>
+              {calDays.map((d, i) => (
+                <div key={i} style={{ textAlign: 'center' }}>
+                  <div style={{ fontSize: 9, color: 'var(--muted)', fontWeight: 700, marginBottom: 4 }}>{d.label}</div>
+                  <div style={{
+                    width: 22, height: 22, borderRadius: 6, margin: '0 auto',
+                    background: d.active ? (d.today ? 'var(--purple)' : '#C4B5FD') : 'var(--border)',
+                  }} />
+                </div>
+              ))}
+            </div>
+          </div>
+
+          {/* Ханзын мод */}
+          <div className="card">
+            <div style={{ fontWeight: 900, fontSize: 14, marginBottom: 10 }}>🌳 Ханзын мод</div>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 10 }}>
+              <div style={{ flex: 1, height: 8, background: 'var(--border)', borderRadius: 100, overflow: 'hidden' }}>
+                <div style={{ height: '100%', width: '42%', background: '#10B981', borderRadius: 100 }} />
+              </div>
+              <span style={{ fontWeight: 800, color: '#10B981', fontSize: 13 }}>42%</span>
+            </div>
+            <p style={{ fontSize: 12, color: 'var(--muted)', lineHeight: 1.5 }}>Радикалуудын ойлголтоор 42% дууссан. Цааш үргэлжлүүлнэ үү!</p>
+          </div>
+
+          {/* Suggested lessons */}
+          <div className="card">
+            <div style={{ fontWeight: 900, fontSize: 14, marginBottom: 12 }}>💡 Санал болгох</div>
+            {[
+              { icon: '🌟', title: '水 радикал', sub: '12 тэмдэгт' },
+              { icon: '✏️', title: '人 бүтэц', sub: '8 тэмдэгт' },
+              { icon: '🎯', title: 'HSK 2 бичилт', sub: '20 тэмдэгт' },
+            ].map((l, i) => (
+              <div key={i} style={{
+                display: 'flex', alignItems: 'center', gap: 10, padding: '10px',
+                borderRadius: 10, cursor: 'pointer', transition: 'background 0.12s', marginBottom: 4,
+              }}
+              onMouseEnter={e => e.currentTarget.style.background = 'var(--bg-alt)'}
+              onMouseLeave={e => e.currentTarget.style.background = 'transparent'}
+              >
+                <div style={{ width: 32, height: 32, borderRadius: 8, background: 'var(--purple-light)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 16 }}>{l.icon}</div>
+                <div style={{ flex: 1 }}>
+                  <div style={{ fontWeight: 700, fontSize: 13, color: 'var(--text)' }}>{l.title}</div>
+                  <div style={{ fontSize: 11, color: 'var(--muted)' }}>{l.sub}</div>
+                </div>
+                <span style={{ color: 'var(--muted)', fontSize: 16 }}>›</span>
               </div>
             ))}
           </div>
         </div>
-
-        <button
-          className={`btn ${isDone ? 'btn-green' : 'btn-ghost'}`}
-          onClick={next}
-          disabled={!isDone}
-          style={{ width: '100%', fontSize: 15, padding: '13px 22px' }}
-        >
-          {charIndex + 1 >= total ? 'Дуусгах ✓' : 'Үргэлжлүүлэх →'}
-        </button>
-      </div>
-    );
-  }
-
-  // Sections list
-  return (
-    <div style={{ padding: '28px 28px 40px', maxWidth: 860, margin: '0 auto' }}>
-      <div style={{ marginBottom: 28 }}>
-        <h1 style={{ fontSize: 24, fontWeight: 900, color: '#EDE9FF', letterSpacing: -0.5, marginBottom: 6 }}>
-          汉 Ханзи зурах
-        </h1>
-        <p style={{ color: 'var(--muted)', fontSize: 13 }}>
-          Зураасын зөв дарааллыг дагаж Хятад тэмдэгт зурж сур
-        </p>
-      </div>
-
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(220px, 1fr))', gap: 14 }}>
-        {SECTIONS.map((section, idx) => {
-          const gradients = [
-            'linear-gradient(135deg, #9B6DFF, #7B4FE0)',
-            'linear-gradient(135deg, #38BDF8, #0EA5E9)',
-            'linear-gradient(135deg, #22C55E, #16A34A)',
-            'linear-gradient(135deg, #F59E0B, #D97706)',
-            'linear-gradient(135deg, #F87171, #DC2626)',
-            'linear-gradient(135deg, #00C6AE, #009688)',
-          ];
-          const grad = gradients[idx % gradients.length];
-
-          return (
-            <button key={section.id} onClick={() => startSection(section)} style={{
-              background: 'var(--bg-card)',
-              border: '1px solid rgba(255,255,255,0.06)',
-              borderRadius: 20, padding: 18, textAlign: 'left', cursor: 'pointer',
-              transition: 'all 0.18s', fontFamily: 'inherit',
-            }}
-            onMouseEnter={e => { e.currentTarget.style.transform = 'translateY(-2px)'; e.currentTarget.style.borderColor = 'rgba(155,109,255,0.25)'; e.currentTarget.style.boxShadow = '0 8px 28px rgba(155,109,255,0.15)'; }}
-            onMouseLeave={e => { e.currentTarget.style.transform = ''; e.currentTarget.style.borderColor = 'rgba(255,255,255,0.06)'; e.currentTarget.style.boxShadow = ''; }}
-            >
-              {/* Chars preview */}
-              <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginBottom: 14 }}>
-                {section.chars.slice(0, 6).map(c => (
-                  <div key={c} style={{
-                    fontSize: 20, fontWeight: 900, width: 36, height: 36,
-                    display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
-                    background: 'rgba(255,255,255,0.04)', borderRadius: 10,
-                    background: 'linear-gradient(135deg, rgba(255,255,255,0.06), rgba(255,255,255,0.02))',
-                    color: '#EDE9FF',
-                  }}>{c}</div>
-                ))}
-                {section.chars.length > 6 && (
-                  <div style={{
-                    fontSize: 11, fontWeight: 800, color: 'var(--muted)',
-                    width: 36, height: 36, display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
-                  }}>
-                    +{section.chars.length - 6}
-                  </div>
-                )}
-              </div>
-              <div style={{ fontWeight: 900, fontSize: 15, color: '#EDE9FF', marginBottom: 4 }}>
-                {section.titleMn}
-              </div>
-              <div style={{ color: 'var(--muted)', fontSize: 12, fontWeight: 600, marginBottom: 14 }}>
-                {section.chars.length} тэмдэгт
-              </div>
-              <div style={{
-                borderRadius: 10, padding: '9px 0', fontSize: 12, fontWeight: 800,
-                background: grad, color: '#fff', textAlign: 'center',
-                boxShadow: '0 2px 12px rgba(0,0,0,0.3)',
-              }}>
-                ✏️ Зурах дасгал
-              </div>
-            </button>
-          );
-        })}
       </div>
     </div>
   );

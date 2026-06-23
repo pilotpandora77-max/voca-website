@@ -39,8 +39,7 @@ export default function LoginPage() {
   return (
     <div style={{
       minHeight: '100vh', display: 'flex',
-      background: 'linear-gradient(135deg, #0D0A1F 0%, #130E2B 50%, #0D0A1F 100%)',
-      position: 'relative', overflow: 'hidden',
+      background: 'var(--bg)', position: 'relative', overflow: 'hidden',
     }}>
       {/* Floating background characters */}
       {FLOAT_CHARS.map((char, i) => (
@@ -48,10 +47,10 @@ export default function LoginPage() {
           position: 'absolute',
           left: `${8 + (i * 9.5) % 90}%`,
           top: `${10 + (i * 17) % 75}%`,
-          fontSize: `${24 + (i % 4) * 12}px`,
+          fontSize: `${28 + (i % 4) * 14}px`,
           fontWeight: 900,
-          color: 'rgba(155,109,255,0.06)',
-          animation: `float ${3 + (i % 3)}s ease-in-out ${i * 0.4}s infinite`,
+          color: 'rgba(124,58,237,0.055)',
+          animation: `auth-float ${3 + (i % 3)}s ease-in-out ${i * 0.4}s infinite`,
           userSelect: 'none', pointerEvents: 'none',
         }}>
           {char}
@@ -61,35 +60,59 @@ export default function LoginPage() {
       {/* Glow orbs */}
       <div style={{
         position: 'absolute', width: 500, height: 500, borderRadius: '50%',
-        background: 'radial-gradient(circle, rgba(155,109,255,0.12) 0%, transparent 70%)',
-        top: -100, left: '30%', pointerEvents: 'none',
+        background: 'radial-gradient(circle, rgba(124,58,237,0.08) 0%, transparent 70%)',
+        top: -120, left: '25%', pointerEvents: 'none',
       }} />
       <div style={{
-        position: 'absolute', width: 400, height: 400, borderRadius: '50%',
-        background: 'radial-gradient(circle, rgba(255,107,157,0.08) 0%, transparent 70%)',
-        bottom: -80, right: '10%', pointerEvents: 'none',
+        position: 'absolute', width: 350, height: 350, borderRadius: '50%',
+        background: 'radial-gradient(circle, rgba(124,58,237,0.06) 0%, transparent 70%)',
+        bottom: -60, right: '5%', pointerEvents: 'none',
       }} />
 
-      {/* Card */}
+      {/* Left decorative panel */}
       <div style={{
-        margin: 'auto', width: '100%', maxWidth: 420, padding: '24px 16px',
-        position: 'relative', zIndex: 1,
+        flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center',
+        padding: '40px', background: 'linear-gradient(135deg, var(--purple) 0%, var(--purple-dark) 100%)',
+      }} className="auth-left">
+        <div style={{ textAlign: 'center', color: '#fff', maxWidth: 360 }}>
+          <div style={{ fontSize: 80, marginBottom: 20, animation: 'auth-float 3s ease infinite' }}>🐼</div>
+          <h2 style={{ fontSize: 32, fontWeight: 900, marginBottom: 14, letterSpacing: -0.5 }}>
+            Хятад хэл сур!
+          </h2>
+          <p style={{ fontSize: 16, opacity: 0.85, lineHeight: 1.65, fontWeight: 500 }}>
+            Өдөр бүр 5 минутын дасгалаар хурдан ахиц гарга. 10,000+ үг, SRS систем, Ханз бичилт.
+          </p>
+          <div style={{ display: 'flex', justifyContent: 'center', gap: 20, marginTop: 28, opacity: 0.85 }}>
+            {[['📚', '10к+', 'Үг'], ['🔥', '50+', 'Хичээл'], ['👥', '1к+', 'Суралцагч']].map(([icon, val, lbl]) => (
+              <div key={lbl} style={{ textAlign: 'center' }}>
+                <div style={{ fontSize: 24 }}>{icon}</div>
+                <div style={{ fontWeight: 900, fontSize: 20 }}>{val}</div>
+                <div style={{ fontSize: 12, opacity: 0.8 }}>{lbl}</div>
+              </div>
+            ))}
+          </div>
+        </div>
+      </div>
+
+      {/* Right form panel */}
+      <div style={{
+        width: 480, display: 'flex', alignItems: 'center', justifyContent: 'center',
+        padding: '32px 40px', background: '#fff',
+        borderLeft: '1.5px solid var(--border)', position: 'relative', zIndex: 1,
       }}>
-        <div className="card-glass anim-up" style={{ padding: '36px 32px' }}>
-
+        <div style={{ width: '100%', maxWidth: 380 }}>
           {/* Logo */}
-          <div style={{ textAlign: 'center', marginBottom: 28 }}>
+          <div style={{ textAlign: 'center', marginBottom: 32 }}>
             <div style={{
               display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
-              width: 60, height: 60, borderRadius: 18,
-              background: 'linear-gradient(135deg, #9B6DFF, #7B4FE0)',
-              fontSize: 32, fontWeight: 900, color: '#fff',
-              boxShadow: '0 8px 32px rgba(155,109,255,0.45)',
-              marginBottom: 16,
+              width: 56, height: 56, borderRadius: 16,
+              background: 'linear-gradient(135deg, var(--purple), var(--purple-dark))',
+              fontSize: 28, fontWeight: 900, color: '#fff',
+              boxShadow: '0 8px 28px rgba(124,58,237,0.4)', marginBottom: 16,
             }}>
-              v
+              V
             </div>
-            <h1 style={{ fontSize: 26, fontWeight: 900, color: '#EDE9FF', letterSpacing: -0.5, marginBottom: 6 }}>
+            <h1 style={{ fontSize: 26, fontWeight: 900, color: 'var(--text)', letterSpacing: -0.5, marginBottom: 6 }}>
               Нэвтрэх
             </h1>
             <p style={{ color: 'var(--muted)', fontSize: 14, fontWeight: 500 }}>
@@ -105,25 +128,25 @@ export default function LoginPage() {
               text="signin_with"
               shape="rectangular"
               size="large"
-              width="356"
+              width="340"
               locale="mn"
-              theme="filled_black"
+              theme="outline"
             />
           </div>
 
           {/* Divider */}
           <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 20 }}>
-            <div style={{ flex: 1, height: 1, background: 'rgba(255,255,255,0.07)' }} />
-            <span style={{ color: 'var(--muted)', fontSize: 12, fontWeight: 700, letterSpacing: 0.5 }}>
+            <div style={{ flex: 1, height: 1, background: 'var(--border)' }} />
+            <span style={{ color: 'var(--muted)', fontSize: 11, fontWeight: 700, letterSpacing: 0.5 }}>
               ЭСВЭЛ ИМЭЙЛЭЭР
             </span>
-            <div style={{ flex: 1, height: 1, background: 'rgba(255,255,255,0.07)' }} />
+            <div style={{ flex: 1, height: 1, background: 'var(--border)' }} />
           </div>
 
           {/* Form */}
           <form onSubmit={submit} style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
             <div>
-              <label style={{ fontSize: 11, fontWeight: 800, color: 'var(--muted)', letterSpacing: 0.8, textTransform: 'uppercase', display: 'block', marginBottom: 7 }}>
+              <label style={{ fontSize: 11, fontWeight: 800, color: 'var(--text-sub)', letterSpacing: 0.8, textTransform: 'uppercase', display: 'block', marginBottom: 7 }}>
                 Имэйл
               </label>
               <input type="text" value={email} onChange={e => setEmail(e.target.value)}
@@ -131,10 +154,10 @@ export default function LoginPage() {
             </div>
             <div>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 7 }}>
-                <label style={{ fontSize: 11, fontWeight: 800, color: 'var(--muted)', letterSpacing: 0.8, textTransform: 'uppercase' }}>
+                <label style={{ fontSize: 11, fontWeight: 800, color: 'var(--text-sub)', letterSpacing: 0.8, textTransform: 'uppercase' }}>
                   Нууц үг
                 </label>
-                <Link href="/forgot-password" style={{ fontSize: 12, color: '#9B6DFF', fontWeight: 700, textDecoration: 'none' }}>
+                <Link href="/forgot-password" style={{ fontSize: 12, color: 'var(--purple)', fontWeight: 700, textDecoration: 'none' }}>
                   Мартсан?
                 </Link>
               </div>
@@ -144,22 +167,23 @@ export default function LoginPage() {
 
             {err && (
               <div style={{
-                background: 'rgba(248,113,113,0.1)', border: '1px solid rgba(248,113,113,0.28)',
+                background: '#FEF2F2', border: '1.5px solid #FECACA',
                 borderRadius: 12, padding: '11px 14px',
-                color: '#F87171', fontWeight: 700, fontSize: 13,
+                color: '#EF4444', fontWeight: 700, fontSize: 13,
               }}>
-                {err}
+                ⚠️ {err}
               </div>
             )}
 
-            <button type="submit" className="btn btn-purple" disabled={loading} style={{ width: '100%', marginTop: 4, padding: '13px 22px', fontSize: 15 }}>
-              {loading ? 'Нэвтэрч байна...' : 'Нэвтрэх'}
+            <button type="submit" className="btn btn-purple" disabled={loading}
+              style={{ width: '100%', marginTop: 4, padding: '13px 22px', fontSize: 15 }}>
+              {loading ? 'Нэвтэрч байна...' : 'Нэвтрэх →'}
             </button>
           </form>
 
           <p style={{ textAlign: 'center', marginTop: 22, color: 'var(--muted)', fontSize: 13, fontWeight: 500 }}>
             Бүртгэл байхгүй юу?{' '}
-            <Link href="/register" style={{ color: '#9B6DFF', fontWeight: 800, textDecoration: 'none' }}>
+            <Link href="/register" style={{ color: 'var(--purple)', fontWeight: 800, textDecoration: 'none' }}>
               Бүртгүүлэх
             </Link>
           </p>
@@ -167,9 +191,12 @@ export default function LoginPage() {
       </div>
 
       <style>{`
-        @keyframes float {
+        @keyframes auth-float {
           0%, 100% { transform: translateY(0px) rotate(0deg); }
-          50% { transform: translateY(-10px) rotate(3deg); }
+          50%       { transform: translateY(-12px) rotate(4deg); }
+        }
+        @media (max-width: 768px) {
+          .auth-left { display: none !important; }
         }
       `}</style>
     </div>
