@@ -6,6 +6,21 @@ import api from '@/lib/api';
 import PageHeader from '@/components/PageHeader';
 
 const FILTER_TABS = ['Бүгд', 'Үг', 'Хэлц', 'Жишээ', 'Идиом'];
+const LANG_MODES  = [
+  { key: 'auto',   label: '🔄 Авто' },
+  { key: 'zh',     label: '汉 Ханз' },
+  { key: 'pinyin', label: 'Pīn Pinyin' },
+  { key: 'mn',     label: 'Мн Монгол' },
+];
+
+function speak(text, lang = 'zh-CN') {
+  if (!window.speechSynthesis) return;
+  window.speechSynthesis.cancel();
+  const u = new SpeechSynthesisUtterance(text);
+  u.lang = lang;
+  u.rate = 0.85;
+  window.speechSynthesis.speak(u);
+}
 
 export default function DictionaryPage() {
   const { user, loading: authLoad } = useAuth();
@@ -17,48 +32,74 @@ export default function DictionaryPage() {
   const [selected, setSelected] = useState(null);
   const [streak, setStreak]     = useState(0);
   const [filter, setFilter]     = useState('Бүгд');
+  const [langMode, setLang]     = useState('auto');
   const [addedMsg, setAdded]    = useState('');
+  const [speaking, setSpeaking] = useState(false);
 
   useEffect(() => {
     if (!authLoad && !user) router.push('/login');
     if (user) api.get('/api/streak').then(r => setStreak(r.data.streak || 0)).catch(() => {});
   }, [authLoad, user]);
 
+  function detectLang(q) {
+    if (langMode !== 'auto') return langMode;
+    if (/[一-鿿]/.test(q)) return 'zh';
+    if (/[āáǎàēéěèīíǐìōóǒòūúǔùǖǘǚǜ]/.test(q) || /[a-z]+[0-9]/.test(q)) return 'pinyin';
+    return 'mn';
+  }
+
   async function search(e) {
     e?.preventDefault();
-    if (!query.trim()) return;
+    const q = query.trim();
+    if (!q) return;
     setLoading(true); setSearched(true); setSelected(null);
+    const detected = detectLang(q);
     try {
-      const { data } = await api.get(`/api/dictionary?q=${encodeURIComponent(query)}`);
-      const list = Array.isArray(data) ? data : [data];
+      const { data } = await api.get(`/api/dictionary?q=${encodeURIComponent(q)}&lang=${detected}`);
+      const list = Array.isArray(data) ? data : (data && !data.error ? [data] : []);
       setResults(list);
       if (list.length === 1) setSelected(list[0]);
-    } catch { setResults([]); }
+    } catch {
+      setResults([]);
+    }
     setLoading(false);
   }
 
   async function addToVocab(word) {
     try {
-      await api.post('/api/words', { front: word.simplified || word.word, back: word.definitions?.[0] || word.english, hint: word.pinyin });
+      const front = word.simplified || word.traditional || word.word || word.hanzi || query;
+      const back  = Array.isArray(word.definitions) ? word.definitions.join('; ') : (word.english || word.meaning || word.mn || '');
+      const hint  = word.pinyin || word.reading || '';
+      if (!front || !back) {
+        setAdded('⚠️ Мэдээлэл дутуу байна');
+        setTimeout(() => setAdded(''), 2500);
+        return;
+      }
+      await api.post('/api/words', { front, back, hint });
       setAdded('✓ Үгийн санд нэмэгдлэ!');
       setTimeout(() => setAdded(''), 2500);
-    } catch (e) { alert(e.response?.data?.error || 'Алдаа'); }
+    } catch (e) {
+      const msg = e.response?.data?.error || e.message || 'Алдаа гарлаа';
+      setAdded(`⚠️ ${msg}`);
+      setTimeout(() => setAdded(''), 3000);
+    }
+  }
+
+  function playAudio(word) {
+    const text = word.simplified || word.traditional || word.word || word.hanzi || '';
+    if (!text) return;
+    setSpeaking(true);
+    speak(text, 'zh-CN');
+    setTimeout(() => setSpeaking(false), 2000);
   }
 
   if (authLoad) return null;
-
-  const QUICK_ACTIONS = [
-    { icon: '🔊', label: 'Дуу сонсох' },
-    { icon: '📋', label: 'Хуулбарлах' },
-    { icon: '↗', label: 'Хуваалцах' },
-    { icon: '+', label: 'Жишээ нэмэх' },
-  ];
 
   return (
     <div style={{ paddingBottom: 32 }}>
       <PageHeader
         title="Толь бичиг 📖"
-        subtitle="Хайсан үгийн утга, тайлбар, жишээ, холбоотой үгсийг харна уу."
+        subtitle="Хятад, монгол, pinyin-ээр хайж үгийн утга, жишээ, дуудлагыг мэд."
         streak={streak}
       />
 
@@ -67,24 +108,36 @@ export default function DictionaryPage() {
         {/* Main column */}
         <div>
           {/* Search bar */}
-          <form onSubmit={search} style={{ display: 'flex', gap: 10, marginBottom: 16 }}>
+          <form onSubmit={search} style={{ display: 'flex', gap: 10, marginBottom: 12 }}>
             <div style={{ flex: 1, position: 'relative' }}>
               <span style={{ position: 'absolute', left: 14, top: '50%', transform: 'translateY(-50%)', color: 'var(--muted)', fontSize: 16 }}>🔍</span>
               <input type="search" value={query} onChange={e => setQuery(e.target.value)}
-                placeholder="Хайх... (ж: 你好, happy, 学习)"
+                placeholder="Хайх... (你好, nǐ hǎo, сайн уу)"
                 style={{ paddingLeft: 44, background: '#fff', borderRadius: 14 }} />
-            </div>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 8, background: '#fff', border: '1.5px solid var(--border)', borderRadius: 14, padding: '0 14px', fontSize: 13, fontWeight: 600, color: 'var(--text-sub)', whiteSpace: 'nowrap' }}>
-              Хятад <span style={{ color: 'var(--purple)' }}>⇔</span> Монгол
             </div>
             <button type="submit" className="btn btn-purple" style={{ padding: '11px 22px' }}>Хайх</button>
           </form>
 
-          {/* Filter tabs */}
-          <div style={{ display: 'flex', gap: 8, marginBottom: 16 }}>
+          {/* Language mode + Filter tabs row */}
+          <div style={{ display: 'flex', gap: 8, marginBottom: 14, flexWrap: 'wrap' }}>
+            {/* Language selector */}
+            <div style={{ display: 'flex', background: '#fff', border: '1.5px solid var(--border)', borderRadius: 12, overflow: 'hidden', flexShrink: 0 }}>
+              {LANG_MODES.map(m => (
+                <button key={m.key} onClick={() => setLang(m.key)} style={{
+                  padding: '7px 12px', fontSize: 12, fontWeight: 700, cursor: 'pointer', border: 'none',
+                  fontFamily: 'inherit', transition: 'all 0.12s',
+                  background: langMode === m.key ? 'var(--purple)' : 'transparent',
+                  color: langMode === m.key ? '#fff' : 'var(--text-sub)',
+                }}>
+                  {m.label}
+                </button>
+              ))}
+            </div>
+
+            {/* Filter tabs */}
             {FILTER_TABS.map(t => (
               <button key={t} onClick={() => setFilter(t)} style={{
-                padding: '7px 16px', borderRadius: 100, fontSize: 13, fontWeight: 700,
+                padding: '7px 14px', borderRadius: 100, fontSize: 12, fontWeight: 700,
                 cursor: 'pointer', fontFamily: 'inherit', border: 'none', transition: 'all 0.14s',
                 background: filter === t ? 'var(--purple)' : '#fff',
                 color: filter === t ? '#fff' : 'var(--text-sub)',
@@ -107,10 +160,16 @@ export default function DictionaryPage() {
                 onMouseEnter={e => { e.currentTarget.style.borderColor = 'var(--purple-mid)'; e.currentTarget.style.background = 'var(--purple-soft)'; }}
                 onMouseLeave={e => { e.currentTarget.style.borderColor = 'var(--border)'; e.currentTarget.style.background = '#fff'; }}
                 >
-                  <div style={{ fontSize: 44, fontWeight: 900, color: 'var(--purple)' }}>{item.simplified || item.word}</div>
+                  <div style={{ fontSize: 44, fontWeight: 900, color: 'var(--purple)' }}>
+                    {item.simplified || item.traditional || item.word || item.hanzi || query}
+                  </div>
                   <div style={{ flex: 1 }}>
-                    <div style={{ fontSize: 16, color: 'var(--purple)', fontWeight: 700, marginBottom: 3 }}>{item.pinyin}</div>
-                    <div style={{ fontSize: 13, color: 'var(--text-sub)' }}>{item.definitions?.slice(0, 2).join(' · ') || item.english}</div>
+                    <div style={{ fontSize: 15, color: 'var(--purple)', fontWeight: 700, marginBottom: 3 }}>
+                      {item.pinyin || item.reading}
+                    </div>
+                    <div style={{ fontSize: 13, color: 'var(--text-sub)' }}>
+                      {Array.isArray(item.definitions) ? item.definitions.slice(0, 2).join(' · ') : (item.english || item.meaning || item.mn)}
+                    </div>
                   </div>
                   <span style={{ color: 'var(--muted)', fontSize: 20 }}>›</span>
                 </div>
@@ -122,13 +181,14 @@ export default function DictionaryPage() {
           {!loading && searched && results.length === 0 && (
             <div className="card" style={{ textAlign: 'center', padding: 48 }}>
               <div style={{ fontSize: 44, marginBottom: 12 }}>🔍</div>
-              <p style={{ color: 'var(--muted)', fontWeight: 700 }}>Үр дүн олдсонгүй</p>
+              <p style={{ color: 'var(--text-sub)', fontWeight: 700, marginBottom: 6 }}>"{query}" үр дүн олдсонгүй</p>
+              <p style={{ color: 'var(--muted)', fontSize: 13 }}>Хятад тэмдэгт, pinyin, эсвэл монгол үгээр хайж үзнэ үү</p>
             </div>
           )}
 
           {/* Word detail */}
-          {selected && (
-            <div className="anim-up">
+          {selected && !loading && (
+            <div>
               {results.length > 1 && (
                 <button onClick={() => setSelected(null)} style={{
                   background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-sub)',
@@ -143,47 +203,67 @@ export default function DictionaryPage() {
               )}
 
               {/* Main word card */}
-              <div className="card" style={{ marginBottom: 16 }}>
+              <div className="card" style={{ marginBottom: 14 }}>
                 <div style={{ display: 'flex', alignItems: 'flex-start', gap: 16 }}>
-                  <div style={{
-                    width: 56, height: 56, borderRadius: 14, background: 'var(--purple-light)',
+                  {/* Audio button */}
+                  <button onClick={() => playAudio(selected)} style={{
+                    width: 56, height: 56, borderRadius: 14, background: speaking ? 'var(--purple)' : 'var(--purple-light)',
                     border: '1.5px solid var(--purple-mid)', display: 'flex', alignItems: 'center',
-                    justifyContent: 'center', fontSize: 22, color: 'var(--purple)', flexShrink: 0,
-                  }}>🔊</div>
+                    justifyContent: 'center', fontSize: 24, cursor: 'pointer', flexShrink: 0,
+                    transition: 'all 0.2s', color: speaking ? '#fff' : 'var(--purple)',
+                  }}>
+                    {speaking ? '🔊' : '🔉'}
+                  </button>
+
                   <div style={{ flex: 1 }}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 6 }}>
-                      <span style={{ fontSize: 42, fontWeight: 900, color: 'var(--text)' }}>{selected.simplified || selected.word}</span>
-                      <span style={{ fontSize: 16 }}>⭐</span>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 6, flexWrap: 'wrap' }}>
+                      <span style={{ fontSize: 42, fontWeight: 900, color: 'var(--text)' }}>
+                        {selected.simplified || selected.traditional || selected.word || selected.hanzi}
+                      </span>
+                      {selected.traditional && selected.traditional !== selected.simplified && (
+                        <span style={{ fontSize: 22, color: 'var(--muted)', fontWeight: 700 }}>({selected.traditional})</span>
+                      )}
                       <button onClick={() => addToVocab(selected)} style={{
-                        marginLeft: 'auto', background: 'var(--purple-light)', border: '1.5px solid var(--purple-mid)',
-                        color: 'var(--purple)', borderRadius: 10, padding: '7px 14px',
+                        marginLeft: 'auto', background: addedMsg.startsWith('✓') ? '#ECFDF5' : 'var(--purple-light)',
+                        border: `1.5px solid ${addedMsg.startsWith('✓') ? '#10B981' : 'var(--purple-mid)'}`,
+                        color: addedMsg.startsWith('✓') ? '#10B981' : 'var(--purple)',
+                        borderRadius: 10, padding: '7px 14px',
                         fontWeight: 800, fontSize: 13, cursor: 'pointer', fontFamily: 'inherit',
+                        transition: 'all 0.2s',
                       }}>
                         {addedMsg || '+ Үгэнд нэмэх'}
                       </button>
                     </div>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 6 }}>
-                      <span style={{ fontSize: 18, color: 'var(--purple)', fontWeight: 700 }}>{selected.pinyin}</span>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 8 }}>
+                      <span style={{ fontSize: 18, color: 'var(--purple)', fontWeight: 700 }}>
+                        {selected.pinyin || selected.reading}
+                      </span>
+                      <button onClick={() => playAudio(selected)} style={{
+                        background: 'none', border: 'none', cursor: 'pointer', fontSize: 14,
+                        color: 'var(--muted)', padding: '2px 6px', borderRadius: 6, fontFamily: 'inherit',
+                      }}>🔊</button>
                       <span className="tag tag-purple">Үг</span>
                     </div>
-                    <div style={{ fontSize: 15, color: 'var(--text-sub)', fontWeight: 500 }}>
-                      {selected.definitions?.join(' / ') || selected.english || selected.meaning}
+                    <div style={{ fontSize: 15, color: 'var(--text-sub)', fontWeight: 500, lineHeight: 1.55 }}>
+                      {Array.isArray(selected.definitions)
+                        ? selected.definitions.join(' / ')
+                        : (selected.english || selected.meaning || selected.mn || '')}
                     </div>
                   </div>
                 </div>
 
                 {/* Meta row */}
-                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 12, marginTop: 16, paddingTop: 16, borderTop: '1.5px solid var(--border)' }}>
-                  <div style={{ fontSize: 13, color: 'var(--muted)' }}>
-                    <div style={{ fontWeight: 700, marginBottom: 3 }}>Хэлний төрөл</div>
-                    <div style={{ fontWeight: 600, color: 'var(--text-sub)' }}>Мэндчилгээ</div>
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 12, marginTop: 14, paddingTop: 14, borderTop: '1.5px solid var(--border)' }}>
+                  <div>
+                    <div style={{ fontSize: 11, fontWeight: 700, color: 'var(--muted)', marginBottom: 4 }}>Хэлний төрөл</div>
+                    <div style={{ fontWeight: 600, color: 'var(--text-sub)', fontSize: 13 }}>Хятад (Мандарин)</div>
                   </div>
-                  <div style={{ fontSize: 13, color: 'var(--muted)' }}>
-                    <div style={{ fontWeight: 700, marginBottom: 3 }}>HSK түвшин</div>
+                  <div>
+                    <div style={{ fontSize: 11, fontWeight: 700, color: 'var(--muted)', marginBottom: 4 }}>HSK түвшин</div>
                     <span className="tag tag-purple">HSK 1</span>
                   </div>
-                  <div style={{ fontSize: 13, color: 'var(--muted)' }}>
-                    <div style={{ fontWeight: 700, marginBottom: 5 }}>Түгээмэл байдал</div>
+                  <div>
+                    <div style={{ fontSize: 11, fontWeight: 700, color: 'var(--muted)', marginBottom: 5 }}>Түгээмэл байдал</div>
                     <div style={{ display: 'flex', gap: 3 }}>
                       {Array.from({ length: 8 }, (_, i) => (
                         <div key={i} style={{ width: 10, height: 10, borderRadius: 3, background: i < 6 ? 'var(--purple)' : 'var(--border)' }} />
@@ -194,62 +274,37 @@ export default function DictionaryPage() {
               </div>
 
               {/* Example sentences */}
-              {selected.examples && selected.examples.length > 0 ? (
-                <div className="card" style={{ marginBottom: 16 }}>
-                  <h3 style={{ fontWeight: 900, fontSize: 15, marginBottom: 14 }}>Жишээ өгүүлбэрүүд</h3>
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-                    {selected.examples.slice(0, 3).map((ex, i) => (
-                      <div key={i} style={{
-                        display: 'flex', alignItems: 'center', gap: 12, padding: '12px 14px',
-                        background: 'var(--bg-alt)', borderRadius: 12,
-                        border: '1.5px solid var(--border)',
-                      }}>
-                        <button style={{
-                          width: 30, height: 30, borderRadius: '50%', background: 'var(--purple-light)',
-                          border: '1.5px solid var(--purple-mid)', display: 'flex', alignItems: 'center',
-                          justifyContent: 'center', fontSize: 13, color: 'var(--purple)', cursor: 'pointer',
-                          flexShrink: 0,
-                        }}>▶</button>
-                        <div style={{ flex: 1 }}>
-                          <div style={{ fontWeight: 700, fontSize: 14, color: 'var(--text)', marginBottom: 2 }}>{ex.zh}</div>
-                          <div style={{ fontSize: 12, color: 'var(--muted)' }}>{ex.mn}</div>
-                        </div>
-                        <button style={{ background: 'var(--bg-alt)', border: '1.5px solid var(--border)', borderRadius: 8, padding: '5px 10px', fontSize: 11, fontWeight: 700, cursor: 'pointer', color: 'var(--text-sub)', fontFamily: 'inherit' }}>
-                          📋 Копи
-                        </button>
+              <div className="card" style={{ marginBottom: 14 }}>
+                <h3 style={{ fontWeight: 900, fontSize: 15, marginBottom: 14 }}>Жишээ өгүүлбэрүүд</h3>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+                  {(selected.examples && selected.examples.length > 0 ? selected.examples : [
+                    { zh: `${selected.simplified || selected.word || ''}，你好！`, mn: 'Жишээ өгүүлбэр 1' },
+                    { zh: `我喜欢${selected.simplified || selected.word || ''}。`, mn: 'Би дуртай.' },
+                  ]).slice(0, 3).map((ex, i) => (
+                    <div key={i} style={{
+                      display: 'flex', alignItems: 'center', gap: 12, padding: '12px 14px',
+                      background: 'var(--bg-alt)', borderRadius: 12, border: '1.5px solid var(--border)',
+                    }}>
+                      <button onClick={() => speak(ex.zh, 'zh-CN')} style={{
+                        width: 30, height: 30, borderRadius: '50%', background: 'var(--purple-light)',
+                        border: '1.5px solid var(--purple-mid)', display: 'flex', alignItems: 'center',
+                        justifyContent: 'center', fontSize: 13, color: 'var(--purple)', cursor: 'pointer', flexShrink: 0,
+                      }}>▶</button>
+                      <div style={{ flex: 1 }}>
+                        <div style={{ fontWeight: 700, fontSize: 14, color: 'var(--text)', marginBottom: 2 }}>{ex.zh}</div>
+                        <div style={{ fontSize: 12, color: 'var(--muted)' }}>{ex.mn || ex.english}</div>
                       </div>
-                    ))}
-                    <button style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--purple)', fontWeight: 700, fontSize: 13, fontFamily: 'inherit', textAlign: 'center', padding: '6px' }}>
-                      Дэлгэрэнгүй жишээ харах ▾
-                    </button>
-                  </div>
+                    </div>
+                  ))}
                 </div>
-              ) : (
-                <div className="card" style={{ marginBottom: 16 }}>
-                  <h3 style={{ fontWeight: 900, fontSize: 15, marginBottom: 10 }}>Жишээ өгүүлбэрүүд</h3>
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-                    {[
-                      { zh: `${selected.simplified || selected.word}，你好！`, mn: `${selected.definitions?.[0] || '...'}, сайн уу!` },
-                      { zh: `我说${selected.simplified || selected.word}。`, mn: `Би "${selected.definitions?.[0] || '...'}" гэж хэлэв.` },
-                    ].map((ex, i) => (
-                      <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '12px 14px', background: 'var(--bg-alt)', borderRadius: 12, border: '1.5px solid var(--border)' }}>
-                        <div style={{ width: 30, height: 30, borderRadius: '50%', background: 'var(--purple-light)', border: '1.5px solid var(--purple-mid)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 13, color: 'var(--purple)', flexShrink: 0 }}>▶</div>
-                        <div style={{ flex: 1 }}>
-                          <div style={{ fontWeight: 700, fontSize: 14, color: 'var(--text)', marginBottom: 2 }}>{ex.zh}</div>
-                          <div style={{ fontSize: 12, color: 'var(--muted)' }}>{ex.mn}</div>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              )}
+              </div>
 
               {/* Related words */}
               <div className="card">
                 <h3 style={{ fontWeight: 900, fontSize: 15, marginBottom: 14 }}>Холбоотой үгс</h3>
                 <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
-                  {['你', '好', '大家好', '您好', '早上好'].map(w => (
-                    <button key={w} onClick={() => { setQuery(w); search(); }} style={{
+                  {(selected.related || ['你', '好', '大家好', '您好', '早上好']).map(w => (
+                    <button key={w} onClick={() => { setQuery(w); setLang('zh'); setTimeout(search, 0); }} style={{
                       background: '#fff', border: '1.5px solid var(--border)', borderRadius: 12,
                       padding: '10px 14px', cursor: 'pointer', fontFamily: 'inherit',
                       textAlign: 'center', transition: 'all 0.14s', minWidth: 72,
@@ -271,7 +326,16 @@ export default function DictionaryPage() {
             <div style={{ textAlign: 'center', padding: '48px 0' }}>
               <div style={{ fontSize: 64, marginBottom: 14, animation: 'float 3s ease infinite' }}>📖</div>
               <h3 style={{ fontSize: 18, fontWeight: 800, color: 'var(--text)', marginBottom: 8 }}>Хятад үг хайж эхлэцгээе</h3>
-              <p style={{ color: 'var(--muted)', fontSize: 13 }}>Хятад тэмдэгт, pinyin, эсвэл монгол утгаар хайж болно</p>
+              <p style={{ color: 'var(--muted)', fontSize: 13, marginBottom: 18 }}>Хятад тэмдэгт, pinyin, эсвэл монгол утгаар хайж болно</p>
+              <div style={{ display: 'flex', justifyContent: 'center', gap: 10, flexWrap: 'wrap' }}>
+                {['你好', 'nǐ hǎo', 'сайн уу', '学习', '汉语'].map(ex => (
+                  <button key={ex} onClick={() => { setQuery(ex); }} style={{
+                    background: 'var(--purple-light)', border: '1.5px solid var(--purple-mid)',
+                    color: 'var(--purple)', borderRadius: 100, padding: '7px 16px',
+                    fontWeight: 700, fontSize: 13, cursor: 'pointer', fontFamily: 'inherit',
+                  }}>{ex}</button>
+                ))}
+              </div>
             </div>
           )}
         </div>
@@ -281,17 +345,15 @@ export default function DictionaryPage() {
           <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
             {/* Цээжлэхэд туслах */}
             <div className="card">
-              <div style={{ fontWeight: 900, fontSize: 14, marginBottom: 14, display: 'flex', alignItems: 'center', gap: 6 }}>
-                Цээжлэхэд туслах <span style={{ color: 'var(--muted)', fontSize: 13 }}>ⓘ</span>
-              </div>
-              <div style={{ display: 'flex', align: 'center', gap: 12, padding: '12px', background: 'var(--bg-alt)', borderRadius: 12, marginBottom: 10 }}>
+              <div style={{ fontWeight: 900, fontSize: 14, marginBottom: 14 }}>Цээжлэхэд туслах</div>
+              <div style={{ display: 'flex', gap: 10, padding: '11px 12px', background: 'var(--bg-alt)', borderRadius: 12, marginBottom: 10 }}>
                 <span style={{ fontSize: 22 }}>🔥</span>
                 <div>
-                  <div style={{ fontWeight: 800, fontSize: 13, color: 'var(--text)', marginBottom: 2 }}>Суралцах давтамж (SRS)</div>
-                  <div style={{ fontSize: 12, color: 'var(--muted)' }}>Энэ үгийг маргааш давтах болно.</div>
+                  <div style={{ fontWeight: 800, fontSize: 13, color: 'var(--text)', marginBottom: 2 }}>SRS давтамж</div>
+                  <div style={{ fontSize: 12, color: 'var(--muted)' }}>Маргааш давтах болно</div>
                 </div>
               </div>
-              <div style={{ display: 'flex', gap: 10, padding: '11px', background: 'var(--bg-alt)', borderRadius: 12, marginBottom: 14 }}>
+              <div style={{ display: 'flex', gap: 10, padding: '11px 12px', background: 'var(--bg-alt)', borderRadius: 12, marginBottom: 14 }}>
                 <span style={{ fontSize: 22 }}>📅</span>
                 <div>
                   <div style={{ fontWeight: 800, fontSize: 13, color: 'var(--text)', marginBottom: 2 }}>Маргааш</div>
@@ -299,21 +361,31 @@ export default function DictionaryPage() {
                 </div>
               </div>
               <button className="btn btn-purple" onClick={() => addToVocab(selected)} style={{ width: '100%', fontSize: 13, padding: '10px' }}>
-                🔄 Одоо давтах
+                🔄 Одоо нэмэх
               </button>
-              <button className="btn btn-ghost" style={{ width: '100%', marginTop: 8, fontSize: 13, padding: '10px' }}>
-                ✓ Би мэддэг боллоо
-              </button>
+              {addedMsg && (
+                <div style={{
+                  marginTop: 8, fontSize: 12, fontWeight: 700, textAlign: 'center', padding: '6px',
+                  color: addedMsg.startsWith('✓') ? '#10B981' : '#EF4444',
+                }}>
+                  {addedMsg}
+                </div>
+              )}
             </div>
 
             {/* Хурдан үйлдэл */}
             <div className="card">
               <div style={{ fontWeight: 900, fontSize: 14, marginBottom: 12 }}>Хурдан үйлдэл</div>
-              {QUICK_ACTIONS.map((a, i) => (
-                <div key={i} style={{
+              {[
+                { icon: '🔊', label: 'Дуу сонсох', action: () => playAudio(selected) },
+                { icon: '📋', label: 'Хуулбарлах', action: () => navigator.clipboard?.writeText(selected.simplified || selected.word || '') },
+                { icon: '↗', label: 'Хуваалцах', action: () => {} },
+                { icon: '+', label: 'Жишээ нэмэх', action: () => {} },
+              ].map((a, i, arr) => (
+                <div key={i} onClick={a.action} style={{
                   display: 'flex', alignItems: 'center', gap: 10, padding: '10px',
                   borderRadius: 10, cursor: 'pointer', transition: 'background 0.14s',
-                  borderBottom: i < QUICK_ACTIONS.length - 1 ? '1px solid var(--border)' : 'none',
+                  borderBottom: i < arr.length - 1 ? '1px solid var(--border)' : 'none',
                 }}
                 onMouseEnter={e => e.currentTarget.style.background = 'var(--bg-alt)'}
                 onMouseLeave={e => e.currentTarget.style.background = 'transparent'}
@@ -327,12 +399,8 @@ export default function DictionaryPage() {
 
             {/* Notes */}
             <div className="card">
-              <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 10 }}>
-                <div style={{ fontWeight: 900, fontSize: 14 }}>✏️ Миний тэмдэглэл</div>
-                <button style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: 15, color: 'var(--muted)' }}>✏️</button>
-              </div>
-              <textarea placeholder="Энэ үгийн талаар тэмдэглэлзэ бичих үү..." style={{ minHeight: 80, resize: 'vertical', fontSize: 13 }} />
-              <div style={{ fontSize: 11, color: 'var(--muted)', textAlign: 'right', marginTop: 4 }}>0/200</div>
+              <div style={{ fontWeight: 900, fontSize: 14, marginBottom: 10 }}>✏️ Тэмдэглэл</div>
+              <textarea placeholder="Энэ үгийн талаар тэмдэглэл бичих..." style={{ minHeight: 80, resize: 'vertical', fontSize: 13 }} />
             </div>
           </div>
         )}
@@ -341,8 +409,13 @@ export default function DictionaryPage() {
           <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
             <div className="card" style={{ textAlign: 'center', padding: 28 }}>
               <div style={{ fontSize: 40, marginBottom: 10 }}>💡</div>
-              <div style={{ fontWeight: 800, fontSize: 14, color: 'var(--text)', marginBottom: 6 }}>Зөвлөмж</div>
-              <div style={{ fontSize: 12, color: 'var(--muted)', lineHeight: 1.5 }}>Дуртай үгсийг хайж үгийн санд нэмснээр давтамжтайгаар сурна</div>
+              <div style={{ fontWeight: 800, fontSize: 14, color: 'var(--text)', marginBottom: 6 }}>Хайлтын зөвлөмж</div>
+              <div style={{ fontSize: 12, color: 'var(--muted)', lineHeight: 1.6 }}>
+                <p>汉 — Хятад тэмдэгт</p>
+                <p>Pīn — pinyin</p>
+                <p>Мн — Монгол утга</p>
+                <p style={{ marginTop: 8, color: 'var(--purple)', fontWeight: 600 }}>Авто горим дээр өөрөө таних</p>
+              </div>
             </div>
           </div>
         )}

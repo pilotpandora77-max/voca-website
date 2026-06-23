@@ -30,16 +30,17 @@ export default function HanziTracer({ char, onComplete, size = 280 }) {
         height: size,
         padding: 20,
         showOutline: true,
-        strokeColor: '#3C3C3C',
-        outlineColor: '#E5E5E5',
-        drawingColor: '#1CB0F6',
+        strokeColor: '#4C1D95',
+        outlineColor: '#DDD6FE',
+        drawingColor: '#7C3AED',
         drawingWidth: 4,
         strokeAnimationSpeed: 1.2,
         delayBetweenStrokes: 250,
-        charDataLoader: async (c, onComplete) => {
-          const res = await fetch(`/api/hanzi-data/${encodeURIComponent(c)}`);
-          if (!res.ok) throw new Error('Not found');
-          onComplete(await res.json());
+        charDataLoader: (c, onLoad, onError) => {
+          fetch(`/api/hanzi-data/${encodeURIComponent(c)}`)
+            .then(r => { if (!r.ok) throw new Error('not found'); return r.json(); })
+            .then(onLoad)
+            .catch(onError || console.error);
         },
       });
 

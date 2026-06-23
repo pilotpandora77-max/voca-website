@@ -120,25 +120,29 @@ export default function HomePage() {
           <div style={{
             gridColumn: '1', gridRow: '1 / 3',
             background: 'linear-gradient(145deg, #8B5CF6 0%, #7C3AED 50%, #6D28D9 100%)',
-            borderRadius: 20, padding: 22, position: 'relative', overflow: 'hidden',
+            borderRadius: 20, padding: '22px 22px 0 22px', position: 'relative', overflow: 'hidden',
             minHeight: 200,
           }}>
-            <div style={{ position: 'absolute', bottom: -6, right: -4, opacity: 0.12, userSelect: 'none' }}>
-              <Mascot size={170} />
-            </div>
-            <Mascot size={110} style={{
-              position: 'absolute', bottom: -4, right: 6,
-              filter: 'drop-shadow(0 6px 18px rgba(76,29,149,0.45))',
+            {/* Stars */}
+            <div style={{ position: 'absolute', top: 14, right: 16, fontSize: 22, filter: 'drop-shadow(0 2px 4px rgba(0,0,0,0.2))' }}>⭐</div>
+            <div style={{ position: 'absolute', top: 44, right: 52, fontSize: 14 }}>✨</div>
+            <div style={{ position: 'absolute', top: 22, right: 48, fontSize: 10, color: '#FBBF24' }}>★</div>
+
+            {/* Mascot */}
+            <Mascot size={130} style={{
+              position: 'absolute', bottom: -2, right: -6,
+              filter: 'drop-shadow(0 4px 14px rgba(76,29,149,0.5))',
             }} />
-            <div style={{ position: 'relative', zIndex: 1 }}>
-              <div style={{ fontSize: 11, fontWeight: 800, color: 'rgba(255,255,255,0.75)', letterSpacing: 1, textTransform: 'uppercase', marginBottom: 6 }}>
+
+            <div style={{ position: 'relative', zIndex: 1, paddingBottom: 22 }}>
+              <div style={{ fontSize: 11, fontWeight: 800, color: 'rgba(255,255,255,0.75)', letterSpacing: 1, textTransform: 'uppercase', marginBottom: 8 }}>
                 Таны түвшин
               </div>
-              <div style={{ fontSize: 34, fontWeight: 900, color: '#fff', marginBottom: 14 }}>
+              <div style={{ fontSize: 38, fontWeight: 900, color: '#fff', marginBottom: 16, lineHeight: 1 }}>
                 Level {lvl.level}
               </div>
-              <div style={{ marginBottom: 6 }}>
-                <div style={{ height: 8, background: 'rgba(255,255,255,0.25)', borderRadius: 8, overflow: 'hidden' }}>
+              <div style={{ marginBottom: 6, maxWidth: '55%' }}>
+                <div style={{ height: 9, background: 'rgba(255,255,255,0.25)', borderRadius: 8, overflow: 'hidden' }}>
                   <div style={{ height: '100%', background: '#fff', borderRadius: 8, width: `${progress}%`, transition: 'width 0.6s' }} />
                 </div>
               </div>
@@ -166,28 +170,27 @@ export default function HomePage() {
 
           {/* Давтах карт */}
           <div className="card" style={{ display: 'flex', flexDirection: 'column', justifyContent: 'space-between' }}>
-            <div style={{ fontSize: 32, marginBottom: 4 }}>✅</div>
+            <div style={{ width: 40, height: 40, borderRadius: 12, background: '#ECFDF5', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 22, marginBottom: 6 }}>✅</div>
             <div>
               <div style={{ fontSize: 28, fontWeight: 900, color: 'var(--text)' }}>{dueCards.length}</div>
-              <div style={{ fontSize: 13, color: 'var(--muted)', fontWeight: 600 }}>давтах карт</div>
+              <div style={{ fontSize: 11, color: 'var(--muted)', fontWeight: 600 }}>даалгавар гүйцэтгэсэн</div>
             </div>
-            <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
-              <Link href="/vocab/practice" style={{
-                width: 28, height: 28, borderRadius: '50%', background: 'var(--green-light)',
-                display: 'flex', alignItems: 'center', justifyContent: 'center',
-                color: 'var(--green)', fontWeight: 900, fontSize: 16, textDecoration: 'none',
-              }}>→</Link>
+            <div style={{ fontSize: 12, color: 'var(--muted)', marginTop: 4 }}>
+              {dueCards.length > 0 ? `${Math.round((1 - dueCards.length/10)*100)}% гүйцэтгэлтэй` : '0% гүйцэтгэлтэй'}
             </div>
+            <Link href="/vocab/practice" style={{ fontSize: 12, color: 'var(--purple)', fontWeight: 700, textDecoration: 'none', marginTop: 4 }}>
+              Өнөөдөр давт →
+            </Link>
           </div>
 
           {/* XP stat */}
           <div className="card" style={{ display: 'flex', flexDirection: 'column', justifyContent: 'space-between' }}>
-            <div style={{ fontSize: 32, marginBottom: 4 }}>⭐</div>
+            <div style={{ width: 40, height: 40, borderRadius: 12, background: '#FEF3C7', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 22, marginBottom: 6 }}>🔥</div>
             <div>
-              <div style={{ fontSize: 28, fontWeight: 900, color: 'var(--text)' }}>{stats?.xp || 0}</div>
-              <div style={{ fontSize: 13, color: 'var(--muted)', fontWeight: 600 }}>нийт XP</div>
+              <div style={{ fontSize: 28, fontWeight: 900, color: 'var(--text)' }}>{dueCards.length}</div>
+              <div style={{ fontSize: 11, color: 'var(--muted)', fontWeight: 600 }}>давтах карт</div>
             </div>
-            <Link href="/social" style={{ fontSize: 12, color: 'var(--purple)', fontWeight: 700, textDecoration: 'none' }}>
+            <Link href="/vocab/practice" style={{ fontSize: 12, color: 'var(--purple)', fontWeight: 700, textDecoration: 'none', marginTop: 4 }}>
               Өнөөдөр давт →
             </Link>
           </div>
@@ -274,21 +277,30 @@ export default function HomePage() {
 
             {/* Word of day */}
             <div style={{
-              background: 'linear-gradient(145deg, #7C3AED, #6D28D9)',
-              borderRadius: 20, padding: 22, position: 'relative', overflow: 'hidden',
+              background: 'linear-gradient(135deg, #7C3AED 0%, #5B21B6 100%)',
+              borderRadius: 20, padding: '20px 22px', position: 'relative', overflow: 'hidden',
             }}>
-              <div style={{ position: 'absolute', right: -10, top: '50%', transform: 'translateY(-50%)', fontSize: 80, opacity: 0.15, userSelect: 'none' }}>你好!</div>
-              <div style={{ fontSize: 11, color: 'rgba(255,255,255,0.75)', fontWeight: 800, letterSpacing: 1, marginBottom: 8 }}>✨ ӨНӨӨДРИЙН ҮГ</div>
-              <div style={{ fontSize: 44, fontWeight: 900, color: '#fff', marginBottom: 4, lineHeight: 1 }}>{WORD_OF_DAY.zh}</div>
-              <div style={{ fontSize: 16, color: 'rgba(255,255,255,0.8)', fontWeight: 600, marginBottom: 4 }}>{WORD_OF_DAY.pinyin}</div>
-              <div style={{ fontSize: 14, color: 'rgba(255,255,255,0.65)', marginBottom: 16 }}>{WORD_OF_DAY.mn}</div>
-              <button onClick={addWordToVocab} style={{
-                background: 'rgba(255,255,255,0.18)', border: '1.5px solid rgba(255,255,255,0.35)',
-                color: '#fff', borderRadius: 10, padding: '8px 16px',
-                fontWeight: 800, fontSize: 13, cursor: 'pointer', fontFamily: 'inherit',
-              }}>
-                📌 Үгийг хадгалах
-              </button>
+              {/* Mascot on right with speech bubble */}
+              <div style={{ position: 'absolute', right: 0, bottom: 0 }}>
+                <Mascot size={100} showSpeech style={{ display: 'block' }} />
+              </div>
+              {/* World map faint bg */}
+              <div style={{ position: 'absolute', right: 90, top: '50%', transform: 'translateY(-50%)', fontSize: 80, opacity: 0.06, userSelect: 'none' }}>🌏</div>
+
+              <div style={{ position: 'relative', zIndex: 1, maxWidth: '60%' }}>
+                <div style={{ fontSize: 11, color: 'rgba(255,255,255,0.75)', fontWeight: 800, letterSpacing: 1, marginBottom: 8 }}>✨ ӨНӨӨДРИЙН ҮГ</div>
+                <div style={{ fontSize: 40, fontWeight: 900, color: '#fff', marginBottom: 3, lineHeight: 1 }}>{WORD_OF_DAY.zh}</div>
+                <div style={{ fontSize: 15, color: '#C4B5FD', fontWeight: 700, marginBottom: 3 }}>{WORD_OF_DAY.pinyin}</div>
+                <div style={{ fontSize: 13, color: 'rgba(255,255,255,0.65)', marginBottom: 14 }}>{WORD_OF_DAY.mn}</div>
+                <button onClick={addWordToVocab} style={{
+                  background: 'rgba(255,255,255,0.18)', border: '1.5px solid rgba(255,255,255,0.35)',
+                  color: '#fff', borderRadius: 10, padding: '8px 14px',
+                  fontWeight: 800, fontSize: 12, cursor: 'pointer', fontFamily: 'inherit',
+                  display: 'flex', alignItems: 'center', gap: 6,
+                }}>
+                  📌 Үгийг хадгалах
+                </button>
+              </div>
             </div>
 
             {/* Leaderboard */}
@@ -332,6 +344,37 @@ export default function HomePage() {
             </div>
           </div>
         </div>
+
+        {/* ── Bottom banner ── */}
+        <div style={{
+          marginTop: 16, borderRadius: 20, padding: '24px 32px',
+          background: 'linear-gradient(135deg, #EDE9FF 0%, #F5F0FF 100%)',
+          border: '1.5px solid var(--purple-mid)',
+          display: 'flex', alignItems: 'center', gap: 24, position: 'relative', overflow: 'hidden',
+        }}>
+          {/* Decorative illustrations */}
+          <div style={{ fontSize: 64, flexShrink: 0, filter: 'drop-shadow(0 4px 8px rgba(124,58,237,0.2))' }}>📚</div>
+          <div style={{ fontSize: 48, flexShrink: 0, filter: 'drop-shadow(0 4px 8px rgba(124,58,237,0.15))' }}>🚀</div>
+          <div style={{ flex: 1 }}>
+            <div style={{ fontWeight: 900, fontSize: 18, color: 'var(--purple)', marginBottom: 4 }}>
+              Өөрийгөө хөгжүүлэх аялалдаа
+            </div>
+            <div style={{ fontSize: 13, color: 'var(--text-sub)', fontWeight: 500, marginBottom: 12 }}>
+              Voca-тай хамт өдөр бүр бага багаар ахиц гарга!
+            </div>
+            <div style={{ display: 'flex', gap: 16 }}>
+              {[['⚡', 'Тогтмол бай'], ['⭐', 'Өдөр бүр сур'], ['🎯', 'Зорилгодоо хүр']].map(([icon, text]) => (
+                <div key={text} style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 12, fontWeight: 700, color: 'var(--text-sub)' }}>
+                  <span>{icon}</span> {text}
+                </div>
+              ))}
+            </div>
+          </div>
+          <button className="btn btn-purple" onClick={() => router.push('/vocab/practice')} style={{ flexShrink: 0, padding: '12px 24px', fontSize: 14 }}>
+            Эхлэх →
+          </button>
+        </div>
+
       </div>
     </div>
   );
