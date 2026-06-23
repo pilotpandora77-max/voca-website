@@ -69,84 +69,86 @@ function LoginInner() {
       {/* ── Left panel ── */}
       <div style={{
         flex: 1, position: 'relative', overflow: 'hidden',
-        background: 'linear-gradient(140deg, #100828 0%, #1E0B40 60%, #0D0520 100%)',
-        display: 'flex', flexDirection: 'column', padding: '36px 40px',
+        background: 'linear-gradient(160deg, #0D0620 0%, #1A0838 45%, #120528 100%)',
+        display: 'flex', flexDirection: 'column', padding: '32px 36px',
       }} className="auth-left">
 
         {/* Stars */}
-        {[...Array(28)].map((_, i) => (
+        {[...Array(35)].map((_, i) => (
           <div key={i} style={{
             position: 'absolute',
-            left: `${(i * 37 + 11) % 92}%`, top: `${(i * 53 + 7) % 88}%`,
-            width: i % 5 === 0 ? 3 : i % 3 === 0 ? 2 : 1.5,
-            height: i % 5 === 0 ? 3 : i % 3 === 0 ? 2 : 1.5,
-            borderRadius: '50%', background: 'rgba(255,255,255,0.55)',
-            animation: `twinkle ${2 + (i % 4) * 0.7}s ease-in-out ${(i * 0.3) % 2}s infinite`,
+            left: `${(i * 37 + 11) % 95}%`, top: `${(i * 53 + 7) % 92}%`,
+            width: i % 7 === 0 ? 3.5 : i % 3 === 0 ? 2 : 1.2,
+            height: i % 7 === 0 ? 3.5 : i % 3 === 0 ? 2 : 1.2,
+            borderRadius: '50%', background: 'rgba(255,255,255,0.7)',
+            animation: `twinkle ${2.5 + (i % 4) * 0.8}s ease-in-out ${(i * 0.25) % 2.5}s infinite`,
           }} />
         ))}
 
-        {/* Glow orbs */}
-        <div style={{ position: 'absolute', width: 380, height: 380, borderRadius: '50%', top: -100, left: -80, background: 'radial-gradient(circle, rgba(124,58,237,0.22) 0%, transparent 70%)', pointerEvents: 'none' }} />
-        <div style={{ position: 'absolute', width: 280, height: 280, borderRadius: '50%', bottom: 60, right: -60, background: 'radial-gradient(circle, rgba(88,28,135,0.3) 0%, transparent 70%)', pointerEvents: 'none' }} />
+        {/* Center glow behind mascot */}
+        <div style={{ position: 'absolute', width: 480, height: 480, borderRadius: '50%', top: '50%', left: '50%', transform: 'translate(-50%, -50%)', background: 'radial-gradient(circle, rgba(139,92,246,0.28) 0%, rgba(109,40,217,0.12) 40%, transparent 70%)', pointerEvents: 'none', zIndex: 1 }} />
 
-        {/* Floating planet */}
-        <div style={{ position: 'absolute', bottom: '18%', left: '8%', width: 70, height: 70, borderRadius: '50%', background: 'radial-gradient(circle at 35% 35%, #6D28D9, #2D1558)', boxShadow: '0 0 30px rgba(109,40,217,0.4)', animation: 'planet-float 6s ease-in-out infinite' }} />
-        <div style={{ position: 'absolute', bottom: '15%', left: '3%', width: 120, height: 18, borderRadius: '50%', background: 'rgba(109,40,217,0.2)', transform: 'rotateX(70deg)', filter: 'blur(2px)' }} />
+        {/* Top-left glow */}
+        <div style={{ position: 'absolute', width: 320, height: 320, borderRadius: '50%', top: -80, left: -80, background: 'radial-gradient(circle, rgba(124,58,237,0.18) 0%, transparent 70%)', pointerEvents: 'none' }} />
 
-        {/* Small planet */}
-        <div style={{ position: 'absolute', top: '15%', right: '18%', width: 28, height: 28, borderRadius: '50%', background: 'radial-gradient(circle at 35% 35%, #F59E0B, #92400E)', boxShadow: '0 0 14px rgba(245,158,11,0.4)', animation: 'planet-float 4s ease-in-out 1s infinite' }} />
+        {/* Bottom shadow ground */}
+        <div style={{ position: 'absolute', bottom: 110, left: '50%', transform: 'translateX(-50%)', width: 220, height: 28, borderRadius: '50%', background: 'rgba(88,28,135,0.45)', filter: 'blur(14px)', animation: 'shadow-pulse 4s ease-in-out infinite', zIndex: 1 }} />
 
         {/* Floating hanzi tiles */}
         {TILES.map((t, i) => (
           <div key={i} style={{
             position: 'absolute', left: t.x, top: t.y,
-            width: t.size + 10, height: t.size + 10,
-            background: 'rgba(124,58,237,0.18)',
-            border: '1.5px solid rgba(124,58,237,0.35)',
-            backdropFilter: 'blur(8px)',
-            borderRadius: 14, display: 'flex', alignItems: 'center', justifyContent: 'center',
-            fontSize: t.size * 0.65, fontWeight: 900, color: '#DDD6FE',
+            width: t.size + 14, height: t.size + 14,
+            background: 'rgba(109,40,217,0.25)',
+            border: '1.5px solid rgba(167,139,250,0.4)',
+            backdropFilter: 'blur(12px)',
+            borderRadius: 16, display: 'flex', alignItems: 'center', justifyContent: 'center',
+            fontSize: t.size * 0.7, fontWeight: 900, color: '#DDD6FE',
             transform: `rotate(${t.rot}deg)`,
-            animation: `tile-float ${4 + i}s ease-in-out ${i * 1.2}s infinite`,
-            boxShadow: '0 8px 24px rgba(124,58,237,0.2)',
+            animation: `tile-float ${4 + i * 1.5}s ease-in-out ${i * 1.2}s infinite`,
+            boxShadow: '0 8px 32px rgba(124,58,237,0.3), inset 0 1px 0 rgba(255,255,255,0.1)',
+            zIndex: 3,
           }}>{t.char}</div>
         ))}
 
+        {/* Small gold planet */}
+        <div style={{ position: 'absolute', top: '16%', left: '15%', width: 22, height: 22, borderRadius: '50%', background: 'radial-gradient(circle at 35% 30%, #FCD34D, #D97706)', boxShadow: '0 0 16px rgba(251,191,36,0.5)', animation: 'planet-float 5s ease-in-out 0.5s infinite', zIndex: 3 }} />
+        {/* Tiny dot */}
+        <div style={{ position: 'absolute', top: '30%', right: '22%', width: 8, height: 8, borderRadius: '50%', background: 'rgba(167,139,250,0.6)', animation: 'planet-float 3.5s ease-in-out 1s infinite', zIndex: 3 }} />
+
         {/* Logo */}
-        <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 'auto', position: 'relative', zIndex: 2 }}>
-          <div style={{ width: 36, height: 36, borderRadius: 10, background: 'linear-gradient(135deg, #7C3AED, #4C1D95)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 18, fontWeight: 900, color: '#fff' }}>V</div>
-          <span style={{ fontSize: 20, fontWeight: 900, color: '#fff', letterSpacing: -0.5 }}>voca</span>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 10, position: 'relative', zIndex: 4, marginBottom: 0 }}>
+          <div style={{ width: 38, height: 38, borderRadius: 11, background: 'linear-gradient(135deg, #7C3AED, #4C1D95)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 19, fontWeight: 900, color: '#fff', boxShadow: '0 4px 16px rgba(124,58,237,0.5)' }}>V</div>
+          <span style={{ fontSize: 21, fontWeight: 900, color: '#fff', letterSpacing: -0.5 }}>voca</span>
         </div>
 
-        {/* Main content */}
-        <div style={{ position: 'relative', zIndex: 2, flex: 1, display: 'flex', flexDirection: 'column', justifyContent: 'center', paddingBottom: 20 }}>
-          <h1 style={{ fontSize: 38, fontWeight: 900, color: '#fff', lineHeight: 1.15, marginBottom: 10, letterSpacing: -1 }}>
+        {/* MASCOT — center hero */}
+        <div style={{
+          position: 'absolute', left: '50%', top: '46%',
+          transform: 'translate(-50%, -50%)',
+          animation: 'mascot-float 4s ease-in-out infinite',
+          zIndex: 2,
+          filter: 'drop-shadow(0 24px 60px rgba(88,28,135,0.7)) drop-shadow(0 0 40px rgba(139,92,246,0.4))',
+        }}>
+          <img src="/mascot.png" alt="Voca mascot" style={{ width: 300, height: 'auto', display: 'block' }} />
+        </div>
+
+        {/* Bottom text overlay */}
+        <div style={{ position: 'relative', zIndex: 4, marginTop: 'auto' }}>
+          <h1 style={{ fontSize: 34, fontWeight: 900, color: '#fff', lineHeight: 1.15, marginBottom: 8, letterSpacing: -0.8 }}>
             <span style={{ color: '#A78BFA' }}>Үгтэй</span> бол хүчтэй ⚡
           </h1>
-          <p style={{ fontSize: 14, color: 'rgba(255,255,255,0.55)', marginBottom: 32, fontWeight: 500, lineHeight: 1.6 }}>
-            Voca-д нэгдэж, үгийн сангаа өргөжүүлж,<br />дэлхийн хаанаас ч өрсөлдөөрэй!
+          <p style={{ fontSize: 13, color: 'rgba(255,255,255,0.5)', marginBottom: 20, fontWeight: 500, lineHeight: 1.6 }}>
+            Voca-д нэгдэж, үгийн сангаа өргөжүүлж, дэлхийн хаанаас ч өрсөлдөөрэй!
           </p>
-
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 18 }}>
+          <div style={{ display: 'flex', gap: 16, flexWrap: 'wrap' }}>
             {FEATURES.map((f, i) => (
-              <div key={i} style={{ display: 'flex', gap: 14, alignItems: 'flex-start' }}>
-                <div style={{ width: 40, height: 40, borderRadius: 12, background: 'rgba(124,58,237,0.22)', border: '1px solid rgba(124,58,237,0.35)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 18, flexShrink: 0 }}>{f.icon}</div>
-                <div>
-                  <div style={{ fontWeight: 800, color: '#C4B5FD', fontSize: 14, marginBottom: 3 }}>{f.title}</div>
-                  <div style={{ fontSize: 12, color: 'rgba(255,255,255,0.45)', lineHeight: 1.55 }}>{f.desc}</div>
-                </div>
+              <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                <div style={{ width: 28, height: 28, borderRadius: 8, background: 'rgba(124,58,237,0.3)', border: '1px solid rgba(167,139,250,0.3)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 13, flexShrink: 0 }}>{f.icon}</div>
+                <span style={{ fontWeight: 700, color: '#C4B5FD', fontSize: 12 }}>{f.title}</span>
               </div>
             ))}
           </div>
-        </div>
-
-        {/* Mascot */}
-        <div style={{
-          position: 'absolute', right: '2%', bottom: '12%',
-          animation: 'mascot-float 4s ease-in-out infinite', zIndex: 2,
-          filter: 'drop-shadow(0 16px 48px rgba(88,28,135,0.6))',
-        }}>
-          <img src="/mascot.png" alt="Voca mascot" style={{ width: 260, height: 'auto', display: 'block' }} />
         </div>
 
         {/* Stats bar */}
@@ -317,8 +319,12 @@ function LoginInner() {
           50%       { transform: rotate(var(--rot, -12deg)) translateY(-10px); }
         }
         @keyframes mascot-float {
-          0%, 100% { transform: translateY(-50%) translateY(0px); }
-          50%       { transform: translateY(-50%) translateY(-14px); }
+          0%, 100% { transform: translate(-50%, -50%) translateY(0px); }
+          50%       { transform: translate(-50%, -50%) translateY(-18px); }
+        }
+        @keyframes shadow-pulse {
+          0%, 100% { opacity: 0.45; transform: translateX(-50%) scaleX(1); }
+          50%       { opacity: 0.2;  transform: translateX(-50%) scaleX(0.7); }
         }
         input::placeholder { color: rgba(255,255,255,0.3) !important; }
         @media (max-width: 768px) { .auth-left { display: none !important; } }
