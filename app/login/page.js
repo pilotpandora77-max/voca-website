@@ -3,7 +3,6 @@ import { useState, useEffect, Suspense } from 'react';
 import { useSearchParams } from 'next/navigation';
 import { useAuth } from '@/lib/auth';
 import { GoogleLogin } from '@react-oauth/google';
-import Mascot from '@/components/Mascot';
 
 const FEATURES = [
   { icon: '🏆', title: 'Тоглоомоор суралц', desc: 'Сонирхолтой тоглоомуул, сорилтуудыг дavan, шинэ үгсийг хялбархан цээжил.' },
@@ -142,8 +141,12 @@ function LoginInner() {
         </div>
 
         {/* Mascot */}
-        <div style={{ position: 'absolute', right: '4%', top: '50%', transform: 'translateY(-50%)', filter: 'drop-shadow(0 12px 40px rgba(124,58,237,0.45))', animation: 'mascot-float 4s ease-in-out infinite', zIndex: 2 }}>
-          <Mascot size={180} />
+        <div style={{
+          position: 'absolute', right: '2%', bottom: '12%',
+          animation: 'mascot-float 4s ease-in-out infinite', zIndex: 2,
+          filter: 'drop-shadow(0 16px 48px rgba(88,28,135,0.6))',
+        }}>
+          <img src="/mascot.png" alt="Voca mascot" style={{ width: 260, height: 'auto', display: 'block' }} />
         </div>
 
         {/* Stats bar */}
