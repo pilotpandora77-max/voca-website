@@ -48,14 +48,49 @@ export default function DictionaryPage() {
     return 'mn';
   }
 
-  // Mongolian → common English mappings for words not in mn field
-  const MN_EN = {
-    'сайн уу': 'hello', 'сайн': 'good', 'баярлалаа': 'thank', 'баяртай': 'goodbye',
-    'тийм': 'yes', 'үгүй': 'no', 'хүн': 'person', 'ус': 'water', 'хоол': 'food',
-    'ном': 'book', 'гэр': 'home', 'айл': 'family', 'нэр': 'name', 'өнөөдөр': 'today',
-    'маргааш': 'tomorrow', 'өчигдөр': 'yesterday', 'хайр': 'love', 'найз': 'friend',
-    'сурах': 'study', 'ажил': 'work', 'цаг': 'time', 'том': 'big', 'жижиг': 'small',
-    'олон': 'many', 'цөөн': 'few', 'үг': 'word', 'хэл': 'language', 'уншах': 'read',
+  // Mongolian → Chinese direct mapping (for fast exact lookup)
+  const MN_ZH = {
+    // Төлөөний үг
+    'би': '我', 'чи': '你', 'та': '您', 'тэр': '他', 'тэр эм': '她',
+    'бид': '我们', 'та нар': '你们', 'тэд': '他们',
+    // Мэндчилгээ
+    'сайн уу': '你好', 'сайн байна уу': '你好吗', 'баярлалаа': '谢谢',
+    'баяртай': '再见', 'өглөөний мэнд': '早上好', 'оройн мэнд': '晚上好',
+    'уучлаарай': '对不起', 'болж байна': '没关系',
+    // Тоо
+    'нэг': '一', 'хоёр': '二', 'гурав': '三', 'дөрөв': '四', 'тав': '五',
+    'зургаа': '六', 'долоо': '七', 'найм': '八', 'ес': '九', 'арав': '十',
+    'зуу': '百', 'мянга': '千', 'арав мянга': '万',
+    // Гэр бүл
+    'ааваа': '爸爸', 'эжий': '妈妈', 'ах': '哥哥', 'эгч': '姐姐',
+    'дүү эрэгтэй': '弟弟', 'дүү эмэгтэй': '妹妹', 'өвөө': '爷爷', 'эмээ': '奶奶',
+    'найз': '朋友', 'нөхөр': '丈夫', 'эхнэр': '妻子',
+    // Цаг хугацаа
+    'өнөөдөр': '今天', 'маргааш': '明天', 'өчигдөр': '昨天',
+    'одоо': '现在', 'цаг': '时间', 'жил': '年', 'сар': '月', 'өдөр': '天',
+    'долоо хоног': '星期', 'даваа': '星期一', 'мягмар': '星期二',
+    'лхагва': '星期三', 'пүрэв': '星期四', 'баасан': '星期五',
+    'бямба': '星期六', 'ням': '星期日',
+    // Үйл үг
+    'идэх': '吃', 'уух': '喝', 'явах': '去', 'ирэх': '来', 'харах': '看',
+    'сонсох': '听', 'хэлэх': '说', 'уншах': '读', 'бичих': '写',
+    'сурах': '学习', 'ажиллах': '工作', 'унтах': '睡觉', 'тоглох': '玩',
+    'дуртай': '喜欢', 'хайрлах': '爱', 'мэдэх': '知道', 'болох': '可以',
+    'хүсэх': '想', 'авах': '买', 'өгөх': '给',
+    // Тэмдэг нэр
+    'сайн': '好', 'муу': '坏', 'том': '大', 'жижиг': '小', 'олон': '多',
+    'цөөн': '少', 'хурдан': '快', 'удаан': '慢', 'шинэ': '新', 'хуучин': '旧',
+    'халуун': '热', 'хүйтэн': '冷', 'хямд': '便宜', 'үнэтэй': '贵',
+    'гоё': '漂亮', 'муухай': '丑', 'аз жаргалтай': '高兴', 'гунигтай': '难过',
+    // Нэр үг
+    'хүн': '人', 'хүүхэд': '孩子', 'ном': '书', 'ус': '水', 'хоол': '食物',
+    'цай': '茶', 'кофе': '咖啡', 'гэр': '家', 'сургууль': '学校',
+    'ажлын газар': '公司', 'дэлгүүр': '商店', 'зам': '路', 'машин': '车',
+    'утас': '手机', 'компьютер': '电脑', 'мөнгө': '钱', 'хэл': '语言',
+    'үг': '词', 'хятад': '中文', 'монгол': '蒙古语',
+    // Асуух үг
+    'юу': '什么', 'хэн': '谁', 'хаана': '哪里', 'хэзээ': '什么时候',
+    'яагаад': '为什么', 'хэрхэн': '怎么', 'хэд': '多少',
   };
 
   async function search(e) {
@@ -69,12 +104,17 @@ export default function DictionaryPage() {
       const { data } = await api.get(`/api/dictionary?q=${encodeURIComponent(q)}`);
       let list = Array.isArray(data) ? data : (data && !data.error ? [data] : []);
 
-      // If Mongolian query returns nothing, try English fallback mapping
+      // If no results: try direct Mongolian→Chinese mapping first, then partial
       if (list.length === 0) {
-        const enFallback = MN_EN[q.toLowerCase()];
-        if (enFallback) {
-          const { data: data2 } = await api.get(`/api/dictionary?q=${encodeURIComponent(enFallback)}`);
+        const qLower = q.toLowerCase();
+        const zhFallback = MN_ZH[qLower];
+        if (zhFallback) {
+          // Exact Chinese character lookup
+          const { data: data2 } = await api.get(`/api/dictionary?q=${encodeURIComponent(zhFallback)}`);
           list = Array.isArray(data2) ? data2 : [];
+        } else {
+          // Last resort: try partial Mongolian matches via backend mn field search
+          // (backend now searches mn field after the recent fix)
         }
       }
 
