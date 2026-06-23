@@ -1,5 +1,5 @@
 'use client';
-import { useState, useEffect } from 'react';
+import { useState, useEffect, Suspense } from 'react';
 import { useSearchParams } from 'next/navigation';
 import { useAuth } from '@/lib/auth';
 import { GoogleLogin } from '@react-oauth/google';
@@ -23,6 +23,10 @@ const TILES = [
 ];
 
 export default function LoginPage() {
+  return <Suspense><LoginInner /></Suspense>;
+}
+
+function LoginInner() {
   const { login, register, loginWithGoogle } = useAuth();
   const searchParams = useSearchParams();
   const [tab, setTab]         = useState('login');
