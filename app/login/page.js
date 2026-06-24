@@ -45,21 +45,36 @@ function LoginInner() {
   }
 
   return (
-    <div style={{
-      minHeight: '100vh',
-      backgroundImage: 'url(/login-bg.png)',
-      backgroundSize: 'cover',
-      backgroundPosition: 'center top',
-      backgroundRepeat: 'no-repeat',
-      display: 'flex',
-      alignItems: 'center',
-      justifyContent: 'flex-end',
-      padding: '0 3.5% 12% 0',
-      fontFamily: 'inherit',
-      position: 'relative',
-    }}>
+    <div style={{ minHeight: '100vh', position: 'relative', overflow: 'hidden', fontFamily: 'inherit' }}>
 
-      {/* ── Form card (overlays on right side of background image) ── */}
+      {/* Background image — left 60% visible, right fades to dark */}
+      <div style={{
+        position: 'absolute', inset: 0,
+        backgroundImage: 'url(/login-bg.png)',
+        backgroundSize: 'cover',
+        backgroundPosition: 'left top',
+        backgroundRepeat: 'no-repeat',
+        imageRendering: 'crisp-edges',
+      }} />
+
+      {/* Gradient overlay — covers right side to hide image's built-in card */}
+      <div style={{
+        position: 'absolute', top: 0, right: 0, bottom: 0,
+        width: '48%',
+        background: 'linear-gradient(to right, transparent 0%, #080618 28%, #080618 100%)',
+      }} />
+
+      {/* Content layer */}
+      <div style={{
+        position: 'relative', zIndex: 2,
+        minHeight: '100vh',
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'flex-end',
+        padding: '0 4% 11% 0',
+      }}>
+
+      {/* ── Form card ── */}
       <div style={{
         width: 400,
         background: 'rgba(10, 8, 24, 0.92)',
@@ -183,6 +198,7 @@ function LoginInner() {
             {tab === 'login' ? 'Бүртгүүлэх' : 'Нэвтрэх'}
           </button>
         </p>
+      </div>
       </div>
 
       <style>{`
