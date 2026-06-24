@@ -82,48 +82,74 @@ function LoginInner() {
       </div>
 
       {/* ── Main card ── */}
-      <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '30px 24px' }}>
+      <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '24px' }}>
         <div style={{
-          display: 'flex', width: '100%', maxWidth: 1120,
+          display: 'flex', width: '100%', maxWidth: 1320,
           borderRadius: 24, overflow: 'hidden',
-          boxShadow: '0 40px 100px rgba(0,0,0,0.6)',
-          minHeight: 660,
+          boxShadow: '0 40px 100px rgba(0,0,0,0.7)',
+          minHeight: 700,
         }}>
 
           {/* ── Left panel ── */}
           <div className="auth-left" style={{
-            flex: 1, position: 'relative', overflow: 'hidden',
-            background: 'linear-gradient(160deg, #08041E 0%, #130535 55%, #0C0328 100%)',
-            display: 'flex', flexDirection: 'column', padding: '40px 36px',
+            flex: 1.4, position: 'relative', overflow: 'hidden',
+            background: '#07031A',
+            display: 'flex', flexDirection: 'column', padding: '40px 32px',
           }}>
 
-            {/* Full background image */}
+            {/* Twinkling stars */}
+            {[...Array(24)].map((_, i) => (
+              <div key={i} style={{
+                position: 'absolute',
+                left: `${(i * 41 + 7) % 96}%`,
+                top: `${(i * 59 + 11) % 93}%`,
+                width: i % 6 === 0 ? 3 : i % 3 === 0 ? 2 : 1.2,
+                height: i % 6 === 0 ? 3 : i % 3 === 0 ? 2 : 1.2,
+                borderRadius: '50%',
+                background: 'rgba(255,255,255,0.85)',
+                animation: `twinkle ${2 + (i % 3) * 0.8}s ease-in-out ${(i * 0.27) % 2.5}s infinite`,
+                zIndex: 4,
+              }} />
+            ))}
+
+            {/* Pulsing purple glow behind character */}
+            <div style={{
+              position: 'absolute', right: '15%', top: '50%', transform: 'translateY(-50%)',
+              width: 460, height: 460, borderRadius: '50%',
+              background: 'radial-gradient(circle, rgba(139,92,246,0.32) 0%, rgba(109,40,217,0.1) 50%, transparent 70%)',
+              animation: 'glow-pulse 4s ease-in-out infinite',
+              zIndex: 1, pointerEvents: 'none',
+            }} />
+
+            {/* Character image — full, no crop */}
             <img
               src="/login-hero.png"
               alt=""
               style={{
                 position: 'absolute', inset: 0,
                 width: '100%', height: '100%',
-                objectFit: 'cover', objectPosition: 'center',
+                objectFit: 'contain',
+                objectPosition: 'center center',
                 display: 'block',
+                zIndex: 2,
               }}
             />
 
-            {/* Dark gradient overlay — left side for text readability */}
+            {/* Dark gradient overlay — left for text */}
             <div style={{
               position: 'absolute', inset: 0,
-              background: 'linear-gradient(90deg, rgba(8,4,30,0.96) 0%, rgba(8,4,30,0.88) 30%, rgba(8,4,30,0.55) 55%, rgba(8,4,30,0.1) 80%, transparent 100%)',
-              zIndex: 1,
+              background: 'linear-gradient(90deg, rgba(7,3,26,0.97) 0%, rgba(7,3,26,0.92) 26%, rgba(7,3,26,0.6) 48%, rgba(7,3,26,0.15) 68%, transparent 82%)',
+              zIndex: 3,
             }} />
-            {/* Top/bottom vignette */}
+            {/* Bottom vignette */}
             <div style={{
               position: 'absolute', inset: 0,
-              background: 'linear-gradient(180deg, rgba(8,4,30,0.5) 0%, transparent 20%, transparent 75%, rgba(8,4,30,0.7) 100%)',
-              zIndex: 1,
+              background: 'linear-gradient(180deg, transparent 65%, rgba(7,3,26,0.6) 100%)',
+              zIndex: 3,
             }} />
 
             {/* Text content — left side */}
-            <div style={{ position: 'relative', zIndex: 2, display: 'flex', flexDirection: 'column', flex: 1, maxWidth: '54%' }}>
+            <div style={{ position: 'relative', zIndex: 4, display: 'flex', flexDirection: 'column', flex: 1, maxWidth: '44%' }}>
               <h1 style={{ fontSize: 34, fontWeight: 900, color: '#fff', lineHeight: 1.18, marginBottom: 10, letterSpacing: -0.8 }}>
                 <span style={{ background: 'linear-gradient(90deg, #A78BFA, #C4B5FD)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent' }}>Үгтэй</span>
                 {' '}бол хүчтэй ⚡
@@ -155,7 +181,7 @@ function LoginInner() {
 
             {/* Stats bar */}
             <div style={{
-              position: 'relative', zIndex: 2, marginTop: 28,
+              position: 'relative', zIndex: 4, marginTop: 28,
               display: 'flex',
               background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.1)',
               borderRadius: 18, overflow: 'hidden',
@@ -332,6 +358,14 @@ function LoginInner() {
         }
         .auth-input:focus { border-color: rgba(167,139,250,0.5); }
         .auth-input::placeholder { color: rgba(255,255,255,0.28); }
+        @keyframes twinkle {
+          0%, 100% { opacity: 0.3; transform: scale(1); }
+          50%       { opacity: 1;   transform: scale(1.6); }
+        }
+        @keyframes glow-pulse {
+          0%, 100% { opacity: 0.7; transform: translateY(-50%) scale(1); }
+          50%       { opacity: 1;   transform: translateY(-50%) scale(1.18); }
+        }
         @media (max-width: 900px) { .auth-left { display: none !important; } }
       `}</style>
     </div>
