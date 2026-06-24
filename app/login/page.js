@@ -93,14 +93,82 @@ function LoginInner() {
           {/* ── Left panel ── */}
           <div className="auth-left" style={{
             flex: 1, position: 'relative', overflow: 'hidden',
-            display: 'flex', flexDirection: 'column',
+            background: 'linear-gradient(160deg, #08041E 0%, #130535 55%, #0C0328 100%)',
+            display: 'flex', flexDirection: 'column', padding: '40px 36px',
           }}>
 
+            {/* Character image — right half hero */}
             <img
-              src="/login-left.png"
+              src="/login-hero.png"
               alt=""
-              style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }}
+              style={{
+                position: 'absolute', right: 0, top: 0,
+                width: '62%', height: '100%',
+                objectFit: 'cover', objectPosition: 'center top',
+                display: 'block',
+              }}
             />
+
+            {/* Gradient blend — dark left, fade to transparent right */}
+            <div style={{
+              position: 'absolute', inset: 0,
+              background: 'linear-gradient(90deg, #08041E 28%, rgba(8,4,30,0.92) 44%, rgba(8,4,30,0.55) 62%, transparent 100%)',
+              zIndex: 1,
+            }} />
+
+            {/* Text content — left side */}
+            <div style={{ position: 'relative', zIndex: 2, display: 'flex', flexDirection: 'column', flex: 1, maxWidth: '54%' }}>
+              <h1 style={{ fontSize: 34, fontWeight: 900, color: '#fff', lineHeight: 1.18, marginBottom: 10, letterSpacing: -0.8 }}>
+                <span style={{ background: 'linear-gradient(90deg, #A78BFA, #C4B5FD)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent' }}>Үгтэй</span>
+                {' '}бол хүчтэй ⚡
+              </h1>
+              <p style={{ fontSize: 13, color: 'rgba(255,255,255,0.5)', marginBottom: 30, fontWeight: 500, lineHeight: 1.65 }}>
+                Voca-д нэгдэж, үгийн сангаа өргөжүүлж,<br />дэлхийн хаанаас ч өрсөлдөөрэй!
+              </p>
+
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
+                {[
+                  { icon: '🏆', title: 'Тоглоомоор суралц', desc: 'Сонирхолтой тоглоомуул, сорилтуудыг дavan, шинэ үгсийг хялбархан цээжил.', bg: 'rgba(109,40,217,0.35)', border: 'rgba(167,139,250,0.3)', color: '#A78BFA' },
+                  { icon: '👥', title: 'Нийгэмдээ нэгд', desc: 'Бусадтай харилцаж, мэдлэгээ хуваалцаж, хамтдаа өсэж дэвшээрэй.', bg: 'rgba(59,130,246,0.2)', border: 'rgba(96,165,250,0.3)', color: '#A78BFA' },
+                  { icon: '👑', title: 'Эрэмбэнд тэргүүл', desc: 'Оноо цуглуулж, эрэмбэнд авирч, шилдэг хэрэглэгч болоорой.', bg: 'rgba(245,158,11,0.2)', border: 'rgba(251,191,36,0.3)', color: '#FCD34D' },
+                ].map((f, i) => (
+                  <div key={i} style={{ display: 'flex', alignItems: 'flex-start', gap: 14 }}>
+                    <div style={{
+                      width: 46, height: 46, borderRadius: 14, flexShrink: 0,
+                      background: f.bg, border: `1.5px solid ${f.border}`,
+                      display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 20,
+                    }}>{f.icon}</div>
+                    <div>
+                      <div style={{ fontWeight: 800, color: f.color, fontSize: 14, marginBottom: 4 }}>{f.title}</div>
+                      <div style={{ fontSize: 12, color: 'rgba(255,255,255,0.4)', lineHeight: 1.6 }}>{f.desc}</div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            {/* Stats bar */}
+            <div style={{
+              position: 'relative', zIndex: 2, marginTop: 28,
+              display: 'flex',
+              background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.1)',
+              borderRadius: 18, overflow: 'hidden',
+            }}>
+              {[
+                { val: '120K+', label: 'Хэрэглэгч', icon: '👥' },
+                { val: '50+', label: 'Тоглоом', icon: '🎮' },
+                { val: '10K+', label: 'Өдөр тутмын идэвхтэй хэрэглэгч', icon: '🏆' },
+              ].map((s, i, arr) => (
+                <div key={i} style={{
+                  flex: 1, padding: '14px 10px', textAlign: 'center',
+                  borderRight: i < arr.length - 1 ? '1px solid rgba(255,255,255,0.08)' : 'none',
+                }}>
+                  <div style={{ fontSize: 18, marginBottom: 3 }}>{s.icon}</div>
+                  <div style={{ fontWeight: 900, color: '#fff', fontSize: 17, letterSpacing: -0.5 }}>{s.val}</div>
+                  <div style={{ fontSize: 10, color: 'rgba(255,255,255,0.38)', fontWeight: 500, lineHeight: 1.35 }}>{s.label}</div>
+                </div>
+              ))}
+            </div>
           </div>
 
           {/* ── Right panel ── */}
