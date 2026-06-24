@@ -97,22 +97,28 @@ function LoginInner() {
             display: 'flex', flexDirection: 'column', padding: '40px 36px',
           }}>
 
-            {/* Character image — right half hero */}
+            {/* Full background image */}
             <img
               src="/login-hero.png"
               alt=""
               style={{
-                position: 'absolute', right: 0, top: 0,
-                width: '62%', height: '100%',
-                objectFit: 'cover', objectPosition: 'center top',
+                position: 'absolute', inset: 0,
+                width: '100%', height: '100%',
+                objectFit: 'cover', objectPosition: 'center',
                 display: 'block',
               }}
             />
 
-            {/* Gradient blend — dark left, fade to transparent right */}
+            {/* Dark gradient overlay — left side for text readability */}
             <div style={{
               position: 'absolute', inset: 0,
-              background: 'linear-gradient(90deg, #08041E 28%, rgba(8,4,30,0.92) 44%, rgba(8,4,30,0.55) 62%, transparent 100%)',
+              background: 'linear-gradient(90deg, rgba(8,4,30,0.96) 0%, rgba(8,4,30,0.88) 30%, rgba(8,4,30,0.55) 55%, rgba(8,4,30,0.1) 80%, transparent 100%)',
+              zIndex: 1,
+            }} />
+            {/* Top/bottom vignette */}
+            <div style={{
+              position: 'absolute', inset: 0,
+              background: 'linear-gradient(180deg, rgba(8,4,30,0.5) 0%, transparent 20%, transparent 75%, rgba(8,4,30,0.7) 100%)',
               zIndex: 1,
             }} />
 
