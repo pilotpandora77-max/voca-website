@@ -98,9 +98,14 @@ export default function VocabPracticePage() {
           <p style={{ color: 'var(--muted)', fontWeight: 600, marginBottom: 28, fontSize: 14 }}>
             Өнөөдрийн давталт бүрэн дууслаа
           </p>
-          <Link href="/vocab" className="btn btn-green" style={{ textDecoration: 'none', padding: '12px 28px', fontSize: 14 }}>
-            Үгийн сан руу буцах
-          </Link>
+          <div style={{ display: 'flex', gap: 10, justifyContent: 'center', flexWrap: 'wrap' }}>
+            <Link href="/games" className="btn btn-purple" style={{ textDecoration: 'none', padding: '12px 24px', fontSize: 14 }}>
+              🎮 Тоглоомоор давтах
+            </Link>
+            <Link href="/vocab" className="btn btn-green" style={{ textDecoration: 'none', padding: '12px 24px', fontSize: 14 }}>
+              Үгийн сан руу буцах
+            </Link>
+          </div>
         </div>
       ) : current ? (
         <div className="card" style={{ border: '1px solid rgba(155,109,255,0.18)' }}>

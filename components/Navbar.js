@@ -10,6 +10,7 @@ const NAV = [
   { href: '/dictionary', icon: '📖', label: 'Толь' },
   { href: '/reel',       icon: '▶', label: 'Reel' },
   { href: '/vocab',      icon: '📚', label: 'Үгс' },
+  { href: '/games',      icon: '🎮', label: 'Тоглоом' },
   { href: '/hanzi',      icon: '汉', label: 'Ханз' },
   { href: '/social',     icon: '👥', label: 'Нийгэм' },
 ];
