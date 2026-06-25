@@ -96,12 +96,18 @@ export default function VocabPage() {
     if (!newWord.front.trim() || !newWord.back.trim()) return;
     setAddLoad(true);
     try {
-      const { data } = await api.post('/api/words', newWord);
-      setWords(w => [data, ...w]);
+      const payload = {
+        front: newWord.front, back: newWord.back, hint: newWord.hint,
+        word: newWord.front, meaning: newWord.back, reading: newWord.hint, lang: 'zh',
+      };
+      const { data } = await api.post('/api/words', payload);
+      // Optimistic-аар хариу шаардлагатай field-үүдийг баталгаажуулна
+      const added = { ...payload, ...(data || {}) };
+      setWords(w => [added, ...w]);
       setStats(s => ({ ...s, total: s.total + 1 }));
       setNewWord({ front: '', back: '', hint: '' });
       setShowAdd(false);
-    } catch (e) { alert(e.response?.data?.error || 'Алдаа'); }
+    } catch (e) { alert(e.response?.data?.error || 'Үг нэмэхэд алдаа гарлаа'); }
     setAddLoad(false);
   }
 

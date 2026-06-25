@@ -12,7 +12,9 @@ const NAV = [
   { href: '/vocab',      icon: '📚', label: 'Үгс' },
   { href: '/games',      icon: '🎮', label: 'Тоглоом' },
   { href: '/hanzi',      icon: '汉', label: 'Ханз' },
+  { href: '/leaderboard',icon: '🏆', label: 'Эрэмбэ' },
   { href: '/social',     icon: '👥', label: 'Нийгэм' },
+  { href: '/pricing',    icon: '👑', label: 'Төлбөр' },
 ];
 
 const DAYS = ['Д', 'М', 'М', 'Л', 'П', 'Б', 'Н'];

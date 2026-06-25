@@ -312,7 +312,7 @@ export default function HomePage() {
             <div className="card">
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 14 }}>
                 <h3 style={{ fontWeight: 900, fontSize: 15, color: 'var(--text)' }}>🏆 Эрэмбэ</h3>
-                <Link href="/social" style={{ fontSize: 12, color: 'var(--purple)', fontWeight: 700, textDecoration: 'none' }}>
+                <Link href="/leaderboard" style={{ fontSize: 12, color: 'var(--purple)', fontWeight: 700, textDecoration: 'none' }}>
                   Бүгд харах →
                 </Link>
               </div>

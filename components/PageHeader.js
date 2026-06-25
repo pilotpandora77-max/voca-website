@@ -37,15 +37,15 @@ export default function PageHeader({ title, subtitle, streak = 0, actions }) {
         </div>
 
         {/* Upgrade */}
-        <button style={{
-          display: 'flex', alignItems: 'center', gap: 6,
+        <Link href="/pricing" style={{
+          display: 'flex', alignItems: 'center', gap: 6, textDecoration: 'none',
           background: 'linear-gradient(135deg, #7C3AED, #6D28D9)',
           color: '#fff', borderRadius: 12, padding: '9px 16px',
           fontWeight: 800, fontSize: 13, border: 'none', cursor: 'pointer',
           boxShadow: '0 4px 14px rgba(124,58,237,0.3)', fontFamily: 'inherit',
         }}>
           👑 Багц авах
-        </button>
+        </Link>
 
         {/* Bell */}
         <button style={{
