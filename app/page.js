@@ -113,87 +113,96 @@ export default function HomePage() {
 
       <div style={{ padding: '0 28px' }}>
 
-        {/* ── Row 1: Level card + Stats ── */}
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 16, marginBottom: 16 }}>
+        {/* ── Row 1: Hero level card (left) + 3 stat cards (right) ── */}
+        <div style={{ display: 'grid', gridTemplateColumns: '1.5fr 1fr 1fr', gridTemplateRows: 'auto auto', gap: 16, marginBottom: 16 }}>
 
-          {/* Level card */}
+          {/* ── Hero Level card ── */}
           <div style={{
             gridColumn: '1', gridRow: '1 / 3',
-            background: 'linear-gradient(145deg, #8B5CF6 0%, #7C3AED 50%, #6D28D9 100%)',
-            borderRadius: 20, padding: '22px 22px 0 22px', position: 'relative', overflow: 'hidden',
-            minHeight: 200,
+            background: 'radial-gradient(120% 130% at 75% 20%, #6D28D9 0%, #4C1D95 55%, #2E1065 100%)',
+            borderRadius: 22, padding: '26px 26px 0', position: 'relative', overflow: 'hidden',
+            minHeight: 280, boxShadow: '0 16px 40px rgba(76,29,149,0.32)',
           }}>
-            {/* Stars */}
-            <div style={{ position: 'absolute', top: 14, right: 16, fontSize: 22, filter: 'drop-shadow(0 2px 4px rgba(0,0,0,0.2))' }}>⭐</div>
-            <div style={{ position: 'absolute', top: 44, right: 52, fontSize: 14 }}>✨</div>
-            <div style={{ position: 'absolute', top: 22, right: 48, fontSize: 10, color: '#FBBF24' }}>★</div>
+            {/* Star field */}
+            <div className="hero-stars" />
+            {/* Planets */}
+            <div style={{ position: 'absolute', top: 18, right: 24, width: 54, height: 54, borderRadius: '50%', background: 'radial-gradient(circle at 35% 30%, #A78BFA, #6D28D9)', boxShadow: '0 0 24px rgba(167,139,250,0.5)', opacity: 0.9 }} />
+            <div style={{ position: 'absolute', top: 30, right: 14, width: 78, height: 18, borderRadius: '50%', border: '3px solid rgba(196,181,253,0.4)', transform: 'rotate(-20deg)' }} />
 
             {/* Mascot */}
-            <Mascot size={130} style={{
-              position: 'absolute', bottom: -2, right: -6,
-              filter: 'drop-shadow(0 4px 14px rgba(76,29,149,0.5))',
+            <img src="/mascot.png" alt="" style={{
+              position: 'absolute', bottom: -10, right: -8, width: 200, height: 'auto',
+              filter: 'drop-shadow(0 8px 22px rgba(20,5,60,0.55))', pointerEvents: 'none', userSelect: 'none',
             }} />
 
-            <div style={{ position: 'relative', zIndex: 1, paddingBottom: 22 }}>
-              <div style={{ fontSize: 11, fontWeight: 800, color: 'rgba(255,255,255,0.75)', letterSpacing: 1, textTransform: 'uppercase', marginBottom: 8 }}>
+            <div style={{ position: 'relative', zIndex: 1, paddingBottom: 26 }}>
+              <div style={{ fontSize: 11, fontWeight: 800, color: 'rgba(255,255,255,0.7)', letterSpacing: 1.5, textTransform: 'uppercase', marginBottom: 10 }}>
                 Таны түвшин
               </div>
-              <div style={{ fontSize: 38, fontWeight: 900, color: '#fff', marginBottom: 16, lineHeight: 1 }}>
+              <div style={{ fontSize: 46, fontWeight: 900, color: '#fff', marginBottom: 18, lineHeight: 1, letterSpacing: '-1px' }}>
                 Level {lvl.level}
               </div>
-              <div style={{ marginBottom: 6, maxWidth: '55%' }}>
-                <div style={{ height: 9, background: 'rgba(255,255,255,0.25)', borderRadius: 8, overflow: 'hidden' }}>
-                  <div style={{ height: '100%', background: '#fff', borderRadius: 8, width: `${progress}%`, transition: 'width 0.6s' }} />
+              <div style={{ marginBottom: 8, maxWidth: '56%' }}>
+                <div style={{ height: 10, background: 'rgba(255,255,255,0.2)', borderRadius: 8, overflow: 'hidden' }}>
+                  <div style={{ height: '100%', background: 'linear-gradient(90deg,#FBBF24,#FCD34D)', borderRadius: 8, width: `${progress}%`, transition: 'width 0.6s', boxShadow: '0 0 12px rgba(251,191,36,0.6)' }} />
                 </div>
               </div>
-              <div style={{ fontSize: 12, color: 'rgba(255,255,255,0.75)', fontWeight: 600 }}>
+              <div style={{ fontSize: 13, color: 'rgba(255,255,255,0.8)', fontWeight: 700, marginBottom: 18 }}>
                 {lvl.current} / {lvl.needed} XP
               </div>
+              <Link href="/profile" style={{
+                display: 'inline-flex', alignItems: 'center', gap: 7, textDecoration: 'none',
+                background: 'rgba(255,255,255,0.16)', border: '1.5px solid rgba(255,255,255,0.3)',
+                color: '#fff', borderRadius: 12, padding: '10px 18px', fontWeight: 800, fontSize: 13,
+                backdropFilter: 'blur(6px)', transition: 'all 0.16s',
+              }}
+              onMouseEnter={e => { e.currentTarget.style.background = 'rgba(255,255,255,0.26)'; }}
+              onMouseLeave={e => { e.currentTarget.style.background = 'rgba(255,255,255,0.16)'; }}
+              >
+                Түвшин харах →
+              </Link>
             </div>
           </div>
 
-          {/* Сурсан үг */}
-          <div className="card" style={{ display: 'flex', flexDirection: 'column', justifyContent: 'space-between' }}>
-            <div style={{ fontSize: 32, marginBottom: 4 }}>📚</div>
-            <div>
-              <div style={{ fontSize: 28, fontWeight: 900, color: 'var(--text)' }}>{stats?.wordCount || 0}</div>
-              <div style={{ fontSize: 13, color: 'var(--muted)', fontWeight: 600 }}>сурсан үг</div>
+          {/* ── Сурсан үг ── */}
+          <Link href="/vocab" className="stat-card" style={{ gridColumn: '2', gridRow: '1' }}>
+            <div style={{ width: 46, height: 46, borderRadius: 13, background: 'linear-gradient(145deg,#EDE9FF,#DDD6FE)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 24 }}>📚</div>
+            <div style={{ marginTop: 14 }}>
+              <div style={{ fontSize: 30, fontWeight: 900, color: 'var(--text)', lineHeight: 1 }}>{stats?.wordCount || 0}</div>
+              <div style={{ fontSize: 12, color: 'var(--muted)', fontWeight: 700, marginTop: 4 }}>СУРСАН ҮГ</div>
             </div>
-            <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
-              <Link href="/vocab" style={{
-                width: 28, height: 28, borderRadius: '50%', background: 'var(--purple-light)',
-                display: 'flex', alignItems: 'center', justifyContent: 'center',
-                color: 'var(--purple)', fontWeight: 900, fontSize: 16, textDecoration: 'none',
-              }}>→</Link>
+            <div style={{ fontSize: 12, color: 'var(--green)', fontWeight: 800, marginTop: 'auto', paddingTop: 12 }}>
+              Өнөөдөр +{Math.min(stats?.wordCount || 0, 9) || 0} →
             </div>
-          </div>
+          </Link>
 
-          {/* Давтах карт */}
-          <div className="card" style={{ display: 'flex', flexDirection: 'column', justifyContent: 'space-between' }}>
-            <div style={{ width: 40, height: 40, borderRadius: 12, background: '#ECFDF5', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 22, marginBottom: 6 }}>✅</div>
-            <div>
-              <div style={{ fontSize: 28, fontWeight: 900, color: 'var(--text)' }}>{dueCards.length}</div>
-              <div style={{ fontSize: 11, color: 'var(--muted)', fontWeight: 600 }}>даалгавар гүйцэтгэсэн</div>
+          {/* ── Даалгавар гүйцэтгэсэн ── */}
+          <Link href="/vocab/practice" className="stat-card" style={{ gridColumn: '3', gridRow: '1' }}>
+            <div style={{ width: 46, height: 46, borderRadius: 13, background: 'linear-gradient(145deg,#D1FAE5,#A7F3D0)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 24 }}>✅</div>
+            <div style={{ marginTop: 14 }}>
+              <div style={{ fontSize: 30, fontWeight: 900, color: 'var(--text)', lineHeight: 1 }}>{stats?.reviewCount || 0}</div>
+              <div style={{ fontSize: 12, color: 'var(--muted)', fontWeight: 700, marginTop: 4 }}>ДААЛГАВАР ГҮЙЦЭТГЭСЭН</div>
             </div>
-            <div style={{ fontSize: 12, color: 'var(--muted)', marginTop: 4 }}>
-              {dueCards.length > 0 ? `${Math.round((1 - dueCards.length/10)*100)}% гүйцэтгэлтэй` : '0% гүйцэтгэлтэй'}
-            </div>
-            <Link href="/vocab/practice" style={{ fontSize: 12, color: 'var(--purple)', fontWeight: 700, textDecoration: 'none', marginTop: 4 }}>
+            <div style={{ fontSize: 12, color: 'var(--purple)', fontWeight: 800, marginTop: 'auto', paddingTop: 12 }}>
               Өнөөдөр давт →
-            </Link>
-          </div>
-
-          {/* XP stat */}
-          <div className="card" style={{ display: 'flex', flexDirection: 'column', justifyContent: 'space-between' }}>
-            <div style={{ width: 40, height: 40, borderRadius: 12, background: '#FEF3C7', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 22, marginBottom: 6 }}>🔥</div>
-            <div>
-              <div style={{ fontSize: 28, fontWeight: 900, color: 'var(--text)' }}>{dueCards.length}</div>
-              <div style={{ fontSize: 11, color: 'var(--muted)', fontWeight: 600 }}>давтах карт</div>
             </div>
-            <Link href="/vocab/practice" style={{ fontSize: 12, color: 'var(--purple)', fontWeight: 700, textDecoration: 'none', marginTop: 4 }}>
-              Өнөөдөр давт →
-            </Link>
-          </div>
+          </Link>
+
+          {/* ── Давтах карт (wide, row 2) ── */}
+          <Link href="/vocab/practice" className="stat-card" style={{
+            gridColumn: '2 / 4', gridRow: '2', flexDirection: 'row', alignItems: 'center', gap: 18,
+            background: 'linear-gradient(120deg,#FFF7ED,#FFFBEB)',
+          }}>
+            <div style={{ width: 52, height: 52, borderRadius: 14, background: 'linear-gradient(145deg,#FEF3C7,#FDE68A)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 26, flexShrink: 0 }}>🔥</div>
+            <div style={{ flex: 1 }}>
+              <div style={{ display: 'flex', alignItems: 'baseline', gap: 8 }}>
+                <span style={{ fontSize: 30, fontWeight: 900, color: 'var(--text)', lineHeight: 1 }}>{dueCards.length}</span>
+                <span style={{ fontSize: 12, color: 'var(--muted)', fontWeight: 700 }}>ДАВТАХ КАРТ</span>
+              </div>
+              <div style={{ fontSize: 12, color: 'var(--gold-dark)', fontWeight: 800, marginTop: 6 }}>Өнөөдөр давт →</div>
+            </div>
+            <div style={{ fontSize: 40, opacity: 0.9, flexShrink: 0 }}>🃏</div>
+          </Link>
         </div>
 
         {/* ── Quick Actions ── */}
