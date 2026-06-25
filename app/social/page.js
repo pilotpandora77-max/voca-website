@@ -22,6 +22,24 @@ const DEMO_MSGS = [
   { id: 5, user: 'Болд',    avatar: '🐻', color: '#7C3AED', time: '10:30', text: 'Баярлалаа хүн бүр! 谢谢大家 🙏', reactions: [{ emoji: '🥰', count: 6 }] },
 ];
 
+// Суваг тус бүрийн эхний мессежүүд
+const INITIAL_BY_CHANNEL = {
+  general: DEMO_MSGS,
+  study: [
+    { id: 11, user: 'Мөнхзул', avatar: '⭐', color: '#10B981', time: '09:10', text: 'Өнөөдөр HSK 1 үгсээ давтлаа! Хэн нэгдэх вэ? 📚', reactions: [{ emoji: '🔥', count: 4 }] },
+    { id: 12, user: 'Дорж', avatar: '🦁', color: '#3B82F6', time: '09:15', text: 'Би тоглоомоор давтаж байна, маш хөгжилтэй 🎮', reactions: [] },
+  ],
+  vocab: [
+    { id: 21, user: 'Сарнай', avatar: '🌸', color: '#EF4444', time: '08:40', text: '加油 (jiāyóu) — "хүчээ авах / урагшаа!" гэсэн их хэрэгтэй үг шүү 💪', reactions: [{ emoji: '👍', count: 6 }] },
+  ],
+  grammar: [
+    { id: 31, user: 'Ганбаяр', avatar: '🦊', color: '#F59E0B', time: '11:05', text: '了 (le) хэзээ хэрэглэдэг вэ? Хэн тайлбарлаж өгөх вэ? 🤔', reactions: [{ emoji: '🙏', count: 2 }] },
+  ],
+  culture: [
+    { id: 41, user: 'Оюунаа', avatar: '🌺', color: '#8B5CF6', time: '12:20', text: 'Хятадын цагаан сар (春节) удахгүй болно! 🧧🐉', reactions: [{ emoji: '🎉', count: 8 }] },
+  ],
+};
+
 const ACTIVE_USERS = [
   { name: 'Болд',    avatar: '🐻', color: '#7C3AED', status: 'online',  activity: 'Flashcard давтаж байна' },
   { name: 'Сарнай',  avatar: '🌸', color: '#EF4444', status: 'online',  activity: 'Толь бичиг ашиглаж байна' },
@@ -52,18 +70,34 @@ export default function SocialPage() {
   const { user, loading: authLoad } = useAuth();
   const router = useRouter();
   const [channel, setChannel] = useState('general');
-  const [msgs, setMsgs]       = useState(DEMO_MSGS);
+  const [visited, setVisited] = useState(new Set(['general']));
+  const [allMsgs, setAllMsgs] = useState(INITIAL_BY_CHANNEL);
   const [input, setInput]     = useState('');
-  const [sending, setSend]    = useState(false);
+  const inputRef = useRef(null);
   const bottomRef = useRef(null);
+
+  // localStorage-аас сэргээх
+  useEffect(() => {
+    try {
+      const saved = localStorage.getItem('voca_social_msgs');
+      if (saved) setAllMsgs({ ...INITIAL_BY_CHANNEL, ...JSON.parse(saved) });
+    } catch {}
+  }, []);
 
   useEffect(() => {
     if (!authLoad && !user) router.push('/login');
   }, [authLoad, user]);
 
+  const msgs = allMsgs[channel] || [];
+
+  // Хадгалах
+  useEffect(() => {
+    try { localStorage.setItem('voca_social_msgs', JSON.stringify(allMsgs)); } catch {}
+  }, [allMsgs]);
+
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: 'smooth' });
-  }, [msgs]);
+  }, [msgs.length, channel]);
 
   function sendMsg(e) {
     e?.preventDefault();
@@ -72,20 +106,28 @@ export default function SocialPage() {
     const newMsg = {
       id: Date.now(), user: user?.username || 'Та', avatar: user?.avatarEmoji || '😊',
       color: '#7C3AED', time: new Date().toLocaleTimeString('mn-MN', { hour: '2-digit', minute: '2-digit' }),
-      text, reactions: [],
+      text, reactions: [], mine: true,
     };
-    setMsgs(m => [...m, newMsg]);
+    setAllMsgs(prev => ({ ...prev, [channel]: [...(prev[channel] || []), newMsg] }));
     setInput('');
   }
 
+  function addEmoji(emoji) {
+    setInput(v => v + emoji);
+    inputRef.current?.focus();
+  }
+
   function addReact(msgId, emoji) {
-    setMsgs(m => m.map(msg => {
-      if (msg.id !== msgId) return msg;
-      const reactions = [...(msg.reactions || [])];
-      const idx = reactions.findIndex(r => r.emoji === emoji);
-      if (idx >= 0) reactions[idx] = { ...reactions[idx], count: reactions[idx].count + 1 };
-      else reactions.push({ emoji, count: 1 });
-      return { ...msg, reactions };
+    setAllMsgs(prev => ({
+      ...prev,
+      [channel]: (prev[channel] || []).map(msg => {
+        if (msg.id !== msgId) return msg;
+        const reactions = [...(msg.reactions || [])];
+        const idx = reactions.findIndex(r => r.emoji === emoji);
+        if (idx >= 0) reactions[idx] = { ...reactions[idx], count: reactions[idx].count + 1 };
+        else reactions.push({ emoji, count: 1 });
+        return { ...msg, reactions };
+      }),
     }));
   }
 
@@ -121,7 +163,7 @@ export default function SocialPage() {
         <div style={{ padding: '10px 8px' }}>
           <div style={{ fontSize: 10, fontWeight: 800, color: 'var(--muted)', letterSpacing: 1, padding: '6px 8px', marginBottom: 2 }}>ХЭЛНИЙ СУВГУУД</div>
           {CHANNELS.filter(c => !c.voice).map(ch => (
-            <div key={ch.id} onClick={() => setChannel(ch.id)} style={{
+            <div key={ch.id} onClick={() => { setChannel(ch.id); setVisited(v => new Set(v).add(ch.id)); }} style={{
               display: 'flex', alignItems: 'center', gap: 8, padding: '8px 10px', borderRadius: 8,
               cursor: 'pointer', transition: 'all 0.12s', marginBottom: 1,
               background: channel === ch.id ? 'var(--purple-light)' : 'transparent',
@@ -132,7 +174,7 @@ export default function SocialPage() {
             >
               <span style={{ fontSize: 14, opacity: 0.7, fontWeight: 700 }}>{ch.icon}</span>
               <span style={{ flex: 1, fontSize: 13, fontWeight: channel === ch.id ? 800 : 500, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{ch.label}</span>
-              {ch.unread > 0 && (
+              {ch.unread > 0 && !visited.has(ch.id) && (
                 <span style={{
                   background: 'var(--purple)', color: '#fff', fontSize: 10, fontWeight: 800,
                   borderRadius: 100, padding: '1px 6px', minWidth: 18, textAlign: 'center',
@@ -298,17 +340,21 @@ export default function SocialPage() {
         {/* Message input */}
         <div style={{ padding: '12px 18px 16px', background: '#fff', borderTop: '1.5px solid var(--border)', flexShrink: 0 }}>
           <form onSubmit={sendMsg} style={{ display: 'flex', gap: 10, alignItems: 'center' }}>
-            <button type="button" style={{ width: 36, height: 36, borderRadius: 10, background: 'var(--bg-alt)', border: '1.5px solid var(--border)', cursor: 'pointer', fontSize: 18, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>+</button>
+            <button type="button" onClick={() => addEmoji('👍')} style={{ width: 36, height: 36, borderRadius: 10, background: 'var(--bg-alt)', border: '1.5px solid var(--border)', cursor: 'pointer', fontSize: 18, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>+</button>
             <div style={{ flex: 1, position: 'relative' }}>
               <input
+                ref={inputRef}
                 value={input} onChange={e => setInput(e.target.value)}
                 placeholder={`#${currentCh?.label} дотор мессеж бичих...`}
-                style={{ paddingRight: 90, background: 'var(--bg-alt)' }}
+                style={{ paddingRight: 110, background: 'var(--bg-alt)' }}
                 onKeyDown={e => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); sendMsg(); } }}
               />
               <div style={{ position: 'absolute', right: 10, top: '50%', transform: 'translateY(-50%)', display: 'flex', gap: 6 }}>
-                {['😊', '🎯', '🔊'].map(ic => (
-                  <button key={ic} type="button" style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: 17, opacity: 0.6, padding: 0, lineHeight: 1 }}>{ic}</button>
+                {['😊', '🎯', '🔥', '🎉'].map(ic => (
+                  <button key={ic} type="button" onClick={() => addEmoji(ic)} style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: 17, opacity: 0.7, padding: 0, lineHeight: 1, transition: 'opacity 0.12s, transform 0.12s' }}
+                    onMouseEnter={e => { e.currentTarget.style.opacity = 1; e.currentTarget.style.transform = 'scale(1.2)'; }}
+                    onMouseLeave={e => { e.currentTarget.style.opacity = 0.7; e.currentTarget.style.transform = 'scale(1)'; }}
+                  >{ic}</button>
                 ))}
               </div>
             </div>
