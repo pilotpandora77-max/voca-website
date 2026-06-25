@@ -106,11 +106,12 @@ export default function VocabPage() {
   }
 
   async function deleteWord(id) {
+    if (!id) return;
     try {
       await api.delete(`/api/words/${id}`);
-      setWords(w => w.filter(x => x._id !== id));
-      setStats(s => ({ ...s, total: s.total - 1 }));
-    } catch { }
+      setWords(w => w.filter(x => (x._id || x.id) !== id));
+      setStats(s => ({ ...s, total: Math.max(0, s.total - 1) }));
+    } catch (e) { alert(e.response?.data?.error || 'Устгахад алдаа гарлаа'); }
   }
 
   async function generateAI() {
@@ -223,18 +224,19 @@ export default function VocabPage() {
           ) : (
             <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
               {filtered.map((w, i) => {
-                const open = expandedId === w._id;
+                const wid   = w._id || w.id;
+                const open  = expandedId === wid;
                 const front = w.front || w.word || w.simplified || '';
                 const back  = w.back  || w.meaning || w.meaningEn || '';
                 const hint  = w.hint  || w.reading || w.pinyin || '';
                 return (
-                  <div key={w._id || i} className="card" style={{
+                  <div key={wid || i} className="card" style={{
                     padding: 0, overflow: 'hidden',
                     boxShadow: open ? '0 0 0 2px var(--purple-mid)' : undefined,
                     transition: 'all 0.14s',
                   }}>
                     <div style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '13px 16px', cursor: 'pointer' }}
-                      onClick={() => setExp(open ? null : w._id)}>
+                      onClick={() => setExp(open ? null : wid)}>
                       <div style={{
                         width: 44, height: 44, borderRadius: 12, background: 'var(--purple-light)',
                         border: '1.5px solid var(--purple-mid)', display: 'flex', alignItems: 'center',
@@ -276,7 +278,7 @@ export default function VocabPage() {
                           <button className="btn btn-outline" style={{ fontSize: 12, padding: '8px 14px' }}>
                             ✏️ Засах
                           </button>
-                          <button onClick={() => deleteWord(w._id)} className="btn btn-red" style={{ fontSize: 12, padding: '8px 14px', marginLeft: 'auto' }}>
+                          <button onClick={() => deleteWord(wid)} className="btn btn-red" style={{ fontSize: 12, padding: '8px 14px', marginLeft: 'auto' }}>
                             🗑️ Устгах
                           </button>
                         </div>
