@@ -1,7 +1,7 @@
 'use client';
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useRef, useState, forwardRef, useImperativeHandle } from 'react';
 
-export default function HanziTracer({ char, onComplete, size = 280 }) {
+const HanziTracer = forwardRef(function HanziTracer({ char, onComplete, size = 280 }, ref) {
   const containerRef  = useRef(null);
   const writerRef     = useRef(null);
   const [status, setStatus]     = useState('idle');   // idle | animating | quiz | done
@@ -79,11 +79,26 @@ export default function HanziTracer({ char, onComplete, size = 280 }) {
     if (!writerRef.current) return;
     setMistakes(0);
     setStatus('animating');
-    writerRef.current.cancelQuiz();
+    try { writerRef.current.cancelQuiz(); } catch {}
     writerRef.current.animateCharacter({
       onComplete: () => setStatus('quiz'),
     });
   }
+
+  function showStrokes() {
+    if (!writerRef.current) return;
+    setStatus('animating');
+    try { writerRef.current.cancelQuiz(); } catch {}
+    writerRef.current.animateCharacter({
+      onComplete: () => setStatus('quiz'),
+    });
+  }
+
+  // Expose controls to parent (Дахин эхлэх / Зурааслал харах товчнууд)
+  useImperativeHandle(ref, () => ({
+    replay,
+    showStrokes,
+  }), []);
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 16 }}>
@@ -172,4 +187,6 @@ export default function HanziTracer({ char, onComplete, size = 280 }) {
       </div>
     </div>
   );
-}
+});
+
+export default HanziTracer;

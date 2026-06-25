@@ -186,7 +186,10 @@ export default function DictionaryPage() {
         setTimeout(() => setAdded(''), 2500);
         return;
       }
-      await api.post('/api/words', { word: wordVal, meaning, meaningEn: enMeaning, reading, lang: 'zh' });
+      await api.post('/api/words', {
+        front: wordVal, back: meaning, hint: reading,
+        word: wordVal, meaning, meaningEn: enMeaning, reading, lang: 'zh',
+      });
       setAdded('✓ Нэмэгдлэ!');
       setTimeout(() => setAdded(''), 2500);
     } catch (e) {

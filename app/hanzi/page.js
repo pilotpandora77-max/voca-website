@@ -1,5 +1,5 @@
 'use client';
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/lib/auth';
 import api from '@/lib/api';
@@ -32,6 +32,25 @@ const HANZI_LIST = [
 const LEVELS = ['Бүгд', 'HSK 1', 'HSK 2', 'HSK 3'];
 const CATS   = ['Бүгд', 'Үндсэн', 'Үйл үг', 'Тэмдэг нэр', 'Байгаль', 'Нэр', 'Хэсэг'];
 
+// Жишээ үг (compound words) ба санах холбоо (mnemonic)
+const HANZI_EXTRA = {
+  你: { ex: [['你好', 'nǐ hǎo', 'Сайн уу'], ['你们', 'nǐmen', 'Та нар']], link: '"Хүн" (亻) + "хувь" → нөгөө хүн = ЧИ' },
+  好: { ex: [['你好', 'nǐ hǎo', 'Сайн уу'], ['好吃', 'hǎochī', 'Амттай']], link: '"Эмэгтэй" (女) + "хүүхэд" (子) = САЙН' },
+  我: { ex: [['我们', 'wǒmen', 'Бид'], ['我的', 'wǒ de', 'Миний']], link: 'Гар + жад барьсан → өөрийгөө хамгаалагч = БИ' },
+  是: { ex: [['是的', 'shì de', 'Тийм'], ['不是', 'bù shì', 'Биш']], link: '"Нар" (日) дор зөв зүйл = БАЙНА/ТИЙМ' },
+  的: { ex: [['我的', 'wǒ de', 'Миний'], ['好的', 'hǎo de', 'Зүгээр']], link: '"Цагаан" (白) + халбага → эзэмшил тэмдэг' },
+  学: { ex: [['学生', 'xuéshēng', 'Сурагч'], ['学习', 'xuéxí', 'Суралцах']], link: 'Хүүхэд (子) дээвэр дор ном үздэг = СУРАЛЦАХ' },
+  中: { ex: [['中国', 'zhōngguó', 'Хятад'], ['中文', 'zhōngwén', 'Хятад хэл']], link: 'Дөрвөлжинг дундуур нь зүссэн зураас = ДУНД' },
+  文: { ex: [['中文', 'zhōngwén', 'Хятад хэл'], ['文化', 'wénhuà', 'Соёл']], link: 'Хөндлөн зураасууд = бичиг, УРАН ЗОХИОЛ' },
+  人: { ex: [['人们', 'rénmen', 'Хүмүүс'], ['中国人', 'zhōngguórén', 'Хятад хүн']], link: 'Хоёр хөл алхаж буй = ХҮН' },
+  大: { ex: [['大学', 'dàxué', 'Их сургууль'], ['大人', 'dàrén', 'Том хүн']], link: 'Хүн (人) гараа дэлгэсэн = ТОМ' },
+  小: { ex: [['小学', 'xiǎoxué', 'Бага сургууль'], ['小心', 'xiǎoxīn', 'Болгоомжтой']], link: 'Жижиг гурван цэг = ЖИЖИГ' },
+  水: { ex: [['水果', 'shuǐguǒ', 'Жимс'], ['喝水', 'hē shuǐ', 'Ус уух']], link: 'Урсаж буй гол = УС' },
+  火: { ex: [['火车', 'huǒchē', 'Галт тэрэг'], ['火山', 'huǒshān', 'Галт уул']], link: 'Дээш бялхах дөл = ГАЛ' },
+  日: { ex: [['日本', 'rìběn', 'Япон'], ['生日', 'shēngrì', 'Төрсөн өдөр']], link: 'Дугуй нар тэмдэглэсэн = НАР/ӨДӨР' },
+  月: { ex: [['月亮', 'yuèliang', 'Сар'], ['几月', 'jǐ yuè', 'Хэдэн сар']], link: 'Хавирган сар = САР' },
+};
+
 export default function HanziPage() {
   const { user, loading: authLoad } = useAuth();
   const router = useRouter();
@@ -42,6 +61,17 @@ export default function HanziPage() {
   const [cat, setCat]           = useState('Бүгд');
   const [practiced, setPrac]    = useState(new Set());
   const [calDays, setCalDays]   = useState([]);
+  const [panel, setPanel]       = useState(null); // null | 'examples' | 'link'
+  const tracerRef = useRef(null);
+
+  function speak(text) {
+    if (typeof window === 'undefined' || !window.speechSynthesis) return;
+    window.speechSynthesis.cancel();
+    const u = new SpeechSynthesisUtterance(text);
+    u.lang = 'zh-CN';
+    u.rate = 0.85;
+    window.speechSynthesis.speak(u);
+  }
 
   useEffect(() => {
     if (!authLoad && !user) router.push('/login');
@@ -129,7 +159,7 @@ export default function HanziPage() {
               const isSel = selected?.char === h.char;
               const isPrac = practiced.has(h.char);
               return (
-                <div key={h.char} onClick={() => setSelected(h)} style={{
+                <div key={h.char} onClick={() => { setSelected(h); setPanel(null); }} style={{
                   display: 'flex', alignItems: 'center', gap: 10, padding: '11px 14px',
                   cursor: 'pointer', borderBottom: '1px solid var(--border)', transition: 'background 0.12s',
                   background: isSel ? 'var(--purple-light)' : 'transparent',
@@ -185,14 +215,48 @@ export default function HanziPage() {
                   </div>
                 </div>
                 <div style={{ display: 'flex', gap: 8 }}>
-                  <button className="btn btn-outline" style={{ fontSize: 13, padding: '8px 14px' }}>🔊 Дуу</button>
-                  <button className="btn btn-outline" style={{ fontSize: 13, padding: '8px 14px' }}>📋 Жишээ</button>
-                  <button className="btn btn-outline" style={{ fontSize: 13, padding: '8px 14px' }}>🔗 Холбоо</button>
+                  <button className="btn btn-outline" style={{ fontSize: 13, padding: '8px 14px' }}
+                    onClick={() => speak(selected.char)}>🔊 Дуу</button>
+                  <button className="btn btn-outline" style={{ fontSize: 13, padding: '8px 14px', background: panel === 'examples' ? 'var(--purple-light)' : undefined }}
+                    onClick={() => setPanel(p => p === 'examples' ? null : 'examples')}>📋 Жишээ</button>
+                  <button className="btn btn-outline" style={{ fontSize: 13, padding: '8px 14px', background: panel === 'link' ? 'var(--purple-light)' : undefined }}
+                    onClick={() => setPanel(p => p === 'link' ? null : 'link')}>🔗 Холбоо</button>
                   <button className="btn btn-purple" style={{ fontSize: 13, padding: '8px 14px', marginLeft: 'auto' }}
                     onClick={() => setPrac(s => { const n = new Set(s); n.add(selected.char); return n; })}>
-                    ✓ Дасгалласан
+                    ✓ Хийсэн
                   </button>
                 </div>
+
+                {/* Жишээ үг панел */}
+                {panel === 'examples' && (
+                  <div style={{ marginTop: 14, padding: '14px 16px', background: 'var(--bg-alt)', borderRadius: 12, border: '1.5px solid var(--border)' }}>
+                    <div style={{ fontSize: 12, fontWeight: 800, color: 'var(--muted)', marginBottom: 10 }}>📋 ЖИШЭЭ ҮГ</div>
+                    {(HANZI_EXTRA[selected.char]?.ex || []).length > 0 ? (
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                        {HANZI_EXTRA[selected.char].ex.map(([w, p, m]) => (
+                          <div key={w} onClick={() => speak(w)} style={{ display: 'flex', alignItems: 'center', gap: 12, cursor: 'pointer', padding: '6px 4px' }}>
+                            <span style={{ fontSize: 20, fontWeight: 900, color: 'var(--text)' }}>{w}</span>
+                            <span style={{ fontSize: 13, color: 'var(--purple)', fontWeight: 700 }}>{p}</span>
+                            <span style={{ fontSize: 13, color: 'var(--text-sub)' }}>{m}</span>
+                            <span style={{ marginLeft: 'auto', fontSize: 14, color: 'var(--muted)' }}>🔊</span>
+                          </div>
+                        ))}
+                      </div>
+                    ) : (
+                      <div style={{ fontSize: 13, color: 'var(--text-sub)' }}>Энэ тэмдэгтэд жишээ үг удахгүй нэмэгдэнэ.</div>
+                    )}
+                  </div>
+                )}
+
+                {/* Санах холбоо панел */}
+                {panel === 'link' && (
+                  <div style={{ marginTop: 14, padding: '14px 16px', background: 'var(--purple-soft)', borderRadius: 12, border: '1.5px solid var(--purple-mid)' }}>
+                    <div style={{ fontSize: 12, fontWeight: 800, color: 'var(--purple)', marginBottom: 8 }}>🔗 САНАХ ХОЛБОО</div>
+                    <div style={{ fontSize: 14, color: 'var(--text)', fontWeight: 600, lineHeight: 1.5 }}>
+                      {HANZI_EXTRA[selected.char]?.link || `"${selected.char}" (${selected.pinyin}) — ${selected.meaning}. Зурааслалыг дахин дахин бичиж тогтооё!`}
+                    </div>
+                  </div>
+                )}
               </div>
 
               {/* Tracer */}
@@ -202,11 +266,14 @@ export default function HanziPage() {
                   <span style={{ fontSize: 12, color: 'var(--muted)', fontWeight: 600 }}>— зурааслалыг дага</span>
                 </div>
                 <div style={{ display: 'flex', justifyContent: 'center' }}>
-                  <HanziTracer character={selected.char} />
+                  <HanziTracer ref={tracerRef} key={selected.char} char={selected.char}
+                    onComplete={() => setPrac(s => { const n = new Set(s); n.add(selected.char); return n; })} />
                 </div>
                 <div style={{ display: 'flex', justifyContent: 'center', gap: 10, marginTop: 14 }}>
-                  <button className="btn btn-ghost" style={{ fontSize: 13, padding: '8px 18px' }}>⟳ Дахин эхлэх</button>
-                  <button className="btn btn-purple" style={{ fontSize: 13, padding: '8px 18px' }}>▶ Зурааслал харах</button>
+                  <button className="btn btn-ghost" style={{ fontSize: 13, padding: '8px 18px' }}
+                    onClick={() => tracerRef.current?.replay()}>⟳ Дахин эхлэх</button>
+                  <button className="btn btn-purple" style={{ fontSize: 13, padding: '8px 18px' }}
+                    onClick={() => tracerRef.current?.showStrokes()}>▶ Зурааслал харах</button>
                 </div>
               </div>
             </>

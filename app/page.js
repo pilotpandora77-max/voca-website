@@ -120,40 +120,36 @@ export default function HomePage() {
           <div style={{
             gridColumn: '1', gridRow: '1 / 3',
             background: 'radial-gradient(120% 130% at 75% 20%, #6D28D9 0%, #4C1D95 55%, #2E1065 100%)',
-            borderRadius: 22, padding: '26px 26px 0', position: 'relative', overflow: 'hidden',
+            borderRadius: 22, padding: '32px 34px', position: 'relative', overflow: 'hidden',
             minHeight: 280, boxShadow: '0 16px 40px rgba(76,29,149,0.32)',
+            display: 'flex', flexDirection: 'column', justifyContent: 'center',
           }}>
             {/* Star field */}
             <div className="hero-stars" />
             {/* Planets */}
-            <div style={{ position: 'absolute', top: 18, right: 24, width: 54, height: 54, borderRadius: '50%', background: 'radial-gradient(circle at 35% 30%, #A78BFA, #6D28D9)', boxShadow: '0 0 24px rgba(167,139,250,0.5)', opacity: 0.9 }} />
-            <div style={{ position: 'absolute', top: 30, right: 14, width: 78, height: 18, borderRadius: '50%', border: '3px solid rgba(196,181,253,0.4)', transform: 'rotate(-20deg)' }} />
+            <div style={{ position: 'absolute', top: 24, right: 30, width: 64, height: 64, borderRadius: '50%', background: 'radial-gradient(circle at 35% 30%, #A78BFA, #6D28D9)', boxShadow: '0 0 28px rgba(167,139,250,0.5)', opacity: 0.85 }} />
+            <div style={{ position: 'absolute', top: 38, right: 16, width: 92, height: 22, borderRadius: '50%', border: '3px solid rgba(196,181,253,0.4)', transform: 'rotate(-20deg)' }} />
+            <div style={{ position: 'absolute', bottom: 30, right: 44, width: 28, height: 28, borderRadius: '50%', background: 'radial-gradient(circle at 35% 30%, #FCD34D, #F59E0B)', boxShadow: '0 0 18px rgba(252,211,77,0.5)', opacity: 0.8 }} />
 
-            {/* Mascot */}
-            <img src="/mascot.png" alt="" style={{
-              position: 'absolute', bottom: -10, right: -8, width: 200, height: 'auto',
-              filter: 'drop-shadow(0 8px 22px rgba(20,5,60,0.55))', pointerEvents: 'none', userSelect: 'none',
-            }} />
-
-            <div style={{ position: 'relative', zIndex: 1, paddingBottom: 26 }}>
-              <div style={{ fontSize: 11, fontWeight: 800, color: 'rgba(255,255,255,0.7)', letterSpacing: 1.5, textTransform: 'uppercase', marginBottom: 10 }}>
+            <div style={{ position: 'relative', zIndex: 1 }}>
+              <div style={{ fontSize: 13, fontWeight: 800, color: 'rgba(255,255,255,0.7)', letterSpacing: 2, textTransform: 'uppercase', marginBottom: 14 }}>
                 Таны түвшин
               </div>
-              <div style={{ fontSize: 46, fontWeight: 900, color: '#fff', marginBottom: 18, lineHeight: 1, letterSpacing: '-1px' }}>
+              <div style={{ fontSize: 92, fontWeight: 900, color: '#fff', marginBottom: 22, lineHeight: 0.95, letterSpacing: '-2px', textShadow: '0 6px 30px rgba(0,0,0,0.3)' }}>
                 Level {lvl.level}
               </div>
-              <div style={{ marginBottom: 8, maxWidth: '56%' }}>
-                <div style={{ height: 10, background: 'rgba(255,255,255,0.2)', borderRadius: 8, overflow: 'hidden' }}>
-                  <div style={{ height: '100%', background: 'linear-gradient(90deg,#FBBF24,#FCD34D)', borderRadius: 8, width: `${progress}%`, transition: 'width 0.6s', boxShadow: '0 0 12px rgba(251,191,36,0.6)' }} />
+              <div style={{ marginBottom: 10, maxWidth: '78%' }}>
+                <div style={{ height: 13, background: 'rgba(255,255,255,0.2)', borderRadius: 10, overflow: 'hidden' }}>
+                  <div style={{ height: '100%', background: 'linear-gradient(90deg,#FBBF24,#FCD34D)', borderRadius: 10, width: `${progress}%`, transition: 'width 0.6s', boxShadow: '0 0 14px rgba(251,191,36,0.6)' }} />
                 </div>
               </div>
-              <div style={{ fontSize: 13, color: 'rgba(255,255,255,0.8)', fontWeight: 700, marginBottom: 18 }}>
+              <div style={{ fontSize: 15, color: 'rgba(255,255,255,0.8)', fontWeight: 700, marginBottom: 24 }}>
                 {lvl.current} / {lvl.needed} XP
               </div>
               <Link href="/profile" style={{
                 display: 'inline-flex', alignItems: 'center', gap: 7, textDecoration: 'none',
                 background: 'rgba(255,255,255,0.16)', border: '1.5px solid rgba(255,255,255,0.3)',
-                color: '#fff', borderRadius: 12, padding: '10px 18px', fontWeight: 800, fontSize: 13,
+                color: '#fff', borderRadius: 12, padding: '12px 22px', fontWeight: 800, fontSize: 14,
                 backdropFilter: 'blur(6px)', transition: 'all 0.16s',
               }}
               onMouseEnter={e => { e.currentTarget.style.background = 'rgba(255,255,255,0.26)'; }}

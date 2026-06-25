@@ -134,7 +134,7 @@ export default function VocabPage() {
       : tab === 'Сагсархаг үг' ? w.starred
       : true;
     const q = search.toLowerCase();
-    const matchSearch = !q || (w.front || '').toLowerCase().includes(q) || (w.back || '').toLowerCase().includes(q) || (w.hint || '').toLowerCase().includes(q);
+    const matchSearch = !q || (w.front || w.word || '').toLowerCase().includes(q) || (w.back || w.meaning || '').toLowerCase().includes(q) || (w.hint || w.reading || '').toLowerCase().includes(q);
     return matchTab && matchSearch;
   });
 
@@ -224,6 +224,9 @@ export default function VocabPage() {
             <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
               {filtered.map((w, i) => {
                 const open = expandedId === w._id;
+                const front = w.front || w.word || w.simplified || '';
+                const back  = w.back  || w.meaning || w.meaningEn || '';
+                const hint  = w.hint  || w.reading || w.pinyin || '';
                 return (
                   <div key={w._id || i} className="card" style={{
                     padding: 0, overflow: 'hidden',
@@ -237,14 +240,14 @@ export default function VocabPage() {
                         border: '1.5px solid var(--purple-mid)', display: 'flex', alignItems: 'center',
                         justifyContent: 'center', fontSize: 22, fontWeight: 900, color: 'var(--purple)', flexShrink: 0,
                       }}>
-                        {(w.front || '').slice(0, 1) || '?'}
+                        {front.slice(0, 1) || '?'}
                       </div>
                       <div style={{ flex: 1, minWidth: 0 }}>
                         <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 3 }}>
-                          <span style={{ fontWeight: 900, fontSize: 16, color: 'var(--text)' }}>{w.front}</span>
-                          {w.hint && <span style={{ fontSize: 12, color: 'var(--purple)', fontWeight: 600 }}>{w.hint}</span>}
+                          <span style={{ fontWeight: 900, fontSize: 16, color: 'var(--text)' }}>{front}</span>
+                          {hint && <span style={{ fontSize: 12, color: 'var(--purple)', fontWeight: 600 }}>{hint}</span>}
                         </div>
-                        <div style={{ fontSize: 13, color: 'var(--text-sub)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{w.back}</div>
+                        <div style={{ fontSize: 13, color: 'var(--text-sub)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{back}</div>
                       </div>
                       <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexShrink: 0 }}>
                         <StatusDot status={w.status} />
@@ -257,12 +260,12 @@ export default function VocabPage() {
                         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10, marginBottom: 14 }}>
                           <div>
                             <div style={{ fontSize: 11, fontWeight: 700, color: 'var(--muted)', marginBottom: 4 }}>ХЯТАД</div>
-                            <div style={{ fontWeight: 800, fontSize: 18, color: 'var(--text)' }}>{w.front}</div>
-                            {w.hint && <div style={{ color: 'var(--purple)', fontWeight: 700, fontSize: 13 }}>{w.hint}</div>}
+                            <div style={{ fontWeight: 800, fontSize: 18, color: 'var(--text)' }}>{front}</div>
+                            {hint && <div style={{ color: 'var(--purple)', fontWeight: 700, fontSize: 13 }}>{hint}</div>}
                           </div>
                           <div>
                             <div style={{ fontSize: 11, fontWeight: 700, color: 'var(--muted)', marginBottom: 4 }}>МОНГОЛ</div>
-                            <div style={{ fontWeight: 700, fontSize: 14, color: 'var(--text)' }}>{w.back}</div>
+                            <div style={{ fontWeight: 700, fontSize: 14, color: 'var(--text)' }}>{back}</div>
                           </div>
                         </div>
                         <div style={{ display: 'flex', gap: 8 }}>
