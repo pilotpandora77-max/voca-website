@@ -33,6 +33,8 @@ export default function ProfilePage() {
   const [emoji, setEmoji]       = useState('🐼');
   const [color, setColor]       = useState('purple');
   const [username, setUsername] = useState('');
+  const [phone, setPhone]       = useState('');
+  const [emailV, setEmailV]     = useState('');
   const [saving, setSaving]     = useState(false);
 
   useEffect(() => {
@@ -41,6 +43,8 @@ export default function ProfilePage() {
       setEmoji(user.avatarEmoji || '🐼');
       setColor(user.avatarColor || 'purple');
       setUsername(user.username || '');
+      setPhone(user.phone || '');
+      setEmailV(user.email || '');
       load();
     }
   }, [authLoad, user]);
@@ -62,7 +66,7 @@ export default function ProfilePage() {
   async function save(e) {
     e.preventDefault(); setSaving(true);
     try {
-      await api.patch('/api/auth/profile', { username, avatarEmoji: emoji, avatarColor: color });
+      await api.patch('/api/auth/profile', { username, phone, email: emailV, avatarEmoji: emoji, avatarColor: color });
       setEditing(false);
       setTimeout(() => location.reload(), 300);
     } catch (ex) { alert(ex.response?.data?.error || 'Алдаа гарлаа'); }
@@ -290,8 +294,18 @@ export default function ProfilePage() {
             <h2 style={{ fontWeight: 900, fontSize: 19, color: '#fff', marginBottom: 20 }}>Профайл засах</h2>
             <form onSubmit={save} style={{ display: 'flex', flexDirection: 'column', gap: 18 }}>
               <div>
-                <label className="pf-muted" style={{ fontSize: 11, fontWeight: 800, letterSpacing: 0.8, textTransform: 'uppercase', display: 'block', marginBottom: 7 }}>Нэвтрэх нэр</label>
+                <label className="pf-muted" style={{ fontSize: 11, fontWeight: 800, letterSpacing: 0.8, textTransform: 'uppercase', display: 'block', marginBottom: 7 }}>Нэр</label>
                 <input type="text" value={username} onChange={e => setUsername(e.target.value)} required
+                  style={{ background: 'rgba(255,255,255,0.05)', border: '1.5px solid rgba(150,120,230,0.25)', color: '#fff' }} />
+              </div>
+              <div>
+                <label className="pf-muted" style={{ fontSize: 11, fontWeight: 800, letterSpacing: 0.8, textTransform: 'uppercase', display: 'block', marginBottom: 7 }}>И-мэйл</label>
+                <input type="email" value={emailV} onChange={e => setEmailV(e.target.value)} placeholder="name@example.com"
+                  style={{ background: 'rgba(255,255,255,0.05)', border: '1.5px solid rgba(150,120,230,0.25)', color: '#fff' }} />
+              </div>
+              <div>
+                <label className="pf-muted" style={{ fontSize: 11, fontWeight: 800, letterSpacing: 0.8, textTransform: 'uppercase', display: 'block', marginBottom: 7 }}>Утасны дугаар</label>
+                <input type="tel" value={phone} onChange={e => setPhone(e.target.value)} placeholder="9900-0000"
                   style={{ background: 'rgba(255,255,255,0.05)', border: '1.5px solid rgba(150,120,230,0.25)', color: '#fff' }} />
               </div>
               <div>

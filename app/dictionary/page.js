@@ -45,9 +45,10 @@ function HanziAnimate({ char, size = 230 }) {
 const FILTER_TABS = ['Бүгд', 'Үг', 'Хэлц', 'Жишээ', 'Идиом'];
 const LANG_MODES  = [
   { key: 'auto',   label: '🔄 Авто' },
-  { key: 'zh',     label: '汉 Ханз' },
+  { key: 'zh',     label: '汉 Хятад' },
   { key: 'pinyin', label: 'Pīn Pinyin' },
   { key: 'mn',     label: 'Мн Монгол' },
+  { key: 'en',     label: 'EN Англи' },
 ];
 
 function speak(text, lang = 'zh-CN') {
@@ -88,6 +89,7 @@ export default function DictionaryPage() {
     if (langMode !== 'auto') return langMode;
     if (/[一-鿿]/.test(q)) return 'zh';
     if (/[āáǎàēéěèīíǐìōóǒòūúǔùǖǘǚǜ]/.test(q) || /[a-z]+[0-9]/.test(q)) return 'pinyin';
+    if (/^[a-zA-Z\s'-]+$/.test(q)) return 'en';
     return 'mn';
   }
 

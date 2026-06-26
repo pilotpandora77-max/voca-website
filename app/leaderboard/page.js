@@ -100,6 +100,21 @@ export default function LeaderboardPage() {
 
   return (
     <div style={{ paddingBottom: 40 }}>
+      <style>{`
+        @keyframes lb-float { 0%,100% { transform: translateY(0); } 50% { transform: translateY(-8px); } }
+        @keyframes lb-crown { 0%,100% { transform: rotate(-8deg); } 50% { transform: rotate(8deg); } }
+        @keyframes lb-glow { 0%,100% { box-shadow: 0 0 30px rgba(252,211,77,0.5); } 50% { box-shadow: 0 0 50px rgba(252,211,77,0.9); } }
+        @keyframes lb-rise { from { opacity: 0; transform: translateY(14px); } to { opacity: 1; transform: translateY(0); } }
+        @keyframes lb-sparkle { 0%,100% { opacity: 0.3; transform: scale(0.8); } 50% { opacity: 1; transform: scale(1.2); } }
+        @keyframes lb-shine { 0% { background-position: -200% 0; } 100% { background-position: 200% 0; } }
+        .lb-podium-1 { animation: lb-float 3s ease-in-out infinite, lb-glow 2.5s ease-in-out infinite; }
+        .lb-podium-2 { animation: lb-float 3s ease-in-out infinite 0.4s; }
+        .lb-podium-3 { animation: lb-float 3s ease-in-out infinite 0.8s; }
+        .lb-crown { display: inline-block; animation: lb-crown 2s ease-in-out infinite; transform-origin: 50% 80%; }
+        .lb-row { animation: lb-rise 0.4s ease both; }
+        .lb-spark { position: absolute; animation: lb-sparkle 2s ease-in-out infinite; pointer-events: none; }
+        .lb-myrank { background-size: 200% 100%; animation: lb-shine 6s linear infinite; }
+      `}</style>
       <PageHeader title="🏆 Эрэмбэ" subtitle="Хамгийн идэвхтэй, шилдэг суралцагчидтай өрсөлд!" streak={streak} />
 
       <div style={{ padding: '0 28px', display: 'grid', gridTemplateColumns: 'minmax(0,1fr) 300px', gap: 18, alignItems: 'start' }}>
@@ -124,14 +139,19 @@ export default function LeaderboardPage() {
             display: 'flex', alignItems: 'flex-end', justifyContent: 'center', gap: 18, position: 'relative', overflow: 'hidden',
           }}>
             <div style={{ position: 'absolute', inset: 0, opacity: 0.5, pointerEvents: 'none', backgroundImage: 'radial-gradient(1.5px 1.5px at 15% 25%,#fff,transparent),radial-gradient(1px 1px at 80% 15%,#fcd34d,transparent),radial-gradient(1.5px 1.5px at 60% 35%,#fff,transparent)' }} />
+            {/* animated sparkles */}
+            <span className="lb-spark" style={{ top: 24, left: '22%', fontSize: 16 }}>✨</span>
+            <span className="lb-spark" style={{ top: 60, right: '20%', fontSize: 13, animationDelay: '0.6s' }}>⭐</span>
+            <span className="lb-spark" style={{ top: 110, left: '12%', fontSize: 12, animationDelay: '1.1s' }}>✨</span>
             {podium.map((p, i) => (
               <div key={p.id} style={{ textAlign: 'center', position: 'relative', zIndex: 1, width: 120 }}>
-                <div style={{ fontSize: 26, marginBottom: 4 }}>{medals[i]}</div>
-                <div style={{
+                <div style={{ fontSize: 26, marginBottom: 4 }}>
+                  {ranks[i] === 1 ? <span className="lb-crown">👑</span> : medals[i]}
+                </div>
+                <div className={ranks[i] === 1 ? 'lb-podium-1' : ranks[i] === 2 ? 'lb-podium-2' : 'lb-podium-3'} style={{
                   width: ranks[i] === 1 ? 82 : 64, height: ranks[i] === 1 ? 82 : 64, borderRadius: '50%', margin: '0 auto 8px',
                   background: 'rgba(168,85,247,0.3)', border: `3px solid ${ranks[i] === 1 ? '#fcd34d' : '#c4b5fd'}`,
                   display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: ranks[i] === 1 ? 40 : 30,
-                  boxShadow: ranks[i] === 1 ? '0 0 30px rgba(252,211,77,0.6)' : '0 0 16px rgba(196,181,253,0.4)',
                 }}>{p.avatarEmoji || p.username?.[0]?.toUpperCase()}</div>
                 <div style={{ fontWeight: 900, color: '#fff', fontSize: ranks[i] === 1 ? 16 : 14 }}>{p.username}</div>
                 <div style={{ color: '#c4b5fd', fontSize: 12, fontWeight: 600, marginBottom: 8 }}>Level {levelOf(p.xp)}</div>
@@ -156,10 +176,11 @@ export default function LeaderboardPage() {
               const rank = i + 4;
               const isMe = r.id === user.id;
               return (
-                <div key={r.id} style={{
+                <div key={r.id} className="lb-row" style={{
                   display: 'grid', gridTemplateColumns: '44px 1fr 90px 90px 90px 84px', gap: 8, padding: '12px 18px',
                   alignItems: 'center', borderBottom: '1px solid var(--border)',
                   background: isMe ? 'var(--purple-light)' : 'transparent',
+                  animationDelay: `${i * 0.06}s`,
                 }}>
                   <span style={{ fontWeight: 900, color: isMe ? 'var(--purple)' : 'var(--text-sub)', fontSize: 15 }}>{rank}</span>
                   <div style={{ display: 'flex', alignItems: 'center', gap: 10, minWidth: 0 }}>
@@ -182,8 +203,9 @@ export default function LeaderboardPage() {
         {/* ── Right column ── */}
         <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
           {/* My rank */}
-          <div style={{ borderRadius: 20, padding: '20px 22px', color: '#fff', position: 'relative', overflow: 'hidden',
-            background: 'radial-gradient(120% 120% at 80% 10%, #5b3aa6, #2a1a52)' }}>
+          <div className="lb-myrank" style={{ borderRadius: 20, padding: '20px 22px', color: '#fff', position: 'relative', overflow: 'hidden',
+            background: 'linear-gradient(110deg, #2a1a52, #5b3aa6, #2a1a52)' }}>
+            <span className="lb-spark" style={{ top: 14, right: 18, fontSize: 18 }}>✨</span>
             <div style={{ fontSize: 12, fontWeight: 700, color: '#c4b5fd', marginBottom: 6 }}>Миний байр</div>
             <div style={{ fontSize: 40, fontWeight: 900, lineHeight: 1 }}>#{myRank}</div>
             <div style={{ fontWeight: 800, fontSize: 16, marginTop: 8 }}>{user.username}</div>

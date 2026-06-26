@@ -103,7 +103,7 @@ export default function Navbar() {
               </div>
             </div>
             <p style={{ fontSize: 11, color: 'var(--text-sub)', fontWeight: 500, lineHeight: 1.4, marginBottom: 10 }}>
-              {streak > 0 ? 'Маш сайн! Цуваагаа хадгал!' : 'Цааш үргэлжлүүлж, цуваагаа хадгал!'}
+              {streak > 0 ? 'Маш сайн! Сахилга батаа хадгал!' : 'Цааш үргэлжлүүлж, сахилга батаа хадгал!'}
             </p>
             {/* Week calendar */}
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', gap: 3, marginBottom: 10 }}>
@@ -125,7 +125,7 @@ export default function Navbar() {
               color: '#fff', fontWeight: 800, fontSize: 12, border: 'none', cursor: 'pointer',
               fontFamily: 'inherit', boxShadow: '0 3px 10px rgba(124,58,237,0.3)',
             }}>
-              Цуваагаа хадгал
+              Сахилга батаа хадгал
             </button>
           </div>
         )}
