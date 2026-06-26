@@ -14,6 +14,7 @@ const NAV = [
   { href: '/games',      icon: '🎮', label: 'Тоглоом' },
   { href: '/hanzi',      icon: '汉', label: 'Ханз' },
   { href: '/memory',     icon: '🧠', label: 'Ой тогтоолт' },
+  { href: '/books',      icon: '📖', label: 'Номын сан' },
   { href: '/leaderboard',icon: '🏆', label: 'Эрэмбэ' },
   { href: '/social',     icon: '👥', label: 'Нийгэм' },
   { href: '/pricing',    icon: '👑', label: 'Төлбөр' },
