@@ -120,14 +120,14 @@ export default function Navbar() {
                 </div>
               ))}
             </div>
-            <button style={{
-              width: '100%', padding: '9px', borderRadius: 10,
+            <Link href="/streak" style={{
+              display: 'block', textAlign: 'center', width: '100%', padding: '9px', borderRadius: 10,
               background: 'linear-gradient(135deg, #7C3AED, #6D28D9)',
               color: '#fff', fontWeight: 800, fontSize: 12, border: 'none', cursor: 'pointer',
-              fontFamily: 'inherit', boxShadow: '0 3px 10px rgba(124,58,237,0.3)',
+              fontFamily: 'inherit', boxShadow: '0 3px 10px rgba(124,58,237,0.3)', textDecoration: 'none',
             }}>
               Сахилга батаа хадгал
-            </button>
+            </Link>
           </div>
         )}
 
