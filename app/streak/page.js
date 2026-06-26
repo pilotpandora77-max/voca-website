@@ -111,7 +111,7 @@ export default function StreakPage() {
         .st-rise { animation: st-rise .4s ease both; }
       `}</style>
 
-      <PageHeader title="🔥 Streak – Тогтмол байдал" subtitle="Өдөр бүр суралцаж, streak-аа улам уртасгаарай!" streak={streak} />
+      <PageHeader dark title="🔥 Streak – Тогтмол байдал" subtitle="Өдөр бүр суралцаж, streak-аа улам уртасгаарай!" streak={streak} />
 
       {/* ── Row 1: hero + level + how ── */}
       <div style={{ display: 'grid', gridTemplateColumns: '1.3fr 1fr 1fr', gap: 16, marginBottom: 16 }}>

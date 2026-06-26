@@ -2,13 +2,15 @@
 import { useAuth } from '@/lib/auth';
 import Link from 'next/link';
 
-export default function PageHeader({ title, subtitle, streak = 0, actions }) {
+export default function PageHeader({ title, subtitle, streak = 0, actions, dark = false }) {
   const { user } = useAuth();
   const colorMap = {
     purple: '#7C3AED', blue: '#3B82F6', green: '#10B981',
     gold: '#F59E0B', red: '#EF4444', teal: '#00C6AE',
   };
   const avatarBg = colorMap[user?.avatarColor] || '#7C3AED';
+  const titleColor = dark ? '#FFFFFF' : 'var(--text)';
+  const subColor   = dark ? 'rgba(196,181,253,0.75)' : 'var(--muted)';
 
   return (
     <div style={{
@@ -16,11 +18,11 @@ export default function PageHeader({ title, subtitle, streak = 0, actions }) {
       padding: '24px 28px 0', marginBottom: 22,
     }}>
       <div>
-        <h1 style={{ fontSize: 26, fontWeight: 900, color: 'var(--text)', letterSpacing: -0.5, lineHeight: 1.2 }}>
+        <h1 style={{ fontSize: 26, fontWeight: 900, color: titleColor, letterSpacing: -0.5, lineHeight: 1.2 }}>
           {title}
         </h1>
         {subtitle && (
-          <p style={{ color: 'var(--muted)', fontSize: 13, marginTop: 5, fontWeight: 500 }}>{subtitle}</p>
+          <p style={{ color: subColor, fontSize: 13, marginTop: 5, fontWeight: 500 }}>{subtitle}</p>
         )}
       </div>
 
