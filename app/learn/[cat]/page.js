@@ -3,25 +3,24 @@ import { useState, useEffect } from 'react';
 import { useRouter, useParams } from 'next/navigation';
 import Link from 'next/link';
 import { useAuth } from '@/lib/auth';
+import { useLang } from '@/lib/LangContext';
 import { findCategory } from '@/lib/courses';
 
-function speak(t) {
-  if (typeof window === 'undefined' || !window.speechSynthesis) return;
-  window.speechSynthesis.cancel();
-  const u = new SpeechSynthesisUtterance(t); u.lang = 'en-US'; u.rate = 0.9;
-  window.speechSynthesis.speak(u);
-}
-function loadProg() { try { return JSON.parse(localStorage.getItem('voca_learn_progress') || '{}'); } catch { return {}; } }
-function loadFav() { try { return JSON.parse(localStorage.getItem('voca_learn_fav') || '[]'); } catch { return []; } }
-
 const TABS = ['Үгс', 'Сураглах', 'Тест хийх', 'Тэмдэглэл'];
-const DAYS = ['Да', 'Мя', 'Лх', 'Пу', 'Ба', 'Бя', 'Ня'];
 
 export default function CategoryPage() {
   const { user, loading: authLoad } = useAuth();
+  const { lang, langInfo } = useLang();
   const router = useRouter();
   const { cat } = useParams();
-  const category = findCategory(cat);
+  const category = findCategory(lang, cat);
+
+  function speak(t) {
+    if (typeof window === 'undefined' || !window.speechSynthesis) return;
+    window.speechSynthesis.cancel();
+    const u = new SpeechSynthesisUtterance(t); u.lang = langInfo.sttLang; u.rate = 0.85;
+    window.speechSynthesis.speak(u);
+  }
 
   const [tab, setTab]   = useState('Үгс');
   const [q, setQ]       = useState('');
@@ -30,13 +29,20 @@ export default function CategoryPage() {
 
   useEffect(() => {
     if (!authLoad && !user) router.push('/login');
-    setProg(loadProg()); setFav(loadFav());
+    try { setProg(JSON.parse(localStorage.getItem('voca_learn_progress') || '{}')); } catch {}
+    try { setFav(JSON.parse(localStorage.getItem('voca_learn_fav') || '[]')); } catch {}
   }, [authLoad, user]);
 
   if (authLoad) return null;
-  if (!category) return <div style={{ padding: 40, textAlign: 'center' }}><h2>Ангилал олдсонгүй</h2><Link href="/learn" className="btn btn-purple" style={{ marginTop: 16, textDecoration: 'none' }}>Буцах</Link></div>;
+  if (!category || category.words.length === 0) return (
+    <div style={{ padding: 60, textAlign: 'center' }}>
+      <div style={{ fontSize: 48, marginBottom: 12 }}>{langInfo.flag}</div>
+      <h2 style={{ color: 'var(--text)', marginBottom: 8 }}>Энэ ангилал {langInfo.name} хэлээр удахгүй нэмэгдэнэ</h2>
+      <Link href="/learn" className="btn btn-purple" style={{ marginTop: 16, textDecoration: 'none' }}>Буцах</Link>
+    </div>
+  );
 
-  const catProg = prog[category.id] || {};
+  const catProg = prog[`${lang}:${category.id}`] || {};
   const learnedCount = Object.values(catProg).filter(w => w.learned).length;
   const masteredCount = Object.values(catProg).filter(w => w.rating === 'known').length;
   const learningCount = Object.values(catProg).filter(w => w.learned && w.rating !== 'known').length;
@@ -44,7 +50,7 @@ export default function CategoryPage() {
   const pct = Math.round((masteredCount / category.words.length) * 100);
 
   function toggleFav(wid) {
-    const key = `${category.id}:${wid}`;
+    const key = `${lang}:${category.id}:${wid}`;
     setFav(prev => {
       const next = prev.includes(key) ? prev.filter(x => x !== key) : [...prev, key];
       localStorage.setItem('voca_learn_fav', JSON.stringify(next));
@@ -94,7 +100,7 @@ export default function CategoryPage() {
             </div>
             <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
               {filtered.map(word => {
-                const isFav = fav.includes(`${category.id}:${word.id}`);
+                const isFav = fav.includes(`${lang}:${category.id}:${word.id}`);
                 const st = catProg[word.id];
                 return (
                   <div key={word.id} onClick={() => router.push(`/learn/${category.id}/${word.id}`)} className="card" style={{ display: 'flex', alignItems: 'center', gap: 14, padding: '13px 16px', cursor: 'pointer' }}
@@ -132,7 +138,7 @@ export default function CategoryPage() {
         {tab === 'Тест хийх' && <QuizTab category={category} />}
 
         {/* ── Тэмдэглэл ── */}
-        {tab === 'Тэмдэглэл' && <NotesTab category={category} />}
+        {tab === 'Тэмдэглэл' && <NotesTab category={category} lang={lang} />}
       </div>
 
       {/* ── Sidebar ── */}
@@ -220,10 +226,10 @@ function QuizTab({ category }) {
   );
 }
 
-function NotesTab({ category }) {
+function NotesTab({ category, lang }) {
   const [notes, setNotes] = useState({});
   useEffect(() => { try { setNotes(JSON.parse(localStorage.getItem('voca_word_notes') || '{}')); } catch {} }, []);
-  const entries = category.words.map(w => ({ w, note: notes[`${category.id}:${w.id}`] })).filter(e => e.note);
+  const entries = category.words.map(w => ({ w, note: notes[`${lang}:${category.id}:${w.id}`] })).filter(e => e.note);
   if (entries.length === 0) return <div className="card" style={{ textAlign: 'center', padding: 30 }}><div style={{ fontSize: 40, marginBottom: 10 }}>📝</div><p style={{ color: 'var(--muted)' }}>Одоогоор тэмдэглэл алга. Үгийн дэлгэрэнгүй хуудаснаас тэмдэглэл нэмээрэй.</p></div>;
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>

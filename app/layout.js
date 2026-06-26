@@ -1,6 +1,6 @@
 import './globals.css';
 import { AuthProvider } from '@/lib/auth';
-import Navbar from '@/components/Navbar';
+import { LangProvider } from '@/lib/LangContext';
 import { GoogleOAuthProvider } from '@react-oauth/google';
 import LayoutShell from '@/components/LayoutShell';
 
@@ -17,7 +17,9 @@ export default function RootLayout({ children }) {
       <body>
         <GoogleOAuthProvider clientId={GOOGLE_CLIENT_ID}>
           <AuthProvider>
-            <LayoutShell>{children}</LayoutShell>
+            <LangProvider>
+              <LayoutShell>{children}</LayoutShell>
+            </LangProvider>
           </AuthProvider>
         </GoogleOAuthProvider>
       </body>

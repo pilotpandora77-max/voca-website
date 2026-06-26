@@ -3,15 +3,9 @@ import { useState, useEffect } from 'react';
 import { useRouter, useParams } from 'next/navigation';
 import Link from 'next/link';
 import { useAuth } from '@/lib/auth';
+import { useLang } from '@/lib/LangContext';
 import api from '@/lib/api';
 import { findCategory } from '@/lib/courses';
-
-function speak(t) {
-  if (typeof window === 'undefined' || !window.speechSynthesis) return;
-  window.speechSynthesis.cancel();
-  const u = new SpeechSynthesisUtterance(t); u.lang = 'en-US'; u.rate = 0.9;
-  window.speechSynthesis.speak(u);
-}
 
 const RATINGS = [
   { key: 'again', label: 'Мэдэхгүй байна', sub: 'Дахин давтах', bg: '#FEF2F2', bd: '#FCA5A5', c: '#DC2626', emoji: '🙁' },
@@ -21,11 +15,19 @@ const RATINGS = [
 
 export default function WordPage() {
   const { user, loading: authLoad } = useAuth();
+  const { lang, langInfo } = useLang();
   const router = useRouter();
   const { cat, wid } = useParams();
-  const category = findCategory(cat);
+  const category = findCategory(lang, cat);
   const idx = category ? category.words.findIndex(w => w.id === wid) : -1;
   const word = idx >= 0 ? category.words[idx] : null;
+
+  function speak(t) {
+    if (typeof window === 'undefined' || !window.speechSynthesis) return;
+    window.speechSynthesis.cancel();
+    const u = new SpeechSynthesisUtterance(t); u.lang = langInfo.sttLang; u.rate = 0.85;
+    window.speechSynthesis.speak(u);
+  }
 
   const [fav, setFav]   = useState(false);
   const [note, setNote] = useState('');
@@ -39,19 +41,20 @@ export default function WordPage() {
     if (!category || !word) return;
     try {
       const favs = JSON.parse(localStorage.getItem('voca_learn_fav') || '[]');
-      setFav(favs.includes(`${cat}:${wid}`));
+      setFav(favs.includes(`${lang}:${cat}:${wid}`));
       const notes = JSON.parse(localStorage.getItem('voca_word_notes') || '{}');
-      const n = notes[`${cat}:${wid}`] || '';
+      const n = notes[`${lang}:${cat}:${wid}`] || '';
       setNote(n); setSavedNote(n);
     } catch {}
     // mark as learned (viewed)
     try {
       const prog = JSON.parse(localStorage.getItem('voca_learn_progress') || '{}');
-      const cp = prog[cat] || {};
-      if (!cp[wid]?.learned) { cp[wid] = { ...cp[wid], learned: true }; prog[cat] = cp; localStorage.setItem('voca_learn_progress', JSON.stringify(prog)); }
+      const ck = `${lang}:${cat}`;
+      const cp = prog[ck] || {};
+      if (!cp[wid]?.learned) { cp[wid] = { ...cp[wid], learned: true }; prog[ck] = cp; localStorage.setItem('voca_learn_progress', JSON.stringify(prog)); }
     } catch {}
-    speak(word.word);
-  }, [cat, wid]);
+    speak(word.target);
+  }, [cat, wid, lang]);
 
   if (authLoad) return null;
   if (!category || !word) return <div style={{ padding: 40, textAlign: 'center' }}><h2>Үг олдсонгүй</h2><Link href="/learn" className="btn btn-purple" style={{ marginTop: 16, textDecoration: 'none' }}>Буцах</Link></div>;
@@ -62,7 +65,7 @@ export default function WordPage() {
   function toggleFav() {
     try {
       const favs = JSON.parse(localStorage.getItem('voca_learn_fav') || '[]');
-      const key = `${cat}:${wid}`;
+      const key = `${lang}:${cat}:${wid}`;
       const nx = favs.includes(key) ? favs.filter(x => x !== key) : [...favs, key];
       localStorage.setItem('voca_learn_fav', JSON.stringify(nx));
       setFav(nx.includes(key));
@@ -71,7 +74,7 @@ export default function WordPage() {
   function saveNote() {
     try {
       const notes = JSON.parse(localStorage.getItem('voca_word_notes') || '{}');
-      notes[`${cat}:${wid}`] = note;
+      notes[`${lang}:${cat}:${wid}`] = note;
       localStorage.setItem('voca_word_notes', JSON.stringify(notes));
       setSavedNote(note);
     } catch {}
@@ -79,13 +82,14 @@ export default function WordPage() {
   function rate(key) {
     try {
       const prog = JSON.parse(localStorage.getItem('voca_learn_progress') || '{}');
-      const cp = prog[cat] || {};
+      const ck = `${lang}:${cat}`;
+      const cp = prog[ck] || {};
       cp[wid] = { ...cp[wid], learned: true, rating: key, ratedAt: Date.now() };
-      prog[cat] = cp; localStorage.setItem('voca_learn_progress', JSON.stringify(prog));
+      prog[ck] = cp; localStorage.setItem('voca_learn_progress', JSON.stringify(prog));
     } catch {}
-    // optionally save to backend vocab
+    // save to backend vocab
     if (key !== 'again') {
-      api.post('/api/words', { front: word.word, back: word.mn, hint: word.ipa, word: word.word, meaning: word.mn, reading: word.ipa, lang: 'en' }).catch(() => {});
+      api.post('/api/words', { front: word.target, back: word.mn, hint: word.reading, word: word.target, meaning: word.mn, reading: word.reading, lang }).catch(() => {});
     }
     if (next) router.push(`/learn/${cat}/${next.id}`);
     else router.push(`/learn/${cat}`);

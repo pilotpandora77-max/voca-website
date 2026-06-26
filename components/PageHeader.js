@@ -1,6 +1,7 @@
 'use client';
 import { useAuth } from '@/lib/auth';
 import Link from 'next/link';
+import CourseSelector from '@/components/CourseSelector';
 
 export default function PageHeader({ title, subtitle, streak = 0, actions, dark = false }) {
   const { user } = useAuth();
@@ -28,6 +29,9 @@ export default function PageHeader({ title, subtitle, streak = 0, actions, dark 
 
       <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexShrink: 0, paddingTop: 2 }}>
         {actions}
+
+        {/* Course / language selector */}
+        <CourseSelector />
 
         {/* Streak */}
         <div style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '6px 12px', borderRadius: 10, background: '#FEF3C7', border: '1.5px solid #F59E0B22' }}>

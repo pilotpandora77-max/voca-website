@@ -3,40 +3,41 @@ import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { useAuth } from '@/lib/auth';
+import { useLang } from '@/lib/LangContext';
 import api from '@/lib/api';
 import PageHeader from '@/components/PageHeader';
-import CATEGORIES from '@/lib/courses';
-
-export function loadProgress() {
-  try { return JSON.parse(localStorage.getItem('voca_learn_progress') || '{}'); } catch { return {}; }
-}
+import { getCourses } from '@/lib/courses';
 
 export default function LearnPage() {
   const { user, loading: authLoad } = useAuth();
+  const { lang, langInfo } = useLang();
   const router = useRouter();
   const [streak, setStreak] = useState(0);
   const [prog, setProg]     = useState({});
 
+  const CATEGORIES = getCourses(lang);
+
   useEffect(() => {
     if (!authLoad && !user) router.push('/login');
     if (!authLoad && user) api.get('/api/streak').then(r => setStreak(r.data.streak || 0)).catch(() => {});
-    setProg(loadProgress());
+    try { setProg(JSON.parse(localStorage.getItem('voca_learn_progress') || '{}')); } catch {}
   }, [authLoad, user]);
 
   if (authLoad) return null;
 
-  const totalLearned = Object.values(prog).reduce((a, c) => a + Object.values(c).filter(w => w.learned).length, 0);
+  const lp = k => prog[`${lang}:${k}`] || {};
+  const totalLearned = CATEGORIES.reduce((a, c) => a + Object.values(lp(c.id)).filter(w => w.learned).length, 0);
   const todayGoal = 20;
 
   return (
     <div style={{ paddingBottom: 90 }}>
-      <PageHeader title="Ангилалууд" subtitle="Өдөр тутмын амьдралд хэрэгтэй үгсийг сэдвээр нь судлаарай." streak={streak} />
+      <PageHeader title={`Ангилалууд ${langInfo.flag}`} subtitle={`${langInfo.name} хэлний өдөр тутмын хэрэгтэй үгсийг сэдвээр нь судлаарай.`} streak={streak} />
 
       <div style={{ padding: '0 28px' }}>
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(210px, 1fr))', gap: 16 }}>
           {CATEGORIES.map(c => {
-            const learned = Object.values(prog[c.id] || {}).filter(w => w.learned).length;
-            const pct = Math.round((learned / c.words.length) * 100);
+            const learned = Object.values(lp(c.id)).filter(w => w.learned).length;
+            const pct = c.words.length ? Math.round((learned / c.words.length) * 100) : 0;
             return (
               <Link key={c.id} href={`/learn/${c.id}`} style={{
                 textDecoration: 'none', background: `linear-gradient(160deg, ${c.color}14, ${c.color}06)`,
