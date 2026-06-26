@@ -8,8 +8,9 @@ import api from '@/lib/api';
 const NAV = [
   { href: '/',           icon: '🏠', label: 'Нүүр' },
   { href: '/dictionary', icon: '📖', label: 'Толь' },
+  { href: '/learn',      icon: '📚', label: 'Ангилал' },
   { href: '/reel',       icon: '▶', label: 'Reel' },
-  { href: '/vocab',      icon: '📚', label: 'Үгс' },
+  { href: '/vocab',      icon: '📝', label: 'Үгс' },
   { href: '/games',      icon: '🎮', label: 'Тоглоом' },
   { href: '/hanzi',      icon: '汉', label: 'Ханз' },
   { href: '/memory',     icon: '🧠', label: 'Ой тогтоолт' },
