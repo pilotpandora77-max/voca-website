@@ -12,6 +12,7 @@ const NAV = [
   { href: '/vocab',      icon: '📚', label: 'Үгс' },
   { href: '/games',      icon: '🎮', label: 'Тоглоом' },
   { href: '/hanzi',      icon: '汉', label: 'Ханз' },
+  { href: '/memory',     icon: '🧠', label: 'Ой тогтоолт' },
   { href: '/leaderboard',icon: '🏆', label: 'Эрэмбэ' },
   { href: '/social',     icon: '👥', label: 'Нийгэм' },
   { href: '/pricing',    icon: '👑', label: 'Төлбөр' },
