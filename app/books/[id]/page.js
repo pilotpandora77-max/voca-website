@@ -18,7 +18,6 @@ export default function BookDetail() {
   const [bm, setBm]   = useState(false);
   const [note, setNote] = useState('');
   const [savedNote, setSaved] = useState('');
-  const [progress, setProgress] = useState(0);
 
   useEffect(() => {
     if (!authLoad && !user) router.push('/login');
@@ -30,8 +29,6 @@ export default function BookDetail() {
       setBm(JSON.parse(localStorage.getItem('voca_book_bm') || '[]').includes(id));
       const notes = JSON.parse(localStorage.getItem('voca_book_notes') || '{}');
       setNote(notes[id] || ''); setSaved(notes[id] || '');
-      const prog = JSON.parse(localStorage.getItem('voca_book_progress') || '{}');
-      setProgress(prog[id] || 0);
     } catch {}
   }, [id]);
 
@@ -43,12 +40,6 @@ export default function BookDetail() {
   }
   function saveNote() {
     try { const notes = JSON.parse(localStorage.getItem('voca_book_notes') || '{}'); notes[id] = note; localStorage.setItem('voca_book_notes', JSON.stringify(notes)); setSaved(note); } catch {}
-  }
-  function startReading() {
-    const next = Math.min(progress + 15, 100);
-    try { const p = JSON.parse(localStorage.getItem('voca_book_progress') || '{}'); p[id] = next; localStorage.setItem('voca_book_progress', JSON.stringify(p)); } catch {}
-    setProgress(next);
-    alert(`📖 "${book.title}" уншиж эхэллээ!\n\nУншигч (Smart Reader) удахгүй нэмэгдэнэ — AI тайлбар, highlight, толь бичиг, тэмдэглэл бүхий.`);
   }
 
   const similar = (book.similar || []).map(findBook).filter(Boolean);
@@ -73,8 +64,7 @@ export default function BookDetail() {
             {book.tags.map(t => <span key={t} className="tag tag-purple">{t}</span>)}
           </div>
           <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap' }}>
-            <button onClick={startReading} className="btn btn-purple" style={{ padding: '13px 26px', fontSize: 14 }}>{progress > 0 ? '📖 Үргэлжлүүлэх' : '📖 Унших'}</button>
-            <button onClick={toggleBm} className="btn btn-ghost" style={{ padding: '13px 22px', fontSize: 14 }}>{bm ? '🔖 Хадгалсан' : '🏷️ Дараа унших'}</button>
+            <button onClick={toggleBm} className="btn btn-purple" style={{ padding: '13px 26px', fontSize: 14 }}>{bm ? '🔖 Хадгалсан' : '🏷️ Хадгалах'}</button>
           </div>
         </div>
       </div>
@@ -186,17 +176,6 @@ export default function BookDetail() {
 
         {/* ── Sidebar ── */}
         <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
-          {/* Reading progress */}
-          <div className="card">
-            <h3 style={{ fontWeight: 900, fontSize: 14, color: 'var(--text)', marginBottom: 12 }}>Уншиж буй хэсэг</h3>
-            <div style={{ fontSize: 13, color: 'var(--text-sub)', fontWeight: 600, marginBottom: 8 }}>{progress > 0 ? `${Math.ceil(progress / 15)}-р бүлэг` : 'Эхлээгүй'}</div>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 14 }}>
-              <div style={{ flex: 1, height: 8, background: 'var(--bg-alt)', borderRadius: 6, overflow: 'hidden' }}><div style={{ height: '100%', width: `${progress}%`, background: 'var(--purple)', borderRadius: 6 }} /></div>
-              <span style={{ fontSize: 12, fontWeight: 800, color: 'var(--purple)' }}>{progress}%</span>
-            </div>
-            <button onClick={startReading} className="btn btn-ghost" style={{ width: '100%' }}>{progress > 0 ? 'Үргэлжлүүлэх' : 'Унших'}</button>
-          </div>
-
           {/* TOC */}
           {book.toc.length > 0 && (
             <div className="card">
