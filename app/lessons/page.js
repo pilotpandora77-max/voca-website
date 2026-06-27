@@ -3,6 +3,7 @@ import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { useAuth } from '@/lib/auth';
+import { useLang } from '@/lib/LangContext';
 import api from '@/lib/api';
 import PageHeader from '@/components/PageHeader';
 
@@ -41,10 +42,13 @@ const TODAY_PLAN = [
 
 export default function LessonsPage() {
   const { user, loading: authLoad } = useAuth();
+  const { lang } = useLang();
   const router = useRouter();
   const [streak, setStreak] = useState(0);
   const [stats, setStats]   = useState(null);
   const [tab, setTab]       = useState('Бүх төрлүүд');
+  // Хятад горимд HSK дүрэм, бусад хэлэнд CEFR (Англи) дүрэм
+  const grammarHref = lang === 'zh' ? '/grammar' : '/grammar-lessons';
 
   useEffect(() => {
     if (!authLoad && !user) router.push('/login');
@@ -111,16 +115,16 @@ export default function LessonsPage() {
                     <div key={x} style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 13, color: 'var(--text-sub)', fontWeight: 600 }}><span style={{ color: 'var(--green)' }}>✓</span> {x}</div>
                   ))}
                 </div>
-                <Link href="/grammar-lessons" className="btn btn-purple" style={{ textDecoration: 'none', padding: '11px 20px' }}>Дүрмийн хичээл рүү →</Link>
+                <Link href={grammarHref} className="btn btn-purple" style={{ textDecoration: 'none', padding: '11px 20px' }}>Дүрмийн хичээл рүү →</Link>
               </div>
               <div style={{ flex: 1, minWidth: 280 }}>
                 <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12 }}>
                   <span style={{ fontWeight: 800, fontSize: 13.5, color: 'var(--text)' }}>Санал болгож буй дүрмүүд</span>
-                  <Link href="/grammar-lessons" style={{ fontSize: 12, color: 'var(--purple)', fontWeight: 700, textDecoration: 'none' }}>Бүгдийг харах →</Link>
+                  <Link href={grammarHref} style={{ fontSize: 12, color: 'var(--purple)', fontWeight: 700, textDecoration: 'none' }}>Бүгдийг харах →</Link>
                 </div>
                 <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(130px, 1fr))', gap: 10 }}>
                   {GRAMMAR_PREVIEW.map(g => (
-                    <Link key={g.title} href="/grammar-lessons" style={{ textDecoration: 'none', background: '#fff', border: '1.5px solid var(--border)', borderRadius: 12, padding: '12px' }}>
+                    <Link key={g.title} href={grammarHref} style={{ textDecoration: 'none', background: '#fff', border: '1.5px solid var(--border)', borderRadius: 12, padding: '12px' }}>
                       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 8 }}>
                         <span style={{ fontSize: 12, fontWeight: 800, color: 'var(--text)', lineHeight: 1.3 }}>{g.title}</span>
                         <span style={{ fontSize: 9, fontWeight: 800, color: g.color, background: `${g.color}18`, borderRadius: 5, padding: '1px 5px', flexShrink: 0 }}>{g.level}</span>

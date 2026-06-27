@@ -62,13 +62,7 @@ export default function Navbar() {
         {/* Logo */}
         <div style={{ padding: '20px 18px 16px' }}>
           <Link href="/" style={{ textDecoration: 'none', display: 'flex', alignItems: 'center', gap: 10 }}>
-            <div style={{
-              width: 36, height: 36, borderRadius: 10,
-              background: 'linear-gradient(135deg, #7C3AED, #6D28D9)',
-              display: 'flex', alignItems: 'center', justifyContent: 'center',
-              fontSize: 18, fontWeight: 900, color: '#fff',
-              boxShadow: '0 4px 12px rgba(124,58,237,0.35)',
-            }}>V</div>
+            <img src="/voca-logo.svg" alt="VOCA" width={38} height={38} style={{ borderRadius: '50%', boxShadow: '0 4px 12px rgba(124,58,237,0.35)' }} />
             <span style={{ fontSize: 22, fontWeight: 900, color: '#7C3AED', letterSpacing: -0.5 }}>voca</span>
           </Link>
         </div>

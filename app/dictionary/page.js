@@ -4,6 +4,19 @@ import { useRouter } from 'next/navigation';
 import { useAuth } from '@/lib/auth';
 import api from '@/lib/api';
 import PageHeader from '@/components/PageHeader';
+import { getCourses } from '@/lib/courses';
+
+// Pinyin аялгын тэмдгийг арилгах
+function stripTone(s = '') {
+  return s.normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[\s'\u00b7-]/g, '').toLowerCase();
+}
+
+// Локал хайлтын сан — курсын Хятад үгсээс
+const LOCAL_ZH = getCourses('zh').flatMap(c => c.words).map(w => ({
+  simplified: w.target, traditional: w.target, pinyin: w.reading, reading: w.reading,
+  mn: w.mn, meaning: w.mn, english: w.target, definitions: [w.mn],
+  examples: w.examples, hsk: 'HSK 1',
+}));
 
 function HanziAnimate({ char, size = 230 }) {
   const containerRef = useRef(null);
@@ -163,16 +176,35 @@ export default function DictionaryPage() {
 
       // MN_ZH-д олдоогүй бол backend-рүү хайна (ханз/pinyin/backend mn field)
       if (list.length === 0) {
-        const { data } = await api.get(`/api/dictionary?q=${encodeURIComponent(q)}`);
-        list = Array.isArray(data) ? data : (data && !data.error ? [data] : []);
+        try {
+          const { data } = await api.get(`/api/dictionary?q=${encodeURIComponent(q)}`);
+          list = Array.isArray(data) ? data : (data && !data.error ? [data] : []);
+        } catch {}
+      }
+
+      // Backend хоосон бол локал (курсын) сангаас pinyin/ханз/монголоор хайна
+      if (list.length === 0) {
+        list = localSearch(q, lang);
       }
 
       setResults(list);
       if (list.length === 1) setSelected(list[0]);
     } catch {
-      setResults([]);
+      setResults(localSearch(q, detectLang(q)));
     }
     setLoading(false);
+  }
+
+  function localSearch(q, lang) {
+    const nq = stripTone(q);
+    return LOCAL_ZH.filter(w => {
+      if (lang === 'zh') return w.simplified.includes(q);
+      if (lang === 'pinyin') return stripTone(w.pinyin).includes(nq);
+      if (lang === 'en') return (w.english || '').toLowerCase().includes(q.toLowerCase());
+      if (lang === 'mn') return (w.mn || '').toLowerCase().includes(q.toLowerCase());
+      // auto: бүгдээр
+      return w.simplified.includes(q) || stripTone(w.pinyin).includes(nq) || (w.mn || '').toLowerCase().includes(q.toLowerCase());
+    }).slice(0, 20);
   }
 
   async function addToVocab(word) {

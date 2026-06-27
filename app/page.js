@@ -18,7 +18,7 @@ const DAILY_GOALS = [
 const QUICK_ACTIONS = [
   { icon: '🃏', label: 'Давтах', sub: 'Карт давтах', href: '/vocab/practice', color: '#7C3AED', bg: '#EDE9FF' },
   { icon: '🎮', label: 'Тоглоом', sub: 'Суралцаж тоглоё', href: '/games', color: '#10B981', bg: '#ECFDF5' },
-  { icon: '🎓', label: 'Хичээл', sub: 'Сэдвээр суралцах', href: '/grammar', color: '#3B82F6', bg: '#EFF6FF' },
+  { icon: '🎓', label: 'Хичээл', sub: 'Сэдвээр суралцах', href: '/lessons', color: '#3B82F6', bg: '#EFF6FF' },
   { icon: '📖', label: 'Толь', sub: 'Хайх & олох', href: '/dictionary', color: '#F59E0B', bg: '#FEF3C7' },
 ];
 
