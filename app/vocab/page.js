@@ -63,8 +63,13 @@ export default function VocabPage() {
   const [aiLoading, setAiLoad]    = useState(false);
   const [expandedId, setExp]      = useState(null);
   const [calDays, setCalDays]     = useState([]);
-  const [groups, setGroups]       = useState([]);     // [{id,name,wordIds:[]}]
+  const [groups, setGroups]       = useState([]);     // [{id,name,color,wordIds:[]}]
   const [activeGroup, setActiveGr]= useState(null);   // group id
+  const [showGroupModal, setShowGroupModal] = useState(false);
+  const [newGroupName, setNewGroupName] = useState('');
+  const [newGroupColor, setNewGroupColor] = useState('#7C3AED');
+  const [addToGroupId, setAddToGroupId] = useState(null); // group id for "add words" modal
+  const [addToGroupSearch, setAtgSearch] = useState('');
 
   useEffect(() => {
     if (!authLoad && !user) router.push('/login');
@@ -72,13 +77,18 @@ export default function VocabPage() {
     try { setGroups(JSON.parse(localStorage.getItem('voca_word_groups') || '[]')); } catch {}
   }, [authLoad, user]);
 
+  const GROUP_COLORS = ['#7C3AED', '#EC4899', '#10B981', '#F59E0B', '#3B82F6', '#EF4444', '#14B8A6', '#8B5CF6'];
   function saveGroups(g) { setGroups(g); localStorage.setItem('voca_word_groups', JSON.stringify(g)); }
-  function createGroup() {
-    const name = prompt('Бүлгийн нэр:'); if (!name?.trim()) return;
-    saveGroups([...groups, { id: Date.now(), name: name.trim(), wordIds: [] }]);
+  function openCreateGroup() { setNewGroupName(''); setNewGroupColor(GROUP_COLORS[groups.length % GROUP_COLORS.length]); setShowGroupModal(true); }
+  function confirmCreateGroup() {
+    if (!newGroupName.trim()) { alert('Бүлгийн нэр оруулна уу.'); return; }
+    const g = { id: Date.now(), name: newGroupName.trim(), color: newGroupColor, wordIds: [] };
+    saveGroups([...groups, g]);
+    setShowGroupModal(false);
+    setActiveGr(g.id);
   }
   function deleteGroup(id) {
-    if (!confirm('Энэ бүлгийг устгах уу?')) return;
+    if (!confirm('Энэ бүлгийг устгах уу? (Үгс устахгүй)')) return;
     saveGroups(groups.filter(g => g.id !== id));
     if (activeGroup === id) setActiveGr(null);
   }
@@ -168,6 +178,8 @@ export default function VocabPage() {
       const local = JSON.parse(localStorage.getItem('voca_local_words') || '[]');
       localStorage.setItem('voca_local_words', JSON.stringify([added, ...local]));
     } catch {}
+    // Идэвхтэй бүлэг байвал шинэ үгийг түүнд автоматаар нэмнэ
+    if (activeGroup) toggleWordInGroup(activeGroup, localId);
     setNewWord({ front: '', back: '', hint: '' });
     setShowAdd(false);
     setAddLoad(false);
@@ -285,14 +297,33 @@ export default function VocabPage() {
           </div>
 
           {/* Groups bar */}
-          <div style={{ display: 'flex', gap: 6, marginBottom: 10, overflowX: 'auto', paddingBottom: 4, alignItems: 'center' }}>
+          <div style={{ display: 'flex', gap: 8, marginBottom: 10, overflowX: 'auto', paddingBottom: 4, alignItems: 'center' }}>
             <span style={{ fontSize: 12, fontWeight: 800, color: 'var(--muted)', flexShrink: 0 }}>📁 Бүлэг:</span>
-            <button onClick={() => setActiveGr(null)} style={{ padding: '6px 13px', borderRadius: 100, fontSize: 12, fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit', border: '1.5px solid var(--border)', whiteSpace: 'nowrap', background: !activeGroup ? 'var(--purple-light)' : '#fff', color: !activeGroup ? 'var(--purple)' : 'var(--text-sub)' }}>Бүх үг</button>
+            <button onClick={() => setActiveGr(null)} style={{ padding: '7px 14px', borderRadius: 100, fontSize: 12, fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit', border: `1.5px solid ${!activeGroup ? 'var(--purple)' : 'var(--border)'}`, whiteSpace: 'nowrap', background: !activeGroup ? 'var(--purple-light)' : '#fff', color: !activeGroup ? 'var(--purple)' : 'var(--text-sub)' }}>Бүх үг ({stats.total})</button>
             {groups.map(g => (
-              <button key={g.id} onClick={() => setActiveGr(g.id)} onDoubleClick={() => deleteGroup(g.id)} title="Устгахын тулд давхар дар" style={{ padding: '6px 13px', borderRadius: 100, fontSize: 12, fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit', border: '1.5px solid var(--border)', whiteSpace: 'nowrap', background: activeGroup === g.id ? 'var(--purple-light)' : '#fff', color: activeGroup === g.id ? 'var(--purple)' : 'var(--text-sub)' }}>{g.name} ({g.wordIds.length})</button>
+              <button key={g.id} onClick={() => setActiveGr(g.id)} style={{ display: 'flex', alignItems: 'center', gap: 7, padding: '7px 14px', borderRadius: 100, fontSize: 12, fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit', border: `1.5px solid ${activeGroup === g.id ? g.color : 'var(--border)'}`, whiteSpace: 'nowrap', background: activeGroup === g.id ? `${g.color}18` : '#fff', color: activeGroup === g.id ? g.color : 'var(--text-sub)' }}>
+                <span style={{ width: 9, height: 9, borderRadius: '50%', background: g.color || 'var(--purple)' }} />{g.name} ({g.wordIds.length})
+              </button>
             ))}
-            <button onClick={createGroup} style={{ padding: '6px 13px', borderRadius: 100, fontSize: 12, fontWeight: 800, cursor: 'pointer', fontFamily: 'inherit', border: '1.5px dashed var(--purple-mid)', whiteSpace: 'nowrap', background: '#fff', color: 'var(--purple)' }}>➕ Бүлэг үүсгэх</button>
+            <button onClick={openCreateGroup} style={{ padding: '7px 14px', borderRadius: 100, fontSize: 12, fontWeight: 800, cursor: 'pointer', fontFamily: 'inherit', border: '1.5px dashed var(--purple-mid)', whiteSpace: 'nowrap', background: '#fff', color: 'var(--purple)' }}>➕ Шинэ бүлэг</button>
           </div>
+
+          {/* Active group banner */}
+          {activeGroup && (() => {
+            const g = groups.find(x => x.id === activeGroup); if (!g) return null;
+            return (
+              <div style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '12px 16px', borderRadius: 14, marginBottom: 12, background: `${g.color}12`, border: `1.5px solid ${g.color}44`, flexWrap: 'wrap' }}>
+                <div style={{ width: 36, height: 36, borderRadius: 10, background: g.color, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 18, color: '#fff', flexShrink: 0 }}>📁</div>
+                <div style={{ flex: 1, minWidth: 120 }}>
+                  <div style={{ fontWeight: 900, fontSize: 15, color: 'var(--text)' }}>{g.name}</div>
+                  <div style={{ fontSize: 12, color: 'var(--muted)', fontWeight: 600 }}>{g.wordIds.length} үг</div>
+                </div>
+                <button onClick={() => { setAtgSearch(''); setAddToGroupId(g.id); }} className="btn btn-purple" style={{ padding: '8px 16px', fontSize: 12.5 }}>➕ Үг нэмэх</button>
+                {g.wordIds.length >= 4 && <button onClick={() => router.push('/vocab/practice')} className="btn btn-ghost" style={{ padding: '8px 16px', fontSize: 12.5 }}>🎮 Тоглох</button>}
+                <button onClick={() => deleteGroup(g.id)} className="btn btn-ghost" style={{ padding: '8px 12px', fontSize: 12.5, color: 'var(--red)' }}>🗑️</button>
+              </div>
+            );
+          })()}
 
           {/* Tabs */}
           <div style={{ display: 'flex', gap: 6, marginBottom: 14, overflowX: 'auto', paddingBottom: 4 }}>
@@ -496,6 +527,7 @@ export default function VocabPage() {
                 <input type="text" value={newWord.hint} onChange={e => setNewWord(n => ({ ...n, hint: e.target.value }))} placeholder="ж: nǐ hǎo" />
               </div>
             </div>
+            {activeGroup && (() => { const g = groups.find(x => x.id === activeGroup); return g ? <div style={{ fontSize: 12, color: g.color, fontWeight: 700, marginBottom: 12 }}>📁 "{g.name}" бүлэгт нэмэгдэнэ</div> : null; })()}
             <div style={{ display: 'flex', gap: 10 }}>
               <button className="btn btn-ghost" onClick={() => setShowAdd(false)} style={{ flex: 1 }}>Болих</button>
               <button className="btn btn-purple" onClick={addWord} disabled={addLoading} style={{ flex: 1 }}>
@@ -505,6 +537,71 @@ export default function VocabPage() {
           </div>
         </div>
       )}
+
+      {/* Create group modal */}
+      {showGroupModal && (
+        <div style={{ position: 'fixed', inset: 0, background: 'rgba(15,10,30,0.4)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 500, backdropFilter: 'blur(4px)' }}
+          onClick={e => { if (e.target === e.currentTarget) setShowGroupModal(false); }}>
+          <div className="card" style={{ width: 380, padding: 28, maxWidth: '90vw' }}>
+            <h2 style={{ fontWeight: 900, fontSize: 18, marginBottom: 4 }}>📁 Шинэ бүлэг үүсгэх</h2>
+            <p style={{ fontSize: 12.5, color: 'var(--muted)', marginBottom: 18 }}>Үгсээ сэдвээр нь бүлэглэж, тусад нь сурах боломжтой.</p>
+            <label style={{ fontWeight: 700, fontSize: 13, color: 'var(--text-sub)', display: 'block', marginBottom: 6 }}>Бүлгийн нэр</label>
+            <input type="text" value={newGroupName} autoFocus onChange={e => setNewGroupName(e.target.value)} onKeyDown={e => { if (e.key === 'Enter') confirmCreateGroup(); }} placeholder="ж: HSK 1 үгс, Аяллын үгс" style={{ marginBottom: 16 }} />
+            <label style={{ fontWeight: 700, fontSize: 13, color: 'var(--text-sub)', display: 'block', marginBottom: 8 }}>Өнгө</label>
+            <div style={{ display: 'flex', gap: 10, marginBottom: 22 }}>
+              {GROUP_COLORS.map(c => (
+                <button key={c} onClick={() => setNewGroupColor(c)} style={{ width: 30, height: 30, borderRadius: '50%', background: c, cursor: 'pointer', border: newGroupColor === c ? '3px solid #fff' : '2px solid transparent', boxShadow: newGroupColor === c ? `0 0 0 2px ${c}` : 'none' }} />
+              ))}
+            </div>
+            <div style={{ display: 'flex', gap: 10 }}>
+              <button className="btn btn-ghost" onClick={() => setShowGroupModal(false)} style={{ flex: 1 }}>Болих</button>
+              <button className="btn btn-purple" onClick={confirmCreateGroup} style={{ flex: 1 }}>Үүсгэх</button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Add words to group modal */}
+      {addToGroupId && (() => {
+        const g = groups.find(x => x.id === addToGroupId); if (!g) return null;
+        const q = addToGroupSearch.toLowerCase();
+        const list = words.filter(w => {
+          const f = (w.front || w.word || ''), b = (w.back || w.meaning || '');
+          return !q || f.toLowerCase().includes(q) || b.toLowerCase().includes(q);
+        });
+        return (
+          <div style={{ position: 'fixed', inset: 0, background: 'rgba(15,10,30,0.4)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 500, backdropFilter: 'blur(4px)' }}
+            onClick={e => { if (e.target === e.currentTarget) setAddToGroupId(null); }}>
+            <div className="card" style={{ width: 480, maxWidth: '92vw', padding: 24, maxHeight: '80vh', display: 'flex', flexDirection: 'column' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 6 }}>
+                <span style={{ width: 12, height: 12, borderRadius: '50%', background: g.color }} />
+                <h2 style={{ fontWeight: 900, fontSize: 17 }}>"{g.name}" бүлэгт үг нэмэх</h2>
+              </div>
+              <p style={{ fontSize: 12.5, color: 'var(--muted)', marginBottom: 14 }}>Үгсээ сонгож тэмдэглэнэ үү. (Эсвэл "Шинэ үг нэмэх"-ээр шинээр нэмж болно)</p>
+              <input type="text" value={addToGroupSearch} onChange={e => setAtgSearch(e.target.value)} placeholder="Үг хайх..." style={{ marginBottom: 12 }} />
+              <div style={{ flex: 1, overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: 6 }}>
+                {list.length === 0 && <p style={{ color: 'var(--muted)', textAlign: 'center', padding: 20, fontSize: 13 }}>Үг алга. Эхлээд үг нэмнэ үү.</p>}
+                {list.map(w => {
+                  const wid = w._id || w.id;
+                  const inG = g.wordIds.includes(wid);
+                  const f = w.front || w.word || '', b = w.back || w.meaning || '';
+                  return (
+                    <div key={wid} onClick={() => toggleWordInGroup(g.id, wid)} style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '10px 12px', borderRadius: 10, cursor: 'pointer', border: `1.5px solid ${inG ? g.color : 'var(--border)'}`, background: inG ? `${g.color}12` : '#fff' }}>
+                      <span style={{ width: 20, height: 20, borderRadius: 6, border: `2px solid ${inG ? g.color : 'var(--border)'}`, background: inG ? g.color : '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#fff', fontSize: 12, fontWeight: 900, flexShrink: 0 }}>{inG ? '✓' : ''}</span>
+                      <span style={{ fontWeight: 800, fontSize: 15, color: 'var(--text)' }}>{f}</span>
+                      <span style={{ fontSize: 13, color: 'var(--text-sub)' }}>{b}</span>
+                    </div>
+                  );
+                })}
+              </div>
+              <div style={{ display: 'flex', gap: 10, marginTop: 14 }}>
+                <button className="btn btn-ghost" onClick={() => { setAddToGroupId(null); setShowAdd(true); }} style={{ flex: 1 }}>➕ Шинэ үг үүсгэх</button>
+                <button className="btn btn-purple" onClick={() => setAddToGroupId(null)} style={{ flex: 1 }}>Болсон</button>
+              </div>
+            </div>
+          </div>
+        );
+      })()}
     </div>
   );
 }
