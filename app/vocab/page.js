@@ -90,9 +90,15 @@ export default function VocabPage() {
         api.get('/api/streak').catch(() => ({ data: { streak: 0 } })),
       ]);
       const wList = Array.isArray(wRes.data) ? wRes.data : [];
-      setWords(wList);
+      // Локал нэмсэн үгсийг нэгтгэх (backend амжаагүй ч хадгалагдсан байх)
+      let local = [];
+      try { local = JSON.parse(localStorage.getItem('voca_local_words') || '[]'); } catch {}
+      const keyset = new Set(wList.map(w => `${w.front || w.word || ''}|${w.back || w.meaning || ''}`));
+      const extra = local.filter(w => !keyset.has(`${w.front || ''}|${w.back || ''}`));
+      const merged = [...extra, ...wList];
+      setWords(merged);
       setStats({
-        total:   wList.length,
+        total:   merged.length,
         learned: wList.filter(w => w.status === 'learning' || w.status === 'review').length,
         review:  wList.filter(w => w.status === 'review').length,
         known:   wList.filter(w => w.status === 'known').length,
@@ -116,29 +122,44 @@ export default function VocabPage() {
   async function addWord() {
     if (!newWord.front.trim() || !newWord.back.trim()) return;
     setAddLoad(true);
+    const payload = {
+      front: newWord.front, back: newWord.back, hint: newWord.hint,
+      word: newWord.front, meaning: newWord.back, reading: newWord.hint, lang: 'zh',
+    };
+    // 1) Optimistic — шууд харагдана, localStorage-д хадгална (backend амжаагүй ч)
+    const localId = 'local-' + Date.now();
+    const added = { ...payload, _id: localId, id: localId, status: 'new' };
+    setWords(w => [added, ...w]);
+    setStats(s => ({ ...s, total: s.total + 1 }));
     try {
-      const payload = {
-        front: newWord.front, back: newWord.back, hint: newWord.hint,
-        word: newWord.front, meaning: newWord.back, reading: newWord.hint, lang: 'zh',
-      };
-      const { data } = await api.post('/api/words', payload);
-      // Optimistic-аар хариу шаардлагатай field-үүдийг баталгаажуулна
-      const added = { ...payload, ...(data || {}) };
-      setWords(w => [added, ...w]);
-      setStats(s => ({ ...s, total: s.total + 1 }));
-      setNewWord({ front: '', back: '', hint: '' });
-      setShowAdd(false);
-    } catch (e) { alert(e.response?.data?.error || 'Үг нэмэхэд алдаа гарлаа'); }
+      const local = JSON.parse(localStorage.getItem('voca_local_words') || '[]');
+      localStorage.setItem('voca_local_words', JSON.stringify([added, ...local]));
+    } catch {}
+    setNewWord({ front: '', back: '', hint: '' });
+    setShowAdd(false);
     setAddLoad(false);
+    // 2) Backend рүү хадгалах оролдлого (амжвал локал хувийг арилгана)
+    try {
+      const { data } = await api.post('/api/words', payload);
+      if (data && (data._id || data.id)) {
+        const local = JSON.parse(localStorage.getItem('voca_local_words') || '[]');
+        localStorage.setItem('voca_local_words', JSON.stringify(local.filter(x => x._id !== localId)));
+      }
+    } catch {}
   }
 
   async function deleteWord(id) {
     if (!id) return;
+    setWords(w => w.filter(x => (x._id || x.id) !== id));
+    setStats(s => ({ ...s, total: Math.max(0, s.total - 1) }));
     try {
-      await api.delete(`/api/words/${id}`);
-      setWords(w => w.filter(x => (x._id || x.id) !== id));
-      setStats(s => ({ ...s, total: Math.max(0, s.total - 1) }));
-    } catch (e) { alert(e.response?.data?.error || 'Устгахад алдаа гарлаа'); }
+      const local = JSON.parse(localStorage.getItem('voca_local_words') || '[]');
+      localStorage.setItem('voca_local_words', JSON.stringify(local.filter(x => (x._id || x.id) !== id)));
+    } catch {}
+    // Backend рүү устгах оролдлого (локал үг бол алдаа гарвал үл тоомсорлоно)
+    if (!String(id).startsWith('local-')) {
+      try { await api.delete(`/api/words/${id}`); } catch {}
+    }
   }
 
   async function generateAI() {

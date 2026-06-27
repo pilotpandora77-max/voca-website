@@ -62,7 +62,7 @@ export default function LessonDetail() {
 
   const prev = idx > 0 ? LESSONS[idx - 1] : null;
   const next = idx < LESSONS.length - 1 ? LESSONS[idx + 1] : null;
-  const related = (lesson.related || []).map(findLesson).filter(Boolean);
+  const related = (lesson.related || []).map(rid => LESSONS.find(l => l.id === rid)).filter(Boolean);
 
   // completion
   let done = 0;
