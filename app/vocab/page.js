@@ -120,7 +120,9 @@ export default function VocabPage() {
   }
 
   async function addWord() {
-    if (!newWord.front.trim() || !newWord.back.trim()) return;
+    const front = (newWord.front || '').trim();
+    const back = (newWord.back || '').trim();
+    if (!front || !back) { alert('Хятад үг болон Монгол утгыг бөглөнө үү.'); return; }
     setAddLoad(true);
     const payload = {
       front: newWord.front, back: newWord.back, hint: newWord.hint,
@@ -448,15 +450,15 @@ export default function VocabPage() {
             <div style={{ display: 'flex', flexDirection: 'column', gap: 12, marginBottom: 20 }}>
               <div>
                 <label style={{ fontWeight: 700, fontSize: 13, color: 'var(--text-sub)', display: 'block', marginBottom: 6 }}>Хятад үг</label>
-                <input value={newWord.front} onChange={e => setNewWord(n => ({ ...n, front: e.target.value }))} placeholder="ж: 你好" />
+                <input type="text" value={newWord.front} onChange={e => setNewWord(n => ({ ...n, front: e.target.value }))} placeholder="ж: 你好" />
               </div>
               <div>
                 <label style={{ fontWeight: 700, fontSize: 13, color: 'var(--text-sub)', display: 'block', marginBottom: 6 }}>Монгол утга</label>
-                <input value={newWord.back} onChange={e => setNewWord(n => ({ ...n, back: e.target.value }))} placeholder="ж: Сайн уу" />
+                <input type="text" value={newWord.back} onChange={e => setNewWord(n => ({ ...n, back: e.target.value }))} placeholder="ж: Сайн уу" />
               </div>
               <div>
                 <label style={{ fontWeight: 700, fontSize: 13, color: 'var(--text-sub)', display: 'block', marginBottom: 6 }}>Pinyin (заавал биш)</label>
-                <input value={newWord.hint} onChange={e => setNewWord(n => ({ ...n, hint: e.target.value }))} placeholder="ж: nǐ hǎo" />
+                <input type="text" value={newWord.hint} onChange={e => setNewWord(n => ({ ...n, hint: e.target.value }))} placeholder="ж: nǐ hǎo" />
               </div>
             </div>
             <div style={{ display: 'flex', gap: 10 }}>
