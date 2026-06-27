@@ -4,6 +4,14 @@ import { useRouter } from 'next/navigation';
 import { useAuth } from '@/lib/auth';
 import api from '@/lib/api';
 import PageHeader from '@/components/PageHeader';
+import { getCourses } from '@/lib/courses';
+
+// Хятад үг → {pinyin, mn} локал толь (курсын өгөгдлөөс)
+const ZH_LOOKUP = (() => {
+  const m = {};
+  try { getCourses('zh').flatMap(c => c.words).forEach(w => { if (w.target) m[w.target] = { reading: w.reading, mn: w.mn }; }); } catch {}
+  return m;
+})();
 
 const TABS = ['Бүгд', 'Шинэ', 'Сурч байгаа', 'Давтах', 'Мэддэг болсон', 'Сагсархаг үг'];
 const SORT_OPTIONS = ['А-Я', 'Я-А', 'Шинэ нэмэгдсэн', 'Хуучин нэмэгдсэн'];
@@ -117,6 +125,29 @@ export default function VocabPage() {
       }));
     } catch { }
     setLoading(false);
+  }
+
+  const [lookupBusy, setLookupBusy] = useState(false);
+  async function lookupWord() {
+    const q = (newWord.front || '').trim();
+    if (!q) { alert('Эхлээд Хятад үг бичнэ үү.'); return; }
+    setLookupBusy(true);
+    let reading = '', mn = '';
+    const local = ZH_LOOKUP[q];
+    if (local) { reading = local.reading || ''; mn = local.mn || ''; }
+    if (!reading || !mn) {
+      try {
+        const { data } = await api.get(`/api/dictionary?q=${encodeURIComponent(q)}`);
+        const d = Array.isArray(data) ? data[0] : data;
+        if (d) {
+          reading = reading || d.pinyin || d.reading || '';
+          mn = mn || d.mn || d.meaning || (Array.isArray(d.definitions) ? d.definitions.join('; ') : (d.english || ''));
+        }
+      } catch {}
+    }
+    setLookupBusy(false);
+    if (!reading && !mn) { alert('Толь бичгээс олдсонгүй. Гараар бөглөнө үү.'); return; }
+    setNewWord(n => ({ ...n, hint: reading || n.hint, back: mn || n.back }));
   }
 
   async function addWord() {
@@ -450,7 +481,11 @@ export default function VocabPage() {
             <div style={{ display: 'flex', flexDirection: 'column', gap: 12, marginBottom: 20 }}>
               <div>
                 <label style={{ fontWeight: 700, fontSize: 13, color: 'var(--text-sub)', display: 'block', marginBottom: 6 }}>Хятад үг</label>
-                <input type="text" value={newWord.front} onChange={e => setNewWord(n => ({ ...n, front: e.target.value }))} placeholder="ж: 你好" />
+                <div style={{ display: 'flex', gap: 8 }}>
+                  <input type="text" value={newWord.front} onChange={e => setNewWord(n => ({ ...n, front: e.target.value }))} onBlur={lookupWord} placeholder="ж: 你好" style={{ flex: 1 }} />
+                  <button type="button" onClick={lookupWord} disabled={lookupBusy} className="btn btn-light" style={{ padding: '0 14px', fontSize: 13, whiteSpace: 'nowrap', flexShrink: 0 }}>{lookupBusy ? '...' : '🔍 Толиос олох'}</button>
+                </div>
+                <div style={{ fontSize: 11, color: 'var(--muted)', marginTop: 4 }}>Хятад үгээ бичээд товч дарвал орчуулга, pinyin автоматаар олдоно.</div>
               </div>
               <div>
                 <label style={{ fontWeight: 700, fontSize: 13, color: 'var(--text-sub)', display: 'block', marginBottom: 6 }}>Монгол утга</label>
