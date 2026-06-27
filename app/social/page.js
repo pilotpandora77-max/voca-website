@@ -86,14 +86,40 @@ export default function SocialPage() {
 
   function showToast(t) { setToast(t); clearTimeout(toastT.current); toastT.current = setTimeout(() => setToast(''), 2400); }
 
-  function publish() {
-    const text = input.trim();
-    if (!text) return;
-    const post = { id: Date.now(), user: user?.username || 'Та', emoji: user?.avatarEmoji || '😊', color: '#6D28D9', level: stats ? lvlLabel(stats.xp) : 'A1', time: 'одоо', kind: 'normal', text, tags: [], likes: 0, comments: 0, group: 'mine', mine: true };
+  function addPost(extra) {
+    const text = (extra.text ?? input).trim();
+    if (!text && !extra.poll && !extra.img && !extra.link) return;
+    const post = { id: Date.now(), user: user?.username || 'Та', emoji: user?.avatarEmoji || '😊', color: '#6D28D9', level: stats ? lvlLabel(stats.xp) : 'A1', time: 'одоо', kind: 'normal', text, tags: [], likes: 0, comments: 0, group: 'mine', mine: true, ...extra };
     setPosts(p => [post, ...p]);
     try { const sp = JSON.parse(localStorage.getItem('voca_social_posts') || '[]'); localStorage.setItem('voca_social_posts', JSON.stringify([post, ...sp])); } catch {}
     setInput('');
     showToast('Пост нийтлэгдлээ! 🎉');
+  }
+  function publish() { addPost({}); }
+
+  function attach(type) {
+    if (type === 'poll') {
+      const q = prompt('Санал асуултын асуулт:'); if (!q) return;
+      const a = prompt('1-р хариулт:'); if (!a) return;
+      const b = prompt('2-р хариулт:'); if (!b) return;
+      addPost({ text: q, kind: 'poll', poll: { options: [{ t: a, v: 0 }, { t: b, v: 0 }], voted: null } });
+    } else if (type === 'img') {
+      const url = prompt('Зургийн холбоос (URL):'); if (!url) return;
+      addPost({ text: input.trim() || 'Зураг хуваалцлаа 📷', img: url });
+    } else if (type === 'video') {
+      const url = prompt('Видео холбоос (YouTube URL):'); if (!url) return;
+      addPost({ text: input.trim() || 'Видео хуваалцлаа 🎥', link: url, linkLabel: '🎥 Видео үзэх' });
+    } else if (type === 'link') {
+      const url = prompt('Холбоос (URL):'); if (!url) return;
+      addPost({ text: input.trim() || 'Холбоос хуваалцлаа 🔗', link: url, linkLabel: '🔗 Холбоос нээх' });
+    }
+  }
+  function votePoll(id, oi) {
+    setPosts(ps => ps.map(p => {
+      if (p.id !== id || !p.poll || p.poll.voted !== null) return p;
+      const options = p.poll.options.map((o, i) => i === oi ? { ...o, v: o.v + 1 } : o);
+      return { ...p, poll: { ...p.poll, options, voted: oi } };
+    }));
   }
 
   function toggleLike(id) {
@@ -141,8 +167,8 @@ export default function SocialPage() {
               <input ref={composerRef} value={input} onChange={e => setInput(e.target.value)} onKeyDown={e => { if (e.key === 'Enter') publish(); }} placeholder="Юу шинэ байна?" style={{ flex: 1, background: 'var(--bg-alt)', borderRadius: 14 }} />
             </div>
             <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
-              {[['🖼️', 'Зураг'], ['🎬', 'Видео'], ['📊', 'Санал асуулга'], ['🔗', 'Холбоос']].map(([ic, l]) => (
-                <button key={l} onClick={() => showToast(`${l} оруулах удахгүй нэмэгдэнэ`)} style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '8px 14px', borderRadius: 10, border: '1.5px solid var(--border)', background: 'var(--bg-alt)', cursor: 'pointer', fontFamily: 'inherit', fontWeight: 700, fontSize: 12.5, color: 'var(--text-sub)' }}>{ic} {l}</button>
+              {[['🖼️', 'Зураг', 'img'], ['🎬', 'Видео', 'video'], ['📊', 'Санал асуулга', 'poll'], ['🔗', 'Холбоос', 'link']].map(([ic, l, t]) => (
+                <button key={l} onClick={() => attach(t)} style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '8px 14px', borderRadius: 10, border: '1.5px solid var(--border)', background: 'var(--bg-alt)', cursor: 'pointer', fontFamily: 'inherit', fontWeight: 700, fontSize: 12.5, color: 'var(--text-sub)' }}>{ic} {l}</button>
               ))}
               <button onClick={publish} disabled={!input.trim()} className="btn btn-purple" style={{ marginLeft: 'auto', padding: '9px 22px' }}>Оруулах</button>
             </div>
@@ -196,6 +222,36 @@ export default function SocialPage() {
                     </div>
                   )}
 
+                  {/* image */}
+                  {p.img && (
+                    <img src={p.img} alt="" style={{ width: '100%', maxHeight: 380, objectFit: 'cover', borderRadius: 12, marginBottom: 12 }} onError={e => { e.currentTarget.style.display = 'none'; }} />
+                  )}
+                  {/* link */}
+                  {p.link && (
+                    <a href={p.link} target="_blank" rel="noreferrer" style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '12px 16px', background: 'var(--bg-alt)', borderRadius: 12, marginBottom: 12, textDecoration: 'none', border: '1.5px solid var(--border)' }}>
+                      <span style={{ fontWeight: 800, color: 'var(--purple)', fontSize: 13 }}>{p.linkLabel || '🔗 Холбоос'}</span>
+                      <span style={{ fontSize: 12, color: 'var(--muted)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{p.link}</span>
+                    </a>
+                  )}
+                  {/* poll */}
+                  {p.poll && (
+                    <div style={{ marginBottom: 12, display: 'flex', flexDirection: 'column', gap: 8 }}>
+                      {(() => { const total = p.poll.options.reduce((a, o) => a + o.v, 0); return p.poll.options.map((o, oi) => {
+                        const pct = total ? Math.round((o.v / total) * 100) : 0;
+                        const voted = p.poll.voted !== null;
+                        return (
+                          <button key={oi} onClick={() => votePoll(p.id, oi)} disabled={voted} style={{ position: 'relative', textAlign: 'left', padding: '11px 14px', borderRadius: 10, border: `1.5px solid ${p.poll.voted === oi ? 'var(--purple)' : 'var(--border)'}`, background: 'var(--bg-alt)', cursor: voted ? 'default' : 'pointer', fontFamily: 'inherit', overflow: 'hidden' }}>
+                            {voted && <div style={{ position: 'absolute', inset: 0, width: `${pct}%`, background: 'var(--purple-light)', zIndex: 0 }} />}
+                            <div style={{ position: 'relative', display: 'flex', justifyContent: 'space-between', zIndex: 1 }}>
+                              <span style={{ fontWeight: 700, fontSize: 13.5, color: 'var(--text)' }}>{o.t}</span>
+                              {voted && <span style={{ fontWeight: 800, fontSize: 13, color: 'var(--purple)' }}>{pct}%</span>}
+                            </div>
+                          </button>
+                        );
+                      }); })()}
+                      <div style={{ fontSize: 11.5, color: 'var(--muted)' }}>{p.poll.options.reduce((a, o) => a + o.v, 0)} санал</div>
+                    </div>
+                  )}
                   {/* tags */}
                   {p.tags?.length > 0 && (
                     <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginBottom: 12 }}>
@@ -227,6 +283,41 @@ export default function SocialPage() {
 
         {/* ── Right sidebar ── */}
         <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+          {/* Updates (admin) */}
+          <div className="card" style={{ border: '1.5px solid var(--purple-mid)' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 12 }}>
+              <h3 style={{ fontWeight: 900, fontSize: 14, color: 'var(--purple)' }}>📢 Шинэчлэл</h3>
+            </div>
+            {[
+              { t: 'Дуудлага дасгал 500+ үгээр шинэчлэгдлээ', d: 'Өнөөдөр' },
+              { t: 'Англи дүрмийн хичээл A1–C1 нэмэгдлээ', d: '2 өдрийн өмнө' },
+              { t: 'Тоглоомын шинэ горим: Санах ой', d: '3 өдрийн өмнө' },
+            ].map((u, i) => (
+              <div key={i} style={{ display: 'flex', gap: 10, padding: '8px 0', borderBottom: i < 2 ? '1px solid var(--border)' : 'none' }}>
+                <span style={{ width: 7, height: 7, borderRadius: '50%', background: 'var(--purple)', marginTop: 6, flexShrink: 0 }} />
+                <div>
+                  <div style={{ fontSize: 12.5, color: 'var(--text)', fontWeight: 600, lineHeight: 1.4 }}>{u.t}</div>
+                  <div style={{ fontSize: 11, color: 'var(--muted)', marginTop: 2 }}>{u.d}</div>
+                </div>
+              </div>
+            ))}
+          </div>
+
+          {/* Rules (moved up) */}
+          <div className="card">
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
+              <h3 style={{ fontWeight: 900, fontSize: 14, color: 'var(--text)' }}>Дүрэм, журам</h3>
+              <span style={{ fontSize: 12, color: 'var(--purple)', fontWeight: 700, cursor: 'pointer' }} onClick={() => showToast('Бүх дүрэм')}>Бүгдийг харах</span>
+            </div>
+            {RULES.map(r => (
+              <div key={r.t} onClick={() => showToast(r.t)} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '9px 0', cursor: 'pointer', borderBottom: '1px solid var(--border)' }}>
+                <span style={{ fontSize: 16 }}>{r.icon}</span>
+                <span style={{ flex: 1, fontSize: 13, color: 'var(--text-sub)', fontWeight: 600 }}>{r.t}</span>
+                <span style={{ color: 'var(--muted)' }}>›</span>
+              </div>
+            ))}
+          </div>
+
           {/* Friends */}
           <div className="card">
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
@@ -261,21 +352,6 @@ export default function SocialPage() {
               </div>
             ))}
             <div style={{ textAlign: 'center', marginTop: 8 }}><span style={{ fontSize: 12.5, color: 'var(--purple)', fontWeight: 700, cursor: 'pointer' }} onClick={() => showToast('Бүх зурвас')}>Бүгдийг харах</span></div>
-          </div>
-
-          {/* Rules */}
-          <div className="card">
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
-              <h3 style={{ fontWeight: 900, fontSize: 14, color: 'var(--text)' }}>Дүрэм, журам</h3>
-              <span style={{ fontSize: 12, color: 'var(--purple)', fontWeight: 700, cursor: 'pointer' }} onClick={() => showToast('Бүх дүрэм')}>Бүгдийг харах</span>
-            </div>
-            {RULES.map(r => (
-              <div key={r.t} onClick={() => showToast(r.t)} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '9px 0', cursor: 'pointer', borderBottom: '1px solid var(--border)' }}>
-                <span style={{ fontSize: 16 }}>{r.icon}</span>
-                <span style={{ flex: 1, fontSize: 13, color: 'var(--text-sub)', fontWeight: 600 }}>{r.t}</span>
-                <span style={{ color: 'var(--muted)' }}>›</span>
-              </div>
-            ))}
           </div>
         </div>
       </div>
