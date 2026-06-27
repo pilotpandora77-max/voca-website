@@ -188,7 +188,7 @@ export default function SocialPage() {
               <input ref={videoInputRef} type="file" accept="video/*" onChange={onPickVideo} style={{ display: 'none' }} />
             </div>
             <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
-              {[['🖼️', 'Зураг', 'img'], ['🎬', 'Видео', 'video'], ['📊', 'Санал асуулга', 'poll'], ['🔗', 'Холбоос', 'link']].map(([ic, l, t]) => (
+              {[['🖼️', 'Зураг', 'img'], ['🎬', 'Видео', 'video']].map(([ic, l, t]) => (
                 <button key={l} onClick={() => attach(t)} style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '8px 14px', borderRadius: 10, border: '1.5px solid var(--border)', background: 'var(--bg-alt)', cursor: 'pointer', fontFamily: 'inherit', fontWeight: 700, fontSize: 12.5, color: 'var(--text-sub)' }}>{ic} {l}</button>
               ))}
               <button onClick={publish} disabled={!input.trim()} className="btn btn-purple" style={{ marginLeft: 'auto', padding: '9px 22px' }}>Оруулах</button>
