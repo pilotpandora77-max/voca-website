@@ -3,7 +3,8 @@ import { useState, useEffect } from 'react';
 import { useRouter, useParams } from 'next/navigation';
 import Link from 'next/link';
 import { useAuth } from '@/lib/auth';
-import LESSONS, { findLesson } from '@/lib/grammarEn';
+import { useLang } from '@/lib/LangContext';
+import { getGrammar } from '@/lib/grammar';
 
 function speak(t) {
   if (typeof window === 'undefined' || !window.speechSynthesis) return;
@@ -16,9 +17,11 @@ const TABS = ['Тайлбар', 'Жишээ', 'Дасгал', 'Тест', 'Тэ�
 
 export default function LessonDetail() {
   const { user, loading: authLoad } = useAuth();
+  const { lang } = useLang();
   const router = useRouter();
   const { id } = useParams();
-  const lesson = findLesson(id);
+  const LESSONS = getGrammar(lang).lessons;
+  const lesson = LESSONS.find(l => l.id === id);
   const idx = LESSONS.findIndex(l => l.id === id);
 
   const [tab, setTab]   = useState('Тайлбар');

@@ -47,8 +47,8 @@ export default function LessonsPage() {
   const [streak, setStreak] = useState(0);
   const [stats, setStats]   = useState(null);
   const [tab, setTab]       = useState('Бүх төрлүүд');
-  // Хятад горимд HSK дүрэм, бусад хэлэнд CEFR (Англи) дүрэм
-  const grammarHref = lang === 'zh' ? '/grammar' : '/grammar-lessons';
+  // Дүрмийн систем хэлээр автоматаар солигдоно
+  const grammarHref = '/grammar-lessons';
 
   useEffect(() => {
     if (!authLoad && !user) router.push('/login');

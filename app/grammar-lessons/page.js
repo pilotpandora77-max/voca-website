@@ -3,15 +3,19 @@ import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { useAuth } from '@/lib/auth';
+import { useLang } from '@/lib/LangContext';
 import api from '@/lib/api';
 import PageHeader from '@/components/PageHeader';
-import LESSONS, { CEFR, lessonsByLevel } from '@/lib/grammarEn';
+import { getGrammar } from '@/lib/grammar';
 
 export default function GrammarLessonsPage() {
   const { user, loading: authLoad } = useAuth();
+  const { lang, langInfo } = useLang();
   const router = useRouter();
   const [streak, setStreak] = useState(0);
   const [prog, setProg]     = useState({});
+  const { lessons: LESSONS, levels: CEFR } = getGrammar(lang);
+  const lessonsByLevel = (lv) => LESSONS.filter(l => l.level === lv);
 
   useEffect(() => {
     if (!authLoad && !user) router.push('/login');
@@ -33,12 +37,12 @@ export default function GrammarLessonsPage() {
 
   return (
     <div style={{ paddingBottom: 40 }}>
-      <PageHeader title="Дүрмийн хичээл 📘" subtitle="CEFR түвшинд тулгуурласан Англи хэлний дүрмийн хичээлүүд" streak={streak} />
+      <PageHeader title="Дүрмийн хичээл 📘" subtitle={lang === 'zh' ? 'HSK түвшинд тулгуурласан Хятад хэлний дүрмийн хичээлүүд' : 'CEFR түвшинд тулгуурласан Англи хэлний дүрмийн хичээлүүд'} streak={streak} />
 
       <div style={{ padding: '0 28px', maxWidth: 1000, margin: '0 auto' }}>
         {/* Status */}
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 14, marginBottom: 24 }}>
-          {[['Эзэмшсэн дүрэм', `${learned} / ${LESSONS.length}`, '#7C3AED', '📚'], ['Дундаж нарийвчлал', `${avgAcc}%`, '#22C55E', '🎯'], ['Одоогийн түвшин', 'A1–B1', '#38BDF8', '📈']].map(([l, v, c, ic]) => (
+          {[['Эзэмшсэн дүрэм', `${learned} / ${LESSONS.length}`, '#7C3AED', '📚'], ['Дундаж нарийвчлал', `${avgAcc}%`, '#22C55E', '🎯'], ['Одоогийн түвшин', `${CEFR[0]?.level}–${CEFR[CEFR.length - 1]?.level}`, '#38BDF8', '📈']].map(([l, v, c, ic]) => (
             <div key={l} className="card" style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
               <div style={{ width: 46, height: 46, borderRadius: 12, background: `${c}18`, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 22 }}>{ic}</div>
               <div>
