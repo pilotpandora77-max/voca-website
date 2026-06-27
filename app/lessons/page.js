@@ -101,6 +101,22 @@ export default function LessonsPage() {
             </div>
           )}
 
+          {/* IELTS banner */}
+          <Link href="/ielts" style={{ textDecoration: 'none', display: 'block', marginBottom: 16 }}>
+            <div style={{ borderRadius: 18, padding: '22px 26px', background: 'linear-gradient(120deg,#7c3aed,#5b21b6)', color: '#fff', display: 'flex', alignItems: 'center', gap: 20, flexWrap: 'wrap', position: 'relative', overflow: 'hidden' }}>
+              <div style={{ position: 'absolute', right: -10, top: '50%', transform: 'translateY(-50%)', fontSize: 110, opacity: 0.15 }}>🎓</div>
+              <div style={{ width: 56, height: 56, borderRadius: 14, background: 'rgba(255,255,255,0.18)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 30, flexShrink: 0 }}>🎓</div>
+              <div style={{ flex: 1, minWidth: 200, position: 'relative' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 4 }}>
+                  <h3 style={{ fontWeight: 900, fontSize: 19 }}>IELTS бэлтгэл</h3>
+                  <span style={{ background: '#fcd34d', color: '#5b21b6', borderRadius: 6, padding: '2px 8px', fontSize: 10, fontWeight: 900 }}>ШИНЭ</span>
+                </div>
+                <p style={{ fontSize: 13.5, opacity: 0.9, lineHeight: 1.5 }}>Listening · Reading · Writing · Speaking — дөрвөн ур чадвараар бэлтгэ. Зөвлөгөө, асуултын төрөл, дасгал, академик үгсийн сан.</p>
+              </div>
+              <span style={{ background: '#fff', color: 'var(--purple)', borderRadius: 12, padding: '11px 22px', fontWeight: 800, fontSize: 14, flexShrink: 0, position: 'relative' }}>Бэлтгэж эхлэх →</span>
+            </div>
+          </Link>
+
           {/* Grammar section */}
           <div className="card" style={{ border: '1.5px solid var(--purple-mid)', background: 'linear-gradient(135deg, var(--purple-soft), #fff)', marginBottom: 24 }}>
             <div style={{ display: 'flex', gap: 24, flexWrap: 'wrap' }}>
