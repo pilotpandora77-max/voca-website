@@ -55,11 +55,32 @@ export default function VocabPage() {
   const [aiLoading, setAiLoad]    = useState(false);
   const [expandedId, setExp]      = useState(null);
   const [calDays, setCalDays]     = useState([]);
+  const [groups, setGroups]       = useState([]);     // [{id,name,wordIds:[]}]
+  const [activeGroup, setActiveGr]= useState(null);   // group id
 
   useEffect(() => {
     if (!authLoad && !user) router.push('/login');
     if (user) loadData();
+    try { setGroups(JSON.parse(localStorage.getItem('voca_word_groups') || '[]')); } catch {}
   }, [authLoad, user]);
+
+  function saveGroups(g) { setGroups(g); localStorage.setItem('voca_word_groups', JSON.stringify(g)); }
+  function createGroup() {
+    const name = prompt('Бүлгийн нэр:'); if (!name?.trim()) return;
+    saveGroups([...groups, { id: Date.now(), name: name.trim(), wordIds: [] }]);
+  }
+  function deleteGroup(id) {
+    if (!confirm('Энэ бүлгийг устгах уу?')) return;
+    saveGroups(groups.filter(g => g.id !== id));
+    if (activeGroup === id) setActiveGr(null);
+  }
+  function toggleWordInGroup(gid, wid) {
+    saveGroups(groups.map(g => {
+      if (g.id !== gid) return g;
+      const has = g.wordIds.includes(wid);
+      return { ...g, wordIds: has ? g.wordIds.filter(x => x !== wid) : [...g.wordIds, wid] };
+    }));
+  }
 
   async function loadData() {
     try {
@@ -142,7 +163,12 @@ export default function VocabPage() {
       : true;
     const q = search.toLowerCase();
     const matchSearch = !q || (w.front || w.word || '').toLowerCase().includes(q) || (w.back || w.meaning || '').toLowerCase().includes(q) || (w.hint || w.reading || '').toLowerCase().includes(q);
-    return matchTab && matchSearch;
+    let matchGroup = true;
+    if (activeGroup) {
+      const g = groups.find(x => x.id === activeGroup);
+      matchGroup = g ? g.wordIds.includes(w._id || w.id) : true;
+    }
+    return matchTab && matchSearch && matchGroup;
   });
 
   const pct = stats.total > 0 ? Math.round((stats.known / stats.total) * 100) : 0;
@@ -202,6 +228,16 @@ export default function VocabPage() {
             }}>
               {SORT_OPTIONS.map(o => <option key={o}>{o}</option>)}
             </select>
+          </div>
+
+          {/* Groups bar */}
+          <div style={{ display: 'flex', gap: 6, marginBottom: 10, overflowX: 'auto', paddingBottom: 4, alignItems: 'center' }}>
+            <span style={{ fontSize: 12, fontWeight: 800, color: 'var(--muted)', flexShrink: 0 }}>📁 Бүлэг:</span>
+            <button onClick={() => setActiveGr(null)} style={{ padding: '6px 13px', borderRadius: 100, fontSize: 12, fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit', border: '1.5px solid var(--border)', whiteSpace: 'nowrap', background: !activeGroup ? 'var(--purple-light)' : '#fff', color: !activeGroup ? 'var(--purple)' : 'var(--text-sub)' }}>Бүх үг</button>
+            {groups.map(g => (
+              <button key={g.id} onClick={() => setActiveGr(g.id)} onDoubleClick={() => deleteGroup(g.id)} title="Устгахын тулд давхар дар" style={{ padding: '6px 13px', borderRadius: 100, fontSize: 12, fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit', border: '1.5px solid var(--border)', whiteSpace: 'nowrap', background: activeGroup === g.id ? 'var(--purple-light)' : '#fff', color: activeGroup === g.id ? 'var(--purple)' : 'var(--text-sub)' }}>{g.name} ({g.wordIds.length})</button>
+            ))}
+            <button onClick={createGroup} style={{ padding: '6px 13px', borderRadius: 100, fontSize: 12, fontWeight: 800, cursor: 'pointer', fontFamily: 'inherit', border: '1.5px dashed var(--purple-mid)', whiteSpace: 'nowrap', background: '#fff', color: 'var(--purple)' }}>➕ Бүлэг үүсгэх</button>
           </div>
 
           {/* Tabs */}
@@ -276,13 +312,21 @@ export default function VocabPage() {
                             <div style={{ fontWeight: 700, fontSize: 14, color: 'var(--text)' }}>{back}</div>
                           </div>
                         </div>
+                        {/* Бүлэгт нэмэх */}
+                        <div style={{ marginBottom: 12 }}>
+                          <div style={{ fontSize: 11, fontWeight: 700, color: 'var(--muted)', marginBottom: 6 }}>📁 БҮЛЭГТ НЭМЭХ</div>
+                          <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
+                            {groups.length === 0 && <button onClick={createGroup} style={{ padding: '5px 12px', borderRadius: 100, fontSize: 11.5, fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit', border: '1.5px dashed var(--purple-mid)', background: '#fff', color: 'var(--purple)' }}>➕ Бүлэг үүсгэх</button>}
+                            {groups.map(g => {
+                              const inG = g.wordIds.includes(wid);
+                              return <button key={g.id} onClick={() => toggleWordInGroup(g.id, wid)} style={{ padding: '5px 12px', borderRadius: 100, fontSize: 11.5, fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit', border: `1.5px solid ${inG ? 'var(--purple)' : 'var(--border)'}`, background: inG ? 'var(--purple-light)' : '#fff', color: inG ? 'var(--purple)' : 'var(--text-sub)' }}>{inG ? '✓ ' : ''}{g.name}</button>;
+                            })}
+                          </div>
+                        </div>
                         <div style={{ display: 'flex', gap: 8 }}>
                           <button className="btn btn-purple" style={{ fontSize: 12, padding: '8px 14px' }}
                             onClick={() => router.push('/vocab/practice')}>
                             🔄 Давтах
-                          </button>
-                          <button className="btn btn-outline" style={{ fontSize: 12, padding: '8px 14px' }}>
-                            ✏️ Засах
                           </button>
                           <button onClick={() => deleteWord(wid)} className="btn btn-red" style={{ fontSize: 12, padding: '8px 14px', marginLeft: 'auto' }}>
                             🗑️ Устгах
