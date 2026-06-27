@@ -67,6 +67,8 @@ export default function SocialPage() {
   const [toast, setToast]   = useState('');
   const composerRef = useRef(null);
   const toastT = useRef(null);
+  const imageInputRef = useRef(null);
+  const videoInputRef = useRef(null);
 
   useEffect(() => {
     if (!authLoad && !user) router.push('/login');
@@ -88,10 +90,13 @@ export default function SocialPage() {
 
   function addPost(extra) {
     const text = (extra.text ?? input).trim();
-    if (!text && !extra.poll && !extra.img && !extra.link) return;
+    if (!text && !extra.poll && !extra.img && !extra.video && !extra.link) return;
     const post = { id: Date.now(), user: user?.username || 'Та', emoji: user?.avatarEmoji || '😊', color: '#6D28D9', level: stats ? lvlLabel(stats.xp) : 'A1', time: 'одоо', kind: 'normal', text, tags: [], likes: 0, comments: 0, group: 'mine', mine: true, ...extra };
     setPosts(p => [post, ...p]);
-    try { const sp = JSON.parse(localStorage.getItem('voca_social_posts') || '[]'); localStorage.setItem('voca_social_posts', JSON.stringify([post, ...sp])); } catch {}
+    // Media (зураг/видео) постыг localStorage-д хадгалахгүй (хэмжээ хэтрэхээс сэргийлж)
+    if (!extra.img && !extra.video) {
+      try { const sp = JSON.parse(localStorage.getItem('voca_social_posts') || '[]'); localStorage.setItem('voca_social_posts', JSON.stringify([post, ...sp])); } catch {}
+    }
     setInput('');
     showToast('Пост нийтлэгдлээ! 🎉');
   }
@@ -104,15 +109,29 @@ export default function SocialPage() {
       const b = prompt('2-р хариулт:'); if (!b) return;
       addPost({ text: q, kind: 'poll', poll: { options: [{ t: a, v: 0 }, { t: b, v: 0 }], voted: null } });
     } else if (type === 'img') {
-      const url = prompt('Зургийн холбоос (URL):'); if (!url) return;
-      addPost({ text: input.trim() || 'Зураг хуваалцлаа 📷', img: url });
+      imageInputRef.current?.click();
     } else if (type === 'video') {
-      const url = prompt('Видео холбоос (YouTube URL):'); if (!url) return;
-      addPost({ text: input.trim() || 'Видео хуваалцлаа 🎥', link: url, linkLabel: '🎥 Видео үзэх' });
+      videoInputRef.current?.click();
     } else if (type === 'link') {
       const url = prompt('Холбоос (URL):'); if (!url) return;
       addPost({ text: input.trim() || 'Холбоос хуваалцлаа 🔗', link: url, linkLabel: '🔗 Холбоос нээх' });
     }
+  }
+  function onPickImage(e) {
+    const file = e.target.files?.[0]; e.target.value = '';
+    if (!file) return;
+    if (file.size > 5 * 1024 * 1024) { showToast('Зураг 5MB-аас бага байх ёстой'); return; }
+    const reader = new FileReader();
+    reader.onload = () => addPost({ text: input.trim(), img: reader.result });
+    reader.readAsDataURL(file);
+  }
+  function onPickVideo(e) {
+    const file = e.target.files?.[0]; e.target.value = '';
+    if (!file) return;
+    if (file.size > 25 * 1024 * 1024) { showToast('Видео 25MB-аас бага байх ёстой'); return; }
+    const reader = new FileReader();
+    reader.onload = () => addPost({ text: input.trim(), video: reader.result });
+    reader.readAsDataURL(file);
   }
   function votePoll(id, oi) {
     setPosts(ps => ps.map(p => {
@@ -165,6 +184,8 @@ export default function SocialPage() {
             <div style={{ display: 'flex', gap: 12, marginBottom: 12 }}>
               <div style={{ width: 40, height: 40, borderRadius: '50%', background: 'var(--purple-light)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 19, flexShrink: 0 }}>{user?.avatarEmoji || user?.username?.[0]?.toUpperCase()}</div>
               <input ref={composerRef} value={input} onChange={e => setInput(e.target.value)} onKeyDown={e => { if (e.key === 'Enter') publish(); }} placeholder="Юу шинэ байна?" style={{ flex: 1, background: 'var(--bg-alt)', borderRadius: 14 }} />
+              <input ref={imageInputRef} type="file" accept="image/*" onChange={onPickImage} style={{ display: 'none' }} />
+              <input ref={videoInputRef} type="file" accept="video/*" onChange={onPickVideo} style={{ display: 'none' }} />
             </div>
             <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
               {[['🖼️', 'Зураг', 'img'], ['🎬', 'Видео', 'video'], ['📊', 'Санал асуулга', 'poll'], ['🔗', 'Холбоос', 'link']].map(([ic, l, t]) => (
@@ -224,7 +245,11 @@ export default function SocialPage() {
 
                   {/* image */}
                   {p.img && (
-                    <img src={p.img} alt="" style={{ width: '100%', maxHeight: 380, objectFit: 'cover', borderRadius: 12, marginBottom: 12 }} onError={e => { e.currentTarget.style.display = 'none'; }} />
+                    <img src={p.img} alt="" style={{ width: '100%', maxHeight: 420, objectFit: 'cover', borderRadius: 12, marginBottom: 12 }} onError={e => { e.currentTarget.style.display = 'none'; }} />
+                  )}
+                  {/* video */}
+                  {p.video && (
+                    <video src={p.video} controls style={{ width: '100%', maxHeight: 420, borderRadius: 12, marginBottom: 12, background: '#000' }} />
                   )}
                   {/* link */}
                   {p.link && (
