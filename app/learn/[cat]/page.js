@@ -73,9 +73,10 @@ export default function CategoryPage() {
             <h1 style={{ fontSize: 26, fontWeight: 900, color: 'var(--text)', marginBottom: 4 }}>{category.name}</h1>
             <p style={{ fontSize: 13.5, color: 'var(--muted)', marginBottom: 12, lineHeight: 1.5 }}>{category.desc}</p>
             <div style={{ fontSize: 13, color: 'var(--text)', fontWeight: 700, marginBottom: 6 }}>Таны ахиц: <span style={{ color: category.color }}>{pct}%</span> ({masteredCount}/{category.words.length} үг)</div>
-            <div style={{ height: 8, background: 'var(--bg-alt)', borderRadius: 6, overflow: 'hidden', maxWidth: 360 }}>
+            <div style={{ height: 8, background: 'var(--bg-alt)', borderRadius: 6, overflow: 'hidden', maxWidth: 360, marginBottom: 14 }}>
               <div style={{ height: '100%', width: `${pct}%`, background: category.color, borderRadius: 6 }} />
             </div>
+            <Link href={`/learn/${category.id}/play`} className="btn btn-purple" style={{ textDecoration: 'none', padding: '10px 20px', fontSize: 13.5 }}>🎮 Тоглоомоор сурах</Link>
           </div>
         </div>
 

@@ -52,7 +52,7 @@ export default function BooksPage() {
               <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 16 }}>
                 <h2 style={{ fontWeight: 900, fontSize: 18, color: c.color }}>{c.name}ын номууд</h2>
               </div>
-              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(200px, 1fr))', gap: 16 }}>
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(210px, 1fr))', gap: 16 }}>
                 {books.map(b => (
                   <Link key={b.id} href={`/books/${b.id}`} style={{ textDecoration: 'none', background: '#fff', border: '1.5px solid var(--border)', borderRadius: 16, padding: 16, transition: 'all 0.16s', display: 'block' }}
                     onMouseEnter={e => { e.currentTarget.style.transform = 'translateY(-3px)'; e.currentTarget.style.boxShadow = '0 12px 28px rgba(0,0,0,0.1)'; e.currentTarget.style.borderColor = c.color + '55'; }}
