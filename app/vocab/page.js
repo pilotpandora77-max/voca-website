@@ -413,7 +413,7 @@ export default function VocabPage() {
                         <div style={{ marginBottom: 12 }}>
                           <div style={{ fontSize: 11, fontWeight: 700, color: 'var(--muted)', marginBottom: 6 }}>📁 БҮЛЭГТ НЭМЭХ</div>
                           <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
-                            {groups.length === 0 && <button onClick={createGroup} style={{ padding: '5px 12px', borderRadius: 100, fontSize: 11.5, fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit', border: '1.5px dashed var(--purple-mid)', background: '#fff', color: 'var(--purple)' }}>➕ Бүлэг үүсгэх</button>}
+                            {groups.length === 0 && <button onClick={openCreateGroup} style={{ padding: '5px 12px', borderRadius: 100, fontSize: 11.5, fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit', border: '1.5px dashed var(--purple-mid)', background: '#fff', color: 'var(--purple)' }}>➕ Бүлэг үүсгэх</button>}
                             {groups.map(g => {
                               const inG = g.wordIds.includes(wid);
                               return <button key={g.id} onClick={() => toggleWordInGroup(g.id, wid)} style={{ padding: '5px 12px', borderRadius: 100, fontSize: 11.5, fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit', border: `1.5px solid ${inG ? 'var(--purple)' : 'var(--border)'}`, background: inG ? 'var(--purple-light)' : '#fff', color: inG ? 'var(--purple)' : 'var(--text-sub)' }}>{inG ? '✓ ' : ''}{g.name}</button>;
