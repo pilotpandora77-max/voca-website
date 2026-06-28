@@ -6,6 +6,7 @@ import api from '@/lib/api';
 import PageHeader from '@/components/PageHeader';
 import { getCourses } from '@/lib/courses';
 import { loadUserData, saveUserData } from '@/lib/userdata';
+import { useLang } from '@/lib/LangContext';
 
 // Хятад үг → {pinyin, mn} локал толь (курсын өгөгдлөөс)
 const ZH_LOOKUP = (() => {
@@ -49,6 +50,7 @@ function StatusDot({ status }) {
 
 export default function VocabPage() {
   const { user, loading: authLoad } = useAuth();
+  const { lang } = useLang();
   const router = useRouter();
   const [words, setWords]         = useState([]);
   const [loading, setLoading]     = useState(true);
@@ -170,7 +172,7 @@ export default function VocabPage() {
     setAddLoad(true);
     const payload = {
       front: newWord.front, back: newWord.back, hint: newWord.hint,
-      word: newWord.front, meaning: newWord.back, reading: newWord.hint, lang: 'zh',
+      word: newWord.front, meaning: newWord.back, reading: newWord.hint, lang,
     };
     // 1) Optimistic — шууд харагдана, localStorage-д хадгална (backend амжаагүй ч)
     const localId = 'local-' + Date.now();
@@ -186,14 +188,21 @@ export default function VocabPage() {
     setNewWord({ front: '', back: '', hint: '' });
     setShowAdd(false);
     setAddLoad(false);
-    // 2) Backend рүү хадгалах оролдлого (амжвал локал хувийг арилгана)
+    // 2) Backend рүү хадгалах оролдлого (амжвал локал хувийг арилгаж, бодит id-р солино)
     try {
       const { data } = await api.post('/api/words', payload);
       if (data && (data._id || data.id)) {
         const local = JSON.parse(localStorage.getItem('voca_local_words') || '[]');
         localStorage.setItem('voca_local_words', JSON.stringify(local.filter(x => x._id !== localId)));
+        // локал түр id-г бодит backend id-р солих → утсан дээр синк болно
+        setWords(w => w.map(x => (x._id === localId ? { ...data, _id: data._id || data.id } : x)));
       }
-    } catch {}
+    } catch (e) {
+      const msg = e.response?.data?.code === 'WORD_LIMIT'
+        ? 'Үгийн хязгаарт хүрсэн тул серверт хадгалагдсангүй. (Premium-аар хязгааргүй болно)'
+        : 'Үг серверт хадгалагдсангүй — утсан дээр синк болохгүй байж магадгүй. Интернэтээ шалгаад дахин оролдоно уу.';
+      alert(msg);
+    }
   }
 
   async function deleteWord(id) {
