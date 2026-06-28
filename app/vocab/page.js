@@ -82,6 +82,23 @@ export default function VocabPage() {
     loadUserData('wordGroups', old).then(g => { if (Array.isArray(g)) setGroups(g); });
   }, [authLoad, user]);
 
+  // Нэг удаа: хуучин вэб бүлгүүдийн гишүүн үгсийн backend `group`-ийг бүлгийн нэрээр шинэчилнэ
+  // → ингэснээр өмнө вэб дээр үүсгэсэн бүлгүүд апп дээр гарч ирнэ.
+  useEffect(() => {
+    if (!user || typeof window === 'undefined') return;
+    if (localStorage.getItem('voca_groups_synced_v1')) return;
+    if (!groups.length || !words.length) return;
+    const widToGroup = {};
+    groups.forEach(g => (g.wordIds || []).forEach(wid => { widToGroup[wid] = g.name; }));
+    const patches = words.filter(w => {
+      const id = w._id || w.id;
+      return id && !String(id).startsWith('local-') && widToGroup[id] && (w.group || 'Ерөнхий') !== widToGroup[id];
+    });
+    if (patches.length === 0) { localStorage.setItem('voca_groups_synced_v1', '1'); return; }
+    Promise.all(patches.map(w => api.patch(`/api/words/${w._id || w.id}`, { group: widToGroup[w._id || w.id] }).catch(() => {})))
+      .then(() => { localStorage.setItem('voca_groups_synced_v1', '1'); });
+  }, [groups, words, user]);
+
   const GROUP_COLORS = ['#7C3AED', '#EC4899', '#10B981', '#F59E0B', '#3B82F6', '#EF4444', '#14B8A6', '#8B5CF6'];
   function saveGroups(g) { setGroups(g); saveUserData('wordGroups', g); }
   function openCreateGroup() { setNewGroupName(''); setNewGroupColor(GROUP_COLORS[groups.length % GROUP_COLORS.length]); setShowGroupModal(true); }
