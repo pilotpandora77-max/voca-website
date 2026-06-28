@@ -98,11 +98,19 @@ export default function VocabPage() {
     if (activeGroup === id) setActiveGr(null);
   }
   function toggleWordInGroup(gid, wid) {
+    let added = false, gname = '';
     saveGroups(groups.map(g => {
       if (g.id !== gid) return g;
+      gname = g.name;
       const has = g.wordIds.includes(wid);
+      added = !has;
       return { ...g, wordIds: has ? g.wordIds.filter(x => x !== wid) : [...g.wordIds, wid] };
     }));
+    // Backend дээрх үгийн `group`-ийг шинэчилнэ → апп дээр энэ бүлэгт харагдана (зөвхөн backend-д хадгалагдсан үгэнд)
+    if (wid && !String(wid).startsWith('local-')) {
+      api.patch(`/api/words/${wid}`, { group: added ? gname : 'Ерөнхий' }).catch(() => {});
+      setWords(ws => ws.map(w => ((w._id || w.id) === wid ? { ...w, group: added ? gname : 'Ерөнхий' } : w)));
+    }
   }
 
   async function loadData() {
@@ -170,9 +178,12 @@ export default function VocabPage() {
     const back = (newWord.back || '').trim();
     if (!front || !back) { alert('Хятад үг болон Монгол утгыг бөглөнө үү.'); return; }
     setAddLoad(true);
+    // Идэвхтэй бүлгийн нэрийг backend дээрх үгийн `group` талбарт бичнэ → апп дээр тэр бүлэгт харагдана
+    const activeGroupName = activeGroup ? (groups.find(g => g.id === activeGroup)?.name || '') : '';
     const payload = {
       front: newWord.front, back: newWord.back, hint: newWord.hint,
       word: newWord.front, meaning: newWord.back, reading: newWord.hint, lang,
+      ...(activeGroupName ? { group: activeGroupName } : {}),
     };
     // 1) Optimistic — шууд харагдана, localStorage-д хадгална (backend амжаагүй ч)
     const localId = 'local-' + Date.now();
@@ -195,7 +206,10 @@ export default function VocabPage() {
         const local = JSON.parse(localStorage.getItem('voca_local_words') || '[]');
         localStorage.setItem('voca_local_words', JSON.stringify(local.filter(x => x._id !== localId)));
         // локал түр id-г бодит backend id-р солих → утсан дээр синк болно
-        setWords(w => w.map(x => (x._id === localId ? { ...data, _id: data._id || data.id } : x)));
+        const realId = data._id || data.id;
+        setWords(w => w.map(x => (x._id === localId ? { ...data, _id: realId } : x)));
+        // Бүлгийн доторх түр id-г бодит id-р солих (вэбийн бүлэг зөв ажиллана)
+        if (activeGroup) saveGroups(groups.map(g => g.id === activeGroup ? { ...g, wordIds: g.wordIds.map(x => (x === localId ? realId : x)) } : g));
       }
     } catch (e) {
       const msg = e.response?.data?.code === 'WORD_LIMIT'
