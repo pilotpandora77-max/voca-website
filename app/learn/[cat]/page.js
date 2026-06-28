@@ -5,6 +5,7 @@ import Link from 'next/link';
 import { useAuth } from '@/lib/auth';
 import { useLang } from '@/lib/LangContext';
 import { findCategory } from '@/lib/courses';
+import { pullLegacy, pushLegacy } from '@/lib/userdata';
 
 const TABS = ['Үгс', 'Сураглах', 'Тест хийх', 'Тэмдэглэл'];
 
@@ -31,6 +32,10 @@ export default function CategoryPage() {
     if (!authLoad && !user) router.push('/login');
     try { setProg(JSON.parse(localStorage.getItem('voca_learn_progress') || '{}')); } catch {}
     try { setFav(JSON.parse(localStorage.getItem('voca_learn_fav') || '[]')); } catch {}
+    if (!authLoad && user) {
+      pullLegacy('voca_learn_progress', 'learnProgress').then(d => { if (d) setProg(d); });
+      pullLegacy('voca_learn_fav', 'saved').then(d => { if (Array.isArray(d)) setFav(d); });
+    }
   }, [authLoad, user]);
 
   if (authLoad) return null;
@@ -53,7 +58,7 @@ export default function CategoryPage() {
     const key = `${lang}:${category.id}:${wid}`;
     setFav(prev => {
       const next = prev.includes(key) ? prev.filter(x => x !== key) : [...prev, key];
-      localStorage.setItem('voca_learn_fav', JSON.stringify(next));
+      pushLegacy('voca_learn_fav', 'saved', next);
       return next;
     });
   }
@@ -229,7 +234,10 @@ function QuizTab({ category }) {
 
 function NotesTab({ category, lang }) {
   const [notes, setNotes] = useState({});
-  useEffect(() => { try { setNotes(JSON.parse(localStorage.getItem('voca_word_notes') || '{}')); } catch {} }, []);
+  useEffect(() => {
+    try { setNotes(JSON.parse(localStorage.getItem('voca_word_notes') || '{}')); } catch {}
+    pullLegacy('voca_word_notes', 'notes').then(d => { if (d) setNotes(d); });
+  }, []);
   const entries = category.words.map(w => ({ w, note: notes[`${lang}:${category.id}:${w.id}`] })).filter(e => e.note);
   if (entries.length === 0) return <div className="card" style={{ textAlign: 'center', padding: 30 }}><div style={{ fontSize: 40, marginBottom: 10 }}>📝</div><p style={{ color: 'var(--muted)' }}>Одоогоор тэмдэглэл алга. Үгийн дэлгэрэнгүй хуудаснаас тэмдэглэл нэмээрэй.</p></div>;
   return (

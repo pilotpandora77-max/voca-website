@@ -5,6 +5,7 @@ import { useAuth } from '@/lib/auth';
 import api from '@/lib/api';
 import PageHeader from '@/components/PageHeader';
 import { getCourses } from '@/lib/courses';
+import { loadUserData, saveUserData } from '@/lib/userdata';
 
 // Хятад үг → {pinyin, mn} локал толь (курсын өгөгдлөөс)
 const ZH_LOOKUP = (() => {
@@ -74,11 +75,13 @@ export default function VocabPage() {
   useEffect(() => {
     if (!authLoad && !user) router.push('/login');
     if (user) loadData();
-    try { setGroups(JSON.parse(localStorage.getItem('voca_word_groups') || '[]')); } catch {}
+    // Бүлгүүдийг backend-ээс (байвал) синк; эс бөгөөс хуучин localStorage-оос (migration)
+    let old = []; try { old = JSON.parse(localStorage.getItem('voca_word_groups') || '[]'); } catch {}
+    loadUserData('wordGroups', old).then(g => { if (Array.isArray(g)) setGroups(g); });
   }, [authLoad, user]);
 
   const GROUP_COLORS = ['#7C3AED', '#EC4899', '#10B981', '#F59E0B', '#3B82F6', '#EF4444', '#14B8A6', '#8B5CF6'];
-  function saveGroups(g) { setGroups(g); localStorage.setItem('voca_word_groups', JSON.stringify(g)); }
+  function saveGroups(g) { setGroups(g); saveUserData('wordGroups', g); }
   function openCreateGroup() { setNewGroupName(''); setNewGroupColor(GROUP_COLORS[groups.length % GROUP_COLORS.length]); setShowGroupModal(true); }
   function confirmCreateGroup() {
     if (!newGroupName.trim()) { alert('Бүлгийн нэр оруулна уу.'); return; }

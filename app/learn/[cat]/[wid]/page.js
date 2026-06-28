@@ -6,6 +6,7 @@ import { useAuth } from '@/lib/auth';
 import { useLang } from '@/lib/LangContext';
 import api from '@/lib/api';
 import { findCategory } from '@/lib/courses';
+import { pullLegacy, pushLegacy } from '@/lib/userdata';
 
 const RATINGS = [
   { key: 'again', label: 'Мэдэхгүй байна', sub: 'Дахин давтах', bg: '#FEF2F2', bd: '#FCA5A5', c: '#DC2626', emoji: '🙁' },
@@ -51,7 +52,7 @@ export default function WordPage() {
       const prog = JSON.parse(localStorage.getItem('voca_learn_progress') || '{}');
       const ck = `${lang}:${cat}`;
       const cp = prog[ck] || {};
-      if (!cp[wid]?.learned) { cp[wid] = { ...cp[wid], learned: true }; prog[ck] = cp; localStorage.setItem('voca_learn_progress', JSON.stringify(prog)); }
+      if (!cp[wid]?.learned) { cp[wid] = { ...cp[wid], learned: true }; prog[ck] = cp; pushLegacy('voca_learn_progress', 'learnProgress', prog); }
     } catch {}
     speak(word.target);
   }, [cat, wid, lang]);
@@ -67,7 +68,7 @@ export default function WordPage() {
       const favs = JSON.parse(localStorage.getItem('voca_learn_fav') || '[]');
       const key = `${lang}:${cat}:${wid}`;
       const nx = favs.includes(key) ? favs.filter(x => x !== key) : [...favs, key];
-      localStorage.setItem('voca_learn_fav', JSON.stringify(nx));
+      pushLegacy('voca_learn_fav', 'saved', nx);
       setFav(nx.includes(key));
     } catch {}
   }
@@ -75,7 +76,7 @@ export default function WordPage() {
     try {
       const notes = JSON.parse(localStorage.getItem('voca_word_notes') || '{}');
       notes[`${lang}:${cat}:${wid}`] = note;
-      localStorage.setItem('voca_word_notes', JSON.stringify(notes));
+      pushLegacy('voca_word_notes', 'notes', notes);
       setSavedNote(note);
     } catch {}
   }
@@ -85,7 +86,7 @@ export default function WordPage() {
       const ck = `${lang}:${cat}`;
       const cp = prog[ck] || {};
       cp[wid] = { ...cp[wid], learned: true, rating: key, ratedAt: Date.now() };
-      prog[ck] = cp; localStorage.setItem('voca_learn_progress', JSON.stringify(prog));
+      prog[ck] = cp; pushLegacy('voca_learn_progress', 'learnProgress', prog);
     } catch {}
     // save to backend vocab
     if (key !== 'again') {

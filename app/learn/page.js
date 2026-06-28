@@ -7,6 +7,7 @@ import { useLang } from '@/lib/LangContext';
 import api from '@/lib/api';
 import PageHeader from '@/components/PageHeader';
 import { getCourses } from '@/lib/courses';
+import { pullLegacy } from '@/lib/userdata';
 
 export default function LearnPage() {
   const { user, loading: authLoad } = useAuth();
@@ -21,6 +22,7 @@ export default function LearnPage() {
     if (!authLoad && !user) router.push('/login');
     if (!authLoad && user) api.get('/api/streak').then(r => setStreak(r.data.streak || 0)).catch(() => {});
     try { setProg(JSON.parse(localStorage.getItem('voca_learn_progress') || '{}')); } catch {}
+    if (!authLoad && user) pullLegacy('voca_learn_progress', 'learnProgress').then(d => { if (d) setProg(d); });
   }, [authLoad, user]);
 
   if (authLoad) return null;
