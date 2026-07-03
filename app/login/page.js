@@ -2,6 +2,7 @@
 import { useState, useEffect, useRef, Suspense } from 'react';
 import { useSearchParams } from 'next/navigation';
 import { useAuth } from '@/lib/auth';
+import api from '@/lib/api';
 import { GoogleLogin } from '@react-oauth/google';
 
 export default function LoginPage() {
@@ -60,7 +61,7 @@ function LoginInner() {
     mn: {
       welcome:'Voca-д тавтай морил!', subtitle:'Бүртгэлтэй эсвэл нэвтэрч үргэлжлүүлээрэй.',
       tabLogin:'Нэвтрэх', tabReg:'Бүртгүүлэх',
-      name:'Нэр', email:'И-мэйл эсвэл утасны дугаар',
+      name:'Нэр', email:'Нэвтрэх нэр',
       password:'Нууц үг', confirm:'Нууц үг давтах',
       remember:'Намайг сана', forgot:'Нууц үгээ мартсан уу?',
       or:'эсвэл', terms:'Үйлчилгээний нөхцөлийг зөвшөөрч байна',
@@ -75,7 +76,7 @@ function LoginInner() {
     en: {
       welcome:'Welcome to Voca!', subtitle:'Sign in or register to continue.',
       tabLogin:'Sign in', tabReg:'Sign up',
-      name:'Full name', email:'Email or phone number',
+      name:'Full name', email:'Username',
       password:'Password', confirm:'Confirm password',
       remember:'Remember me', forgot:'Forgot password?',
       or:'or', terms:'I agree to the Terms of Service',
@@ -104,6 +105,22 @@ function LoginInner() {
       setErr(ex.response?.data?.error || (isLogin ? T.errLogin : T.errReg));
     }
     setBusy(false);
+  }
+
+  async function handleForgot() {
+    const em = (email || window.prompt('Бүртгэлтэй и-мэйл хаягаа оруулна уу:') || '').trim();
+    if (!em) return;
+    try {
+      const { data } = await api.post('/api/auth/forgot-password', { email: em });
+      const code = data.code; // одоогоор backend кодыг response-д буцаадаг (и-мэйл илгээлт хараахан алга)
+      const np = window.prompt('Шинэ нууц үгээ оруулна уу (хамгийн багадаа 6 тэмдэгт):');
+      if (!np) return;
+      if (np.length < 6) { alert('Нууц үг хамгийн багадаа 6 тэмдэгт байх ёстой.'); return; }
+      await api.post('/api/auth/reset-password', { email: em, code, newPassword: np });
+      alert('Нууц үг амжилттай шинэчлэгдлээ! Шинэ нууц үгээрээ нэвтэрнэ үү.');
+    } catch (ex) {
+      alert(ex.response?.data?.error || 'Нууц үг сэргээхэд алдаа гарлаа. И-мэйлээ шалгана уу.');
+    }
   }
 
   async function handleGoogle(cr) {
@@ -169,19 +186,19 @@ function LoginInner() {
         input:-webkit-autofill:hover,
         input:-webkit-autofill:focus {
           -webkit-text-fill-color:#f0ebff !important;
-          -webkit-box-shadow:0 0 0 1000px rgba(20,11,44,0.92) inset !important;
+          -webkit-box-shadow:0 0 0 1000px #160c2e inset !important;
           caret-color:#a855f7 !important;
           transition:background-color 9999s ease-in-out 0s;
         }
 
         .vi {
-          width:100%; height:54px; padding:0 18px 0 46px;
-          background:rgba(13,8,32,0.55); border:1.5px solid rgba(130,100,200,0.22);
-          border-radius:14px; color:#f0ebff; font-size:15px; font-weight:600;
+          width:100%; height:54px; padding:0 18px;
+          background:#160c2e; border:1.5px solid rgba(130,100,200,0.22);
+          border-radius:14px; color:#f0ebff; -webkit-text-fill-color:#f0ebff; font-size:15px; font-weight:600;
           outline:none; box-sizing:border-box; caret-color:#a855f7;
           transition:border-color 0.2s, box-shadow 0.2s, background 0.2s;
         }
-        .vi:focus { border-color:rgba(168,85,247,0.65); box-shadow:0 0 0 3px rgba(139,92,246,0.18); background:rgba(20,11,44,0.75); }
+        .vi:focus { border-color:rgba(168,85,247,0.65); box-shadow:0 0 0 3px rgba(139,92,246,0.18); background:#1c1138; }
         .vi.pr { padding-right:46px; }
 
         .sb {
@@ -268,19 +285,16 @@ function LoginInner() {
 
             {!isLogin && (
               <div style={{ position:'relative' }}>
-                <span style={{ position:'absolute', left:15, top:'50%', transform:'translateY(-50%)', pointerEvents:'none', display:'flex' }}>{IconUser}</span>
                 <input className="vi" type="text" placeholder={T.name} value={name} onChange={e => setName(e.target.value)} required />
               </div>
             )}
 
             <div style={{ position:'relative' }}>
-              <span style={{ position:'absolute', left:15, top:'50%', transform:'translateY(-50%)', pointerEvents:'none', display:'flex' }}>{IconMail}</span>
               <input className="vi" type="text" placeholder={T.email} value={email} onChange={e => setEmail(e.target.value)} required />
             </div>
 
             <div>
               <div style={{ position:'relative' }}>
-                <span style={{ position:'absolute', left:15, top:'50%', transform:'translateY(-50%)', pointerEvents:'none', display:'flex' }}>{IconLock}</span>
                 <input className="vi pr" type={showPw ? 'text' : 'password'} placeholder={T.password} value={pw}
                   onChange={e => { setPw(e.target.value); if (!isLogin) setPwScore(scorePw(e.target.value)); }} required />
                 <span onClick={() => setShowPw(v => !v)} style={{ position:'absolute', right:14, top:'50%', transform:'translateY(-50%)', cursor:'pointer', display:'flex', opacity:0.75 }}>{IconEye(showPw)}</span>
@@ -299,7 +313,6 @@ function LoginInner() {
 
             {!isLogin && (
               <div style={{ position:'relative' }}>
-                <span style={{ position:'absolute', left:15, top:'50%', transform:'translateY(-50%)', pointerEvents:'none', display:'flex' }}>{IconLock}</span>
                 <input className="vi pr" type="password" placeholder={T.confirm} value={pw2} onChange={e => setPw2(e.target.value)} required />
                 {pw2.length > 0 && (
                   <span style={{ position:'absolute', right:14, top:'50%', transform:'translateY(-50%)', fontSize:15 }}>{pw === pw2 ? '✅' : '❌'}</span>
@@ -313,7 +326,7 @@ function LoginInner() {
                   <div style={remember ? checkedBox : emptyBox}>{remember && checkSvg}</div>
                   <span style={{ fontSize:14, color:'#c4bae0', fontWeight:600 }}>{T.remember}</span>
                 </div>
-                <span className="link-purple" style={{ fontSize:14, color:'#b08cff', cursor:'pointer', fontWeight:700 }}>{T.forgot}</span>
+                <span onClick={handleForgot} className="link-purple" style={{ fontSize:14, color:'#b08cff', cursor:'pointer', fontWeight:700 }}>{T.forgot}</span>
               </div>
             )}
 
