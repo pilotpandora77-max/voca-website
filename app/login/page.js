@@ -154,7 +154,7 @@ function LoginInner() {
   const IconMail = <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke={ICO} strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="5" width="18" height="14" rx="2"/><path d="M3 7l9 6 9-6"/></svg>;
   const IconLock = <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke={ICO} strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round"><rect x="4" y="11" width="16" height="9" rx="2"/><path d="M8 11V8a4 4 0 0 1 8 0v3"/></svg>;
   const IconEye  = (open) => (
-    <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke={ICO} strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round">
+    <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="#7c7299" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round">
       {open
         ? <><path d="M2 12s4-7 10-7 10 7 10 7-4 7-10 7S2 12 2 12z"/><circle cx="12" cy="12" r="3"/></>
         : <><path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19"/><line x1="1" y1="1" x2="23" y2="23"/></>
@@ -168,7 +168,7 @@ function LoginInner() {
       <style>{`
         @import url('https://fonts.googleapis.com/css2?family=Nunito:wght@400;500;600;700;800;900&display=swap');
         * { box-sizing:border-box; }
-        ::placeholder { color:#7d72a6 !important; opacity:1 !important; }
+        ::placeholder { color:#9a94b5 !important; opacity:1 !important; }
         input { font-family:'Nunito',sans-serif !important; }
 
         /* Hide browser-native icons that overlap our custom ones
@@ -185,20 +185,20 @@ function LoginInner() {
         input:-webkit-autofill,
         input:-webkit-autofill:hover,
         input:-webkit-autofill:focus {
-          -webkit-text-fill-color:#f0ebff !important;
-          -webkit-box-shadow:0 0 0 1000px #160c2e inset !important;
-          caret-color:#a855f7 !important;
+          -webkit-text-fill-color:#1a1235 !important;
+          -webkit-box-shadow:0 0 0 1000px #ffffff inset !important;
+          caret-color:#7c3aed !important;
           transition:background-color 9999s ease-in-out 0s;
         }
 
         .vi {
           width:100%; height:54px; padding:0 18px;
-          background:#160c2e; border:1.5px solid rgba(130,100,200,0.22);
-          border-radius:14px; color:#f0ebff; -webkit-text-fill-color:#f0ebff; font-size:15px; font-weight:600;
-          outline:none; box-sizing:border-box; caret-color:#a855f7;
+          background:#ffffff; border:1.5px solid rgba(130,100,200,0.3);
+          border-radius:14px; color:#1a1235; -webkit-text-fill-color:#1a1235; font-size:15px; font-weight:600;
+          outline:none; box-sizing:border-box; caret-color:#7c3aed;
           transition:border-color 0.2s, box-shadow 0.2s, background 0.2s;
         }
-        .vi:focus { border-color:rgba(168,85,247,0.65); box-shadow:0 0 0 3px rgba(139,92,246,0.18); background:#1c1138; }
+        .vi:focus { border-color:#a855f7; box-shadow:0 0 0 3px rgba(139,92,246,0.18); background:#ffffff; }
         .vi.pr { padding-right:46px; }
 
         .sb {
