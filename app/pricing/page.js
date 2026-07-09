@@ -42,6 +42,9 @@ export default function PricingPage() {
   const [payPlan, setPayPlan] = useState(null);   // plan id being paid for (opens modal)
   const [invoice, setInvoice] = useState(null);   // { invoiceId, qrImage, qrText, urls, amount }
   const [busy, setBusy]       = useState(null);
+  // Bank-app deep links only make sense on a mobile browser (see modal below);
+  // lazy-init so this never runs during SSR, where `navigator` isn't defined.
+  const [isMobile] = useState(() => typeof navigator !== 'undefined' && /Android|iPhone|iPad|iPod/i.test(navigator.userAgent));
 
   useEffect(() => {
     if (!authLoad && !user) router.push('/login');
@@ -238,7 +241,8 @@ export default function PricingPage() {
                 <div style={{ padding: '40px 0', color: 'var(--muted)', fontWeight: 700, fontSize: 13 }}>Нэхэмжлэх үүсгэж байна…</div>
               ) : (<>
                 <p style={{ fontSize: 13, color: 'var(--muted)', fontWeight: 600, marginTop: 8, marginBottom: 16 }}>
-                  QPay апп эсвэл банкны апп-аар уншуулж төлнө үү
+                  {isMobile ? 'QPay апп эсвэл банкны апп-аар уншуулж төлнө үү'
+                            : 'Гар утасны камер эсвэл QPay/банкны апп-аараа доорх QR кодыг уншуулж төлнө үү'}
                 </p>
 
                 {invoice.qrImage && (
@@ -247,7 +251,9 @@ export default function PricingPage() {
                   </div>
                 )}
 
-                {invoice.urls?.length > 0 && (
+                {/* Bank-app deep links only work when tapped from a mobile browser
+                    that has the app installed — on desktop they just silently no-op. */}
+                {isMobile && invoice.urls?.length > 0 && (
                   <div style={{ display: 'flex', gap: 8, overflowX: 'auto', marginTop: 16, paddingBottom: 4 }}>
                     {invoice.urls.map((u, i) => (
                       <a key={i} href={u.link} style={{
