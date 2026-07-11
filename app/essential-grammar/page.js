@@ -4,27 +4,29 @@ import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { useAuth } from '@/lib/auth';
 import { useLang } from '@/lib/LangContext';
-import api from '@/lib/api';
 import PageHeader from '@/components/PageHeader';
-import { getGrammar } from '@/lib/grammar';
-import EN_LESSONS from '@/lib/grammarEn';
+import EN_LESSONS, { CEFR } from '@/lib/grammarEn';
 
-const BOOK_LESSON_COUNT = EN_LESSONS.filter(l => l.book === 'essential-grammar-in-use').length;
+const BOOK_LESSONS = EN_LESSONS.filter(l => l.book === 'essential-grammar-in-use');
 
-export default function GrammarLessonsPage() {
+export default function EssentialGrammarPage() {
   const { user, loading: authLoad } = useAuth();
-  const { lang, langInfo } = useLang();
+  const { setLang } = useLang();
   const router = useRouter();
   const [streak, setStreak] = useState(0);
-  const [prog, setProg]     = useState({});
-  const { lessons: LESSONS, levels: CEFR } = getGrammar(lang);
-  const lessonsByLevel = (lv) => LESSONS.filter(l => l.level === lv);
+  const [prog, setProg] = useState({});
 
   useEffect(() => {
     if (!authLoad && !user) router.push('/login');
-    if (!authLoad && user) api.get('/api/streak').then(r => setStreak(r.data.streak || 0)).catch(() => {});
-    try { setProg(JSON.parse(localStorage.getItem('voca_grammar_prog') || '{}')); } catch {}
   }, [authLoad, user]);
+
+  // Энэ хуудас зөвхөн Англи хэлний хичээлтэй тул course-г en болгож
+  // тохируулснаар хичээлийн дэлгэрэнгүй холбоос зөв нээгдэнэ.
+  useEffect(() => { setLang('en'); }, []);
+
+  useEffect(() => {
+    try { setProg(JSON.parse(localStorage.getItem('voca_grammar_prog') || '{}')); } catch {}
+  }, []);
 
   if (authLoad) return null;
 
@@ -35,48 +37,51 @@ export default function GrammarLessonsPage() {
     return Math.round((done / 4) * 100);
   }
 
-  const learned = LESSONS.filter(l => pctOf(l.id) >= 75).length;
-  const avgAcc = 83;
+  const learned = BOOK_LESSONS.filter(l => pctOf(l.id) >= 75).length;
+  const levels = CEFR.filter(lv => BOOK_LESSONS.some(l => l.level === lv.level));
 
   return (
     <div style={{ paddingBottom: 40 }}>
-      <PageHeader title="Дүрмийн хичээл 📘" subtitle={lang === 'zh' ? 'HSK түвшинд тулгуурласан Хятад хэлний дүрмийн хичээлүүд' : 'CEFR түвшинд тулгуурласан Англи хэлний дүрмийн хичээлүүд'} streak={streak} />
+      <PageHeader title="Essential Grammar in Use 📗" subtitle="Raymond Murphy · 4th Edition — сонгодог англи хэлний дүрмийн сурах бичгийн сэдвүүдэд тулгуурласан хичээлүүд" streak={streak} />
 
       <div style={{ padding: '0 28px', maxWidth: 1000, margin: '0 auto' }}>
-        {/* Status */}
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 14, marginBottom: 24 }}>
-          {[['Эзэмшсэн дүрэм', `${learned} / ${LESSONS.length}`, '#7C3AED', '📚'], ['Дундаж нарийвчлал', `${avgAcc}%`, '#22C55E', '🎯'], ['Одоогийн түвшин', `${CEFR[0]?.level}–${CEFR[CEFR.length - 1]?.level}`, '#38BDF8', '📈']].map(([l, v, c, ic]) => (
-            <div key={l} className="card" style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
-              <div style={{ width: 46, height: 46, borderRadius: 12, background: `${c}18`, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 22 }}>{ic}</div>
-              <div>
-                <div style={{ fontSize: 22, fontWeight: 900, color: 'var(--text)', lineHeight: 1 }}>{v}</div>
-                <div style={{ fontSize: 12, color: 'var(--muted)', fontWeight: 600, marginTop: 3 }}>{l}</div>
-              </div>
+        {/* Book hero */}
+        <div className="card" style={{ display: 'flex', gap: 22, alignItems: 'center', flexWrap: 'wrap', marginBottom: 24, background: 'linear-gradient(135deg, #EEF2FF, #fff)', border: '1.5px solid var(--purple-mid)' }}>
+          <div style={{
+            width: 84, height: 108, borderRadius: 10, flexShrink: 0,
+            background: 'linear-gradient(160deg, #1E293B, #0F172A)', color: '#fff',
+            display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
+            boxShadow: '0 10px 24px rgba(15,23,42,0.35)', padding: 8, textAlign: 'center',
+          }}>
+            <div style={{ fontSize: 11, fontWeight: 900, lineHeight: 1.25 }}>Essential<br />Grammar<br />in Use</div>
+            <div style={{ fontSize: 8, opacity: 0.7, marginTop: 6 }}>R. MURPHY</div>
+          </div>
+          <div style={{ flex: 1, minWidth: 240 }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 6 }}>
+              <h2 style={{ fontWeight: 900, fontSize: 19, color: 'var(--text)' }}>Essential Grammar in Use</h2>
+              <span className="tag tag-purple" style={{ fontSize: 10 }}>A1–B1</span>
             </div>
-          ))}
+            <p style={{ fontSize: 13.5, color: 'var(--text-sub)', lineHeight: 1.55, marginBottom: 8 }}>
+              Raymond Murphy-гийн бичсэн, дэлхий даяар хамгийн өргөн ашиглагддаг эхлэгч түвшний англи хэлний дүрмийн сурах бичгийн сэдвүүдийн бүтцэд тулгуурлан VOCA-гийн бэлтгэсэн {BOOK_LESSONS.length} хичээл.
+            </p>
+            <p style={{ fontSize: 12, color: 'var(--muted)', lineHeight: 1.5 }}>
+              Тайлбар, жишээ, дасгал бүгд VOCA-гийн өөрийн бэлтгэсэн агуулга бөгөөд номын эх текстийг хуулбарлаагүй болно.
+            </p>
+          </div>
+          <div style={{ textAlign: 'center', flexShrink: 0 }}>
+            <div style={{ fontSize: 26, fontWeight: 900, color: 'var(--purple)' }}>{learned}/{BOOK_LESSONS.length}</div>
+            <div style={{ fontSize: 11, color: 'var(--muted)', fontWeight: 700 }}>Эзэмшсэн</div>
+          </div>
         </div>
 
-        {lang === 'en' && (
-          <Link href="/essential-grammar" style={{ textDecoration: 'none', display: 'block', marginBottom: 24 }}>
-            <div style={{ borderRadius: 16, padding: '16px 20px', background: 'linear-gradient(120deg,#1E293B,#0F172A)', color: '#fff', display: 'flex', alignItems: 'center', gap: 16, flexWrap: 'wrap' }}>
-              <div style={{ width: 42, height: 42, borderRadius: 11, background: 'rgba(255,255,255,0.12)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 20, flexShrink: 0 }}>📗</div>
-              <div style={{ flex: 1, minWidth: 200 }}>
-                <div style={{ fontWeight: 900, fontSize: 15 }}>Essential Grammar in Use</div>
-                <div style={{ fontSize: 12.5, opacity: 0.8 }}>Raymond Murphy — {BOOK_LESSON_COUNT} хичээл нэг дор</div>
-              </div>
-              <span style={{ background: '#fff', color: '#0F172A', borderRadius: 10, padding: '9px 16px', fontWeight: 800, fontSize: 13, flexShrink: 0 }}>Үзэх →</span>
-            </div>
-          </Link>
-        )}
-
         {/* Levels */}
-        {CEFR.map(lv => {
-          const lessons = lessonsByLevel(lv.level);
+        {levels.map(lv => {
+          const lessons = BOOK_LESSONS.filter(l => l.level === lv.level);
           if (lessons.length === 0) return null;
           return (
             <div key={lv.level} style={{ marginBottom: 28 }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 14 }}>
-                <div style={{ width: 46, height: 46, borderRadius: 12, background: lv.color, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', color: '#fff' }}>
+                <div style={{ width: 46, height: 46, borderRadius: 12, background: lv.color, display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#fff' }}>
                   <span style={{ fontSize: 14, fontWeight: 900, lineHeight: 1 }}>{lv.level}</span>
                 </div>
                 <div>
@@ -85,7 +90,7 @@ export default function GrammarLessonsPage() {
                 </div>
               </div>
               <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(230px, 1fr))', gap: 14 }}>
-                {lessons.map((l, i) => {
+                {lessons.map(l => {
                   const pct = pctOf(l.id);
                   return (
                     <Link key={l.id} href={`/grammar-lessons/${l.id}`} style={{ textDecoration: 'none', background: '#fff', border: '1.5px solid var(--border)', borderRadius: 16, padding: '16px', transition: 'all 0.15s', display: 'block' }}
@@ -108,6 +113,8 @@ export default function GrammarLessonsPage() {
             </div>
           );
         })}
+
+        <Link href="/grammar-lessons" style={{ fontSize: 13, color: 'var(--purple)', fontWeight: 700, textDecoration: 'none' }}>← Бүх дүрмийн хичээл рүү буцах (A1–C1)</Link>
       </div>
     </div>
   );
