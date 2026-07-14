@@ -81,7 +81,7 @@ export default function HomePage() {
     if (!current) return;
     try {
       await api.patch(`/api/cards/${current.id}/review`, { quality });
-      try { await api.post('/api/streak/checkin'); } catch {}
+      // Streak-ийг зөвхөн "Үгсийн сан" доторх үг давтахад тооцно.
       const rest = dueCards.filter(c => c.id !== current.id);
       setDue(rest); setCurrent(rest[0] || null); setShowBack(false);
     } catch {}

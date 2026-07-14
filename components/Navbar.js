@@ -3,7 +3,7 @@ import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { useAuth } from '@/lib/auth';
-import api from '@/lib/api';
+import api, { uploadUrl } from '@/lib/api';
 
 const NAV = [
   { href: '/',           icon: '🏠', label: 'Нүүр' },
@@ -141,11 +141,13 @@ export default function Navbar() {
             onMouseLeave={e => { e.currentTarget.style.background = 'transparent'; }}
             >
               <div style={{
-                width: 34, height: 34, borderRadius: '50%', fontSize: 18, flexShrink: 0,
+                width: 34, height: 34, borderRadius: '50%', fontSize: 18, flexShrink: 0, overflow: 'hidden',
                 background: `${avatarBg}22`, border: `2px solid ${avatarBg}55`,
                 display: 'flex', alignItems: 'center', justifyContent: 'center',
               }}>
-                {user.avatarEmoji || user.username?.[0]?.toUpperCase()}
+                {user.avatarPhotoUrl
+                  ? <img src={uploadUrl(user.avatarPhotoUrl)} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                  : (user.avatarEmoji || user.username?.[0]?.toUpperCase())}
               </div>
               <div style={{ minWidth: 0 }}>
                 <div style={{ fontWeight: 700, fontSize: 13, color: 'var(--text)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>

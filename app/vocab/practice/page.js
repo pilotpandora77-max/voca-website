@@ -20,6 +20,7 @@ export default function VocabPracticePage() {
   const [loading, setLoading]   = useState(true);
   const [done, setDone]         = useState(false);
   const [flipping, setFlipping] = useState(false);
+  const [streakMsg, setStreakMsg] = useState('');
 
   useEffect(() => {
     if (!authLoad && !user) router.push('/login');
@@ -46,10 +47,13 @@ export default function VocabPracticePage() {
     if (!current) return;
     try {
       await api.patch(`/api/cards/${current.id}/review`, { quality });
-      try { await api.post('/api/streak/checkin'); } catch {}
       const rest = cards.filter(c => c.id !== current.id);
       setCards(rest);
-      if (rest.length === 0) { setDone(true); setCurrent(null); }
+      if (rest.length === 0) {
+        setDone(true); setCurrent(null);
+        // Давталт бүрэн дуусах үед л streak тооцно — тэр бүрд биш.
+        api.post('/api/streak/checkin').then(({ data }) => setStreakMsg(data?.message || '')).catch(() => {});
+      }
       else { setCurrent(rest[0]); setShowBack(false); }
     } catch {}
   }
@@ -95,9 +99,17 @@ export default function VocabPracticePage() {
         }}>
           <div style={{ fontSize: 60, marginBottom: 14 }}>🎉</div>
           <h2 style={{ fontWeight: 900, fontSize: 24, color: '#22C55E', marginBottom: 8 }}>Маш сайн!</h2>
-          <p style={{ color: 'var(--muted)', fontWeight: 600, marginBottom: 28, fontSize: 14 }}>
+          <p style={{ color: 'var(--muted)', fontWeight: 600, marginBottom: streakMsg ? 10 : 28, fontSize: 14 }}>
             Өнөөдрийн давталт бүрэн дууслаа
           </p>
+          {streakMsg && (
+            <div style={{
+              display: 'inline-block', background: 'rgba(245,158,11,0.14)', color: '#B45309',
+              borderRadius: 100, padding: '8px 16px', fontWeight: 800, fontSize: 13.5, marginBottom: 28,
+            }}>
+              {streakMsg}
+            </div>
+          )}
           <div style={{ display: 'flex', gap: 10, justifyContent: 'center', flexWrap: 'wrap' }}>
             <Link href="/games" className="btn btn-purple" style={{ textDecoration: 'none', padding: '12px 24px', fontSize: 14 }}>
               🎮 Тоглоомоор давтах

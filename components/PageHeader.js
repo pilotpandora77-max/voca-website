@@ -2,6 +2,7 @@
 import { useAuth } from '@/lib/auth';
 import Link from 'next/link';
 import CourseSelector from '@/components/CourseSelector';
+import { uploadUrl } from '@/lib/api';
 
 export default function PageHeader({ title, subtitle, streak = 0, actions, dark = false }) {
   const { user } = useAuth();
@@ -66,8 +67,11 @@ export default function PageHeader({ title, subtitle, streak = 0, actions, dark 
           width: 38, height: 38, borderRadius: '50%', textDecoration: 'none', flexShrink: 0,
           background: `${avatarBg}22`, border: `2px solid ${avatarBg}66`,
           display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 19,
+          overflow: 'hidden',
         }}>
-          {user?.avatarEmoji || user?.username?.[0]?.toUpperCase() || '?'}
+          {user?.avatarPhotoUrl
+            ? <img src={uploadUrl(user.avatarPhotoUrl)} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+            : (user?.avatarEmoji || user?.username?.[0]?.toUpperCase() || '?')}
         </Link>
       </div>
     </div>

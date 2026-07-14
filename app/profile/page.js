@@ -3,7 +3,7 @@ import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { useAuth } from '@/lib/auth';
-import api from '@/lib/api';
+import api, { uploadUrl } from '@/lib/api';
 
 const EMOJIS = ['🐼','🦊','🐨','🦁','🐯','🐸','🦄','🐙','🦋','🐬','🦅','🐺'];
 const COLORS = [
@@ -107,7 +107,11 @@ export default function ProfilePage() {
       <div style={{ position: 'relative', borderRadius: 24, overflow: 'hidden', marginBottom: 16, background: 'linear-gradient(120deg, #EDE9FF 0%, #F5F0FF 60%, #FCE7F3 100%)', border: '1.5px solid var(--purple-mid)', padding: '26px 30px' }}>
         <div style={{ position: 'absolute', right: 24, top: '50%', transform: 'translateY(-50%)', fontSize: 90, opacity: 0.25 }}>🏔️</div>
         <div style={{ display: 'flex', alignItems: 'center', gap: 24, flexWrap: 'wrap', position: 'relative' }}>
-          <div style={{ width: 116, height: 116, borderRadius: '50%', flexShrink: 0, background: `radial-gradient(circle at 40% 35%, ${clrHex}, #4c1d95)`, border: '4px solid #fff', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 60, boxShadow: `0 8px 30px ${clrHex}44` }}>{emoji}</div>
+          <div style={{ width: 116, height: 116, borderRadius: '50%', flexShrink: 0, overflow: 'hidden', background: `radial-gradient(circle at 40% 35%, ${clrHex}, #4c1d95)`, border: '4px solid #fff', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 60, boxShadow: `0 8px 30px ${clrHex}44` }}>
+            {user.avatarPhotoUrl
+              ? <img src={uploadUrl(user.avatarPhotoUrl)} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+              : emoji}
+          </div>
           <div style={{ flex: 1, minWidth: 220 }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 4 }}>
               <span style={{ fontSize: 28, fontWeight: 900, color: 'var(--text)' }}>{user.username}</span>
