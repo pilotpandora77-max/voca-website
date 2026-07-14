@@ -5,6 +5,7 @@ import { useAuth } from '@/lib/auth';
 import api from '@/lib/api';
 import PageHeader from '@/components/PageHeader';
 import { getCourses } from '@/lib/courses';
+import { useLang } from '@/lib/LangContext';
 
 // Pinyin аялгын тэмдгийг арилгах
 function stripTone(s = '') {
@@ -17,6 +18,22 @@ const LOCAL_ZH = getCourses('zh').flatMap(c => c.words).map(w => ({
   mn: w.mn, meaning: w.mn, english: w.target, definitions: [w.mn],
   examples: w.examples, hsk: 'HSK 1',
 }));
+
+// Локал хайлтын сан — курсын Англи үгсээс
+const LOCAL_EN = getCourses('en').flatMap(c => c.words).map(w => ({
+  simplified: w.target, traditional: w.target, pinyin: w.reading, reading: w.reading,
+  mn: w.mn, meaning: w.mn, english: w.target, definitions: w.type ? [w.type] : [],
+  examples: w.examples, related: w.related, level: 'A1',
+}));
+
+// Backend-ийн /api/english гарц бүрийг дэлгэцийн ерөнхий бүтэцрүү хөрвүүлэх
+function normalizeEnEntry(e) {
+  return {
+    simplified: e.word, traditional: e.word, pinyin: e.ipa, reading: e.ipa,
+    mn: e.mn, meaning: e.mn, english: e.word, definitions: e.pos ? [e.pos] : [],
+    examples: e.example ? [{ en: e.example, mn: '' }] : [], level: e.level,
+  };
+}
 
 function HanziAnimate({ char, size = 230 }) {
   const containerRef = useRef(null);
@@ -75,6 +92,8 @@ function speak(text, lang = 'zh-CN') {
 
 export default function DictionaryPage() {
   const { user, loading: authLoad } = useAuth();
+  const { lang: courseLang } = useLang();
+  const isEn = courseLang === 'en';
   const router = useRouter();
   const [query, setQuery]       = useState('');
   const [results, setResults]   = useState([]);
@@ -160,6 +179,18 @@ export default function DictionaryPage() {
     if (!q) return;
     setLoading(true); setSearched(true); setSelected(null);
 
+    if (isEn) {
+      try {
+        const list = await searchEn(q);
+        setResults(list);
+        if (list.length === 1) setSelected(list[0]);
+      } catch {
+        setResults(localSearchEn(q));
+      }
+      setLoading(false);
+      return;
+    }
+
     try {
       const lang = detectLang(q);
       let list = [];
@@ -195,6 +226,26 @@ export default function DictionaryPage() {
     setLoading(false);
   }
 
+  // Англи горим: курсын (баялаг метадатай) сан + backend-ийн 8600+ үгтэй толь хосолно
+  async function searchEn(q) {
+    const nq = q.toLowerCase();
+    const localHits = LOCAL_EN.filter(w =>
+      w.simplified.toLowerCase().includes(nq) || (w.mn || '').toLowerCase().includes(nq));
+    let backendHits = [];
+    try {
+      const { data } = await api.get('/api/english', { params: { q } });
+      backendHits = Array.isArray(data) ? data.map(normalizeEnEntry) : [];
+    } catch {}
+    const seen = new Set(localHits.map(w => w.simplified.toLowerCase()));
+    const merged = [...localHits, ...backendHits.filter(w => !seen.has(w.simplified.toLowerCase()))];
+    return merged.length ? merged : localSearchEn(q);
+  }
+
+  function localSearchEn(q) {
+    const nq = q.toLowerCase();
+    return LOCAL_EN.filter(w => w.simplified.toLowerCase().includes(nq) || (w.mn || '').toLowerCase().includes(nq)).slice(0, 20);
+  }
+
   function localSearch(q, lang) {
     const nq = stripTone(q);
     return LOCAL_ZH.filter(w => {
@@ -211,7 +262,7 @@ export default function DictionaryPage() {
     try {
       const wordVal   = word.simplified || word.traditional || word.word || word.hanzi || query;
       const mnMeaning = word.mn || ZH_MN[word.simplified] || ZH_MN[word.traditional] || '';
-      const enMeaning = Array.isArray(word.definitions) ? word.definitions.join('; ') : (word.english || word.meaning || '');
+      const enMeaning = isEn ? '' : (Array.isArray(word.definitions) ? word.definitions.join('; ') : (word.english || word.meaning || ''));
       const meaning   = mnMeaning || enMeaning;
       const reading   = word.pinyin || word.reading || '';
 
@@ -222,7 +273,7 @@ export default function DictionaryPage() {
       }
       await api.post('/api/words', {
         front: wordVal, back: meaning, hint: reading,
-        word: wordVal, meaning, meaningEn: enMeaning, reading, lang: 'zh',
+        word: wordVal, meaning, meaningEn: enMeaning, reading, lang: isEn ? 'en' : 'zh',
       });
       setAdded('✓ Нэмэгдлэ!');
       setTimeout(() => setAdded(''), 2500);
@@ -237,7 +288,7 @@ export default function DictionaryPage() {
     const text = word.simplified || word.traditional || word.word || word.hanzi || '';
     if (!text) return;
     setSpeaking(true);
-    speak(text, 'zh-CN');
+    speak(text, isEn ? 'en-US' : 'zh-CN');
     setTimeout(() => setSpeaking(false), 2000);
   }
 
@@ -247,7 +298,7 @@ export default function DictionaryPage() {
     <div style={{ paddingBottom: 32 }}>
       <PageHeader
         title="Толь бичиг 📖"
-        subtitle="Хятад, монгол, pinyin-ээр хайж үгийн утга, жишээ, дуудлагыг мэд."
+        subtitle={isEn ? 'Англи, монгол үгээр хайж утга, жишээ, дуудлагыг мэд.' : 'Хятад, монгол, pinyin-ээр хайж үгийн утга, жишээ, дуудлагыг мэд.'}
         streak={streak}
       />
 
@@ -260,7 +311,7 @@ export default function DictionaryPage() {
             <div style={{ flex: 1, position: 'relative' }}>
               <span style={{ position: 'absolute', left: 14, top: '50%', transform: 'translateY(-50%)', color: 'var(--muted)', fontSize: 16 }}>🔍</span>
               <input type="search" value={query} onChange={e => setQuery(e.target.value)}
-                placeholder="Хайх... (你好, nǐ hǎo, сайн уу)"
+                placeholder={isEn ? 'Хайх... (hello, сайн уу)' : 'Хайх... (你好, nǐ hǎo, сайн уу)'}
                 style={{ paddingLeft: 44, background: '#fff', borderRadius: 14 }} />
             </div>
             <button type="submit" className="btn btn-purple" style={{ padding: '11px 22px' }}>Хайх</button>
@@ -268,19 +319,21 @@ export default function DictionaryPage() {
 
           {/* Language mode + Filter tabs row */}
           <div style={{ display: 'flex', gap: 8, marginBottom: 14, flexWrap: 'wrap' }}>
-            {/* Language selector */}
-            <div style={{ display: 'flex', background: '#fff', border: '1.5px solid var(--border)', borderRadius: 12, overflow: 'hidden', flexShrink: 0 }}>
-              {LANG_MODES.map(m => (
-                <button key={m.key} onClick={() => setLang(m.key)} style={{
-                  padding: '7px 12px', fontSize: 12, fontWeight: 700, cursor: 'pointer', border: 'none',
-                  fontFamily: 'inherit', transition: 'all 0.12s',
-                  background: langMode === m.key ? 'var(--purple)' : 'transparent',
-                  color: langMode === m.key ? '#fff' : 'var(--text-sub)',
-                }}>
-                  {m.label}
-                </button>
-              ))}
-            </div>
+            {/* Language selector — Хятад олон бичгийн систем илрүүлэхэд л хэрэгтэй тул Англи горимд нуугдана */}
+            {!isEn && (
+              <div style={{ display: 'flex', background: '#fff', border: '1.5px solid var(--border)', borderRadius: 12, overflow: 'hidden', flexShrink: 0 }}>
+                {LANG_MODES.map(m => (
+                  <button key={m.key} onClick={() => setLang(m.key)} style={{
+                    padding: '7px 12px', fontSize: 12, fontWeight: 700, cursor: 'pointer', border: 'none',
+                    fontFamily: 'inherit', transition: 'all 0.12s',
+                    background: langMode === m.key ? 'var(--purple)' : 'transparent',
+                    color: langMode === m.key ? '#fff' : 'var(--text-sub)',
+                  }}>
+                    {m.label}
+                  </button>
+                ))}
+              </div>
+            )}
 
             {/* Filter tabs */}
             {FILTER_TABS.map(t => (
@@ -424,11 +477,11 @@ export default function DictionaryPage() {
                 <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 12, marginTop: 14, paddingTop: 14, borderTop: '1.5px solid var(--border)' }}>
                   <div>
                     <div style={{ fontSize: 11, fontWeight: 700, color: 'var(--muted)', marginBottom: 4 }}>Хэлний төрөл</div>
-                    <div style={{ fontWeight: 600, color: 'var(--text-sub)', fontSize: 13 }}>Хятад (Мандарин)</div>
+                    <div style={{ fontWeight: 600, color: 'var(--text-sub)', fontSize: 13 }}>{isEn ? 'Англи' : 'Хятад (Мандарин)'}</div>
                   </div>
                   <div>
-                    <div style={{ fontSize: 11, fontWeight: 700, color: 'var(--muted)', marginBottom: 4 }}>HSK түвшин</div>
-                    <span className="tag tag-purple">HSK 1</span>
+                    <div style={{ fontSize: 11, fontWeight: 700, color: 'var(--muted)', marginBottom: 4 }}>{isEn ? 'CEFR түвшин' : 'HSK түвшин'}</div>
+                    <span className="tag tag-purple">{isEn ? (selected.level || 'A1') : 'HSK 1'}</span>
                   </div>
                   <div>
                     <div style={{ fontSize: 11, fontWeight: 700, color: 'var(--muted)', marginBottom: 5 }}>Түгээмэл байдал</div>
@@ -442,37 +495,49 @@ export default function DictionaryPage() {
               </div>
 
               {/* Example sentences */}
-              <div className="card" style={{ marginBottom: 14 }}>
-                <h3 style={{ fontWeight: 900, fontSize: 15, marginBottom: 14 }}>Жишээ өгүүлбэрүүд</h3>
-                <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-                  {(selected.examples && selected.examples.length > 0 ? selected.examples : [
+              {(() => {
+                const exampleList = selected.examples && selected.examples.length > 0 ? selected.examples
+                  : (isEn ? [] : [
                     { zh: `${selected.simplified || selected.word || ''}，你好！`, mn: 'Жишээ өгүүлбэр 1' },
                     { zh: `我喜欢${selected.simplified || selected.word || ''}。`, mn: 'Би дуртай.' },
-                  ]).slice(0, 3).map((ex, i) => (
-                    <div key={i} style={{
-                      display: 'flex', alignItems: 'center', gap: 12, padding: '12px 14px',
-                      background: 'var(--bg-alt)', borderRadius: 12, border: '1.5px solid var(--border)',
-                    }}>
-                      <button onClick={() => speak(ex.zh, 'zh-CN')} style={{
-                        width: 30, height: 30, borderRadius: '50%', background: 'var(--purple-light)',
-                        border: '1.5px solid var(--purple-mid)', display: 'flex', alignItems: 'center',
-                        justifyContent: 'center', fontSize: 13, color: 'var(--purple)', cursor: 'pointer', flexShrink: 0,
-                      }}>▶</button>
-                      <div style={{ flex: 1 }}>
-                        <div style={{ fontWeight: 700, fontSize: 14, color: 'var(--text)', marginBottom: 2 }}>{ex.zh}</div>
-                        <div style={{ fontSize: 12, color: 'var(--muted)' }}>{ex.mn || ex.english}</div>
-                      </div>
+                  ]);
+                if (exampleList.length === 0) return null;
+                return (
+                  <div className="card" style={{ marginBottom: 14 }}>
+                    <h3 style={{ fontWeight: 900, fontSize: 15, marginBottom: 14 }}>Жишээ өгүүлбэрүүд</h3>
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+                      {exampleList.slice(0, 3).map((ex, i) => {
+                        const text = ex.zh || ex.en || '';
+                        const sub  = ex.mn || ex.english || '';
+                        return (
+                          <div key={i} style={{
+                            display: 'flex', alignItems: 'center', gap: 12, padding: '12px 14px',
+                            background: 'var(--bg-alt)', borderRadius: 12, border: '1.5px solid var(--border)',
+                          }}>
+                            <button onClick={() => speak(text, isEn ? 'en-US' : 'zh-CN')} style={{
+                              width: 30, height: 30, borderRadius: '50%', background: 'var(--purple-light)',
+                              border: '1.5px solid var(--purple-mid)', display: 'flex', alignItems: 'center',
+                              justifyContent: 'center', fontSize: 13, color: 'var(--purple)', cursor: 'pointer', flexShrink: 0,
+                            }}>▶</button>
+                            <div style={{ flex: 1 }}>
+                              <div style={{ fontWeight: 700, fontSize: 14, color: 'var(--text)', marginBottom: 2 }}>{text}</div>
+                              {sub && <div style={{ fontSize: 12, color: 'var(--muted)' }}>{sub}</div>}
+                            </div>
+                          </div>
+                        );
+                      })}
                     </div>
-                  ))}
-                </div>
-              </div>
+                  </div>
+                );
+              })()}
 
               {/* Related words */}
+              {(!isEn || (selected.related && selected.related.length > 0)) && (
               <div className="card">
                 <h3 style={{ fontWeight: 900, fontSize: 15, marginBottom: 14 }}>Холбоотой үгс</h3>
                 <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
-                  {(selected.related || ['你', '好', '大家好', '您好', '早上好']).map(w => (
-                    <button key={w} onClick={() => { setQuery(w); setLang('zh'); setTimeout(search, 0); }} style={{
+                  {(selected.related && selected.related.length > 0 ? selected.related : (isEn ? [] : ['你', '好', '大家好', '您好', '早上好'])).map(w => (
+                    <button key={w} onClick={() => { setQuery(w); if (!isEn) setLang('zh'); setTimeout(search, 0); }} style={{
                       background: '#fff', border: '1.5px solid var(--border)', borderRadius: 12,
                       padding: '10px 14px', cursor: 'pointer', fontFamily: 'inherit',
                       textAlign: 'center', transition: 'all 0.14s', minWidth: 72,
@@ -486,6 +551,7 @@ export default function DictionaryPage() {
                   ))}
                 </div>
               </div>
+              )}
             </div>
           )}
 
@@ -493,10 +559,10 @@ export default function DictionaryPage() {
           {!searched && (
             <div style={{ textAlign: 'center', padding: '48px 0' }}>
               <div style={{ fontSize: 64, marginBottom: 14, animation: 'float 3s ease infinite' }}>📖</div>
-              <h3 style={{ fontSize: 18, fontWeight: 800, color: 'var(--text)', marginBottom: 8 }}>Хятад үг хайж эхлэцгээе</h3>
-              <p style={{ color: 'var(--muted)', fontSize: 13, marginBottom: 18 }}>Хятад тэмдэгт, pinyin, эсвэл монгол утгаар хайж болно</p>
+              <h3 style={{ fontSize: 18, fontWeight: 800, color: 'var(--text)', marginBottom: 8 }}>{isEn ? 'Англи үг хайж эхлэцгээе' : 'Хятад үг хайж эхлэцгээе'}</h3>
+              <p style={{ color: 'var(--muted)', fontSize: 13, marginBottom: 18 }}>{isEn ? 'Англи үг эсвэл монгол утгаар хайж болно' : 'Хятад тэмдэгт, pinyin, эсвэл монгол утгаар хайж болно'}</p>
               <div style={{ display: 'flex', justifyContent: 'center', gap: 10, flexWrap: 'wrap' }}>
-                {['你好', 'nǐ hǎo', 'сайн уу', '学习', '汉语'].map(ex => (
+                {(isEn ? ['hello', 'thank you', 'сайн уу', 'study', 'friend'] : ['你好', 'nǐ hǎo', 'сайн уу', '学习', '汉语']).map(ex => (
                   <button key={ex} onClick={() => { setQuery(ex); }} style={{
                     background: 'var(--purple-light)', border: '1.5px solid var(--purple-mid)',
                     color: 'var(--purple)', borderRadius: 100, padding: '7px 16px',
@@ -512,8 +578,8 @@ export default function DictionaryPage() {
         {selected && (
           <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
 
-            {/* Ханз зурлагын дараалал */}
-            {tracerChar && (
+            {/* Ханз зурлагын дараалал — зөвхөн Хятад курст */}
+            {!isEn && tracerChar && (
               <div className="card" style={{ padding: '16px 12px' }}>
                 <div style={{ fontWeight: 900, fontSize: 14, marginBottom: 10 }}>汉 Зурлагын дараалал</div>
                 {/* Олон тэмдэгт бол сонгох товч */}
@@ -602,10 +668,20 @@ export default function DictionaryPage() {
               <div style={{ fontSize: 40, marginBottom: 10 }}>💡</div>
               <div style={{ fontWeight: 800, fontSize: 14, color: 'var(--text)', marginBottom: 6 }}>Хайлтын зөвлөмж</div>
               <div style={{ fontSize: 12, color: 'var(--muted)', lineHeight: 1.6 }}>
-                <p>汉 — Хятад тэмдэгт</p>
-                <p>Pīn — pinyin</p>
-                <p>Мн — Монгол утга</p>
-                <p style={{ marginTop: 8, color: 'var(--purple)', fontWeight: 600 }}>Авто горим дээр өөрөө таних</p>
+                {isEn ? (
+                  <>
+                    <p>EN — Англи үг</p>
+                    <p>Мн — Монгол утга</p>
+                    <p style={{ marginTop: 8, color: 'var(--purple)', fontWeight: 600 }}>Аль ч талаас нь бичиж хайж болно</p>
+                  </>
+                ) : (
+                  <>
+                    <p>汉 — Хятад тэмдэгт</p>
+                    <p>Pīn — pinyin</p>
+                    <p>Мн — Монгол утга</p>
+                    <p style={{ marginTop: 8, color: 'var(--purple)', fontWeight: 600 }}>Авто горим дээр өөрөө таних</p>
+                  </>
+                )}
               </div>
             </div>
           </div>

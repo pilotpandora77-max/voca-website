@@ -15,6 +15,13 @@ const ZH_LOOKUP = (() => {
   return m;
 })();
 
+// Англи үг → {ipa, mn} локал толь (курсын өгөгдлөөс)
+const EN_LOOKUP = (() => {
+  const m = {};
+  try { getCourses('en').flatMap(c => c.words).forEach(w => { if (w.target) m[w.target.toLowerCase()] = { reading: w.reading, mn: w.mn }; }); } catch {}
+  return m;
+})();
+
 const TABS = ['Бүгд', 'Шинэ', 'Сурч байгаа', 'Давтах', 'Мэддэг болсон', 'Сагсархаг үг'];
 const SORT_OPTIONS = ['А-Я', 'Я-А', 'Шинэ нэмэгдсэн', 'Хуучин нэмэгдсэн'];
 const LEVEL_OPTIONS = ['Бүгд', 'HSK 1', 'HSK 2', 'HSK 3', 'HSK 4', 'HSK 5', 'HSK 6'];
@@ -69,6 +76,7 @@ export default function VocabPage() {
   const [groups, setGroups]       = useState([]);     // [{id,name,color,wordIds:[]}]
   const [activeGroup, setActiveGr]= useState(null);   // group id
   const [showGroupModal, setShowGroupModal] = useState(false);
+  const [editingGroupId, setEditingGroupId] = useState(null); // null = creating, else editing this group id
   const [newGroupName, setNewGroupName] = useState('');
   const [newGroupColor, setNewGroupColor] = useState('#7C3AED');
   const [addToGroupId, setAddToGroupId] = useState(null); // group id for "add words" modal
@@ -101,13 +109,31 @@ export default function VocabPage() {
 
   const GROUP_COLORS = ['#7C3AED', '#EC4899', '#10B981', '#F59E0B', '#3B82F6', '#EF4444', '#14B8A6', '#8B5CF6'];
   function saveGroups(g) { setGroups(g); saveUserData('wordGroups', g); }
-  function openCreateGroup() { setNewGroupName(''); setNewGroupColor(GROUP_COLORS[groups.length % GROUP_COLORS.length]); setShowGroupModal(true); }
-  function confirmCreateGroup() {
-    if (!newGroupName.trim()) { alert('Бүлгийн нэр оруулна уу.'); return; }
-    const g = { id: Date.now(), name: newGroupName.trim(), color: newGroupColor, wordIds: [] };
-    saveGroups([...groups, g]);
+  function openCreateGroup() { setEditingGroupId(null); setNewGroupName(''); setNewGroupColor(GROUP_COLORS[groups.length % GROUP_COLORS.length]); setShowGroupModal(true); }
+  function openEditGroup(g) { setEditingGroupId(g.id); setNewGroupName(g.name); setNewGroupColor(g.color || GROUP_COLORS[0]); setShowGroupModal(true); }
+  async function confirmGroupModal() {
+    const name = newGroupName.trim();
+    if (!name) { alert('Бүлгийн нэр оруулна уу.'); return; }
+    if (groups.some(g => g.id !== editingGroupId && g.name === name)) { alert('Энэ нэртэй бүлэг бий.'); return; }
+
+    if (editingGroupId == null) {
+      const g = { id: Date.now(), name, color: newGroupColor, wordIds: [] };
+      saveGroups([...groups, g]);
+      setActiveGr(g.id);
+      setShowGroupModal(false);
+      return;
+    }
+
+    const g = groups.find(x => x.id === editingGroupId);
+    if (!g) { setShowGroupModal(false); return; }
+    const oldName = g.name;
+    saveGroups(groups.map(x => x.id === editingGroupId ? { ...x, name, color: newGroupColor } : x));
+    if (oldName !== name) {
+      const affectedIds = new Set([...(g.wordIds || []), ...words.filter(w => w.group === oldName).map(w => w._id || w.id)]);
+      setWords(ws => ws.map(w => (affectedIds.has(w._id || w.id) ? { ...w, group: name } : w)));
+      await Promise.all([...affectedIds].filter(id => !String(id).startsWith('local-')).map(id => api.patch(`/api/words/${id}`, { group: name }).catch(() => {})));
+    }
     setShowGroupModal(false);
-    setActiveGr(g.id);
   }
   function deleteGroup(id) {
     if (!confirm('Энэ бүлгийг устгах уу? (Үгс устахгүй)')) return;
@@ -167,23 +193,35 @@ export default function VocabPage() {
     setLoading(false);
   }
 
+  const isEn = lang === 'en';
   const [lookupBusy, setLookupBusy] = useState(false);
   async function lookupWord() {
     const q = (newWord.front || '').trim();
-    if (!q) { alert('Эхлээд Хятад үг бичнэ үү.'); return; }
+    if (!q) { alert(isEn ? 'Эхлээд Англи үг бичнэ үү.' : 'Эхлээд Хятад үг бичнэ үү.'); return; }
     setLookupBusy(true);
     let reading = '', mn = '';
-    const local = ZH_LOOKUP[q];
-    if (local) { reading = local.reading || ''; mn = local.mn || ''; }
-    if (!reading || !mn) {
-      try {
-        const { data } = await api.get(`/api/dictionary?q=${encodeURIComponent(q)}`);
-        const d = Array.isArray(data) ? data[0] : data;
-        if (d) {
-          reading = reading || d.pinyin || d.reading || '';
-          mn = mn || d.mn || d.meaning || (Array.isArray(d.definitions) ? d.definitions.join('; ') : (d.english || ''));
-        }
-      } catch {}
+    if (isEn) {
+      const local = EN_LOOKUP[q.toLowerCase()];
+      if (local) { reading = local.reading || ''; mn = local.mn || ''; }
+      if (!reading || !mn) {
+        try {
+          const { data } = await api.get(`/api/english/${encodeURIComponent(q.toLowerCase())}`);
+          if (data) { reading = reading || data.ipa || ''; mn = mn || data.mn || ''; }
+        } catch {}
+      }
+    } else {
+      const local = ZH_LOOKUP[q];
+      if (local) { reading = local.reading || ''; mn = local.mn || ''; }
+      if (!reading || !mn) {
+        try {
+          const { data } = await api.get(`/api/dictionary?q=${encodeURIComponent(q)}`);
+          const d = Array.isArray(data) ? data[0] : data;
+          if (d) {
+            reading = reading || d.pinyin || d.reading || '';
+            mn = mn || d.mn || d.meaning || (Array.isArray(d.definitions) ? d.definitions.join('; ') : (d.english || ''));
+          }
+        } catch {}
+      }
     }
     setLookupBusy(false);
     if (!reading && !mn) { alert('Толь бичгээс олдсонгүй. Гараар бөглөнө үү.'); return; }
@@ -211,8 +249,8 @@ export default function VocabPage() {
       const local = JSON.parse(localStorage.getItem('voca_local_words') || '[]');
       localStorage.setItem('voca_local_words', JSON.stringify([added, ...local]));
     } catch {}
-    // Идэвхтэй бүлэг байвал шинэ үгийг түүнд автоматаар нэмнэ
-    if (activeGroup) toggleWordInGroup(activeGroup, localId);
+    // Идэвхтэй бүлэг байвал шинэ үгийг түүнд автоматаар нэмнэ ("Ерөнхий" бол өөрөө backend-ийн анхдагч)
+    if (activeGroup && activeGroup !== 'UNGROUPED') toggleWordInGroup(activeGroup, localId);
     setNewWord({ front: '', back: '', hint: '' });
     setShowAdd(false);
     setAddLoad(false);
@@ -226,7 +264,7 @@ export default function VocabPage() {
         const realId = data._id || data.id;
         setWords(w => w.map(x => (x._id === localId ? { ...data, _id: realId } : x)));
         // Бүлгийн доторх түр id-г бодит id-р солих (вэбийн бүлэг зөв ажиллана)
-        if (activeGroup) saveGroups(groups.map(g => g.id === activeGroup ? { ...g, wordIds: g.wordIds.map(x => (x === localId ? realId : x)) } : g));
+        if (activeGroup && activeGroup !== 'UNGROUPED') saveGroups(groups.map(g => g.id === activeGroup ? { ...g, wordIds: g.wordIds.map(x => (x === localId ? realId : x)) } : g));
       }
     } catch (e) {
       const msg = e.response?.data?.code === 'WORD_LIMIT'
@@ -262,6 +300,10 @@ export default function VocabPage() {
     setAiLoad(false);
   }
 
+  // Ямар ч бүлэгт багтаагүй үгс — "Ерөнхий" гэсэн далд фолдэрт харагдана,
+  // ингэснээр бүх үг ямар нэг фолдэрийн дотор байх (гээгдэхгүй).
+  const ungroupedWords = words.filter(w => !groups.some(g => (g.wordIds || []).includes(w._id || w.id)));
+
   const filtered = words.filter(w => {
     const matchTab = tab === 'Бүгд' ? true
       : tab === 'Шинэ' ? (!w.status || w.status === 'new')
@@ -272,11 +314,11 @@ export default function VocabPage() {
       : true;
     const q = search.toLowerCase();
     const matchSearch = !q || (w.front || w.word || '').toLowerCase().includes(q) || (w.back || w.meaning || '').toLowerCase().includes(q) || (w.hint || w.reading || '').toLowerCase().includes(q);
-    let matchGroup = true;
-    if (activeGroup) {
-      const g = groups.find(x => x.id === activeGroup);
-      matchGroup = g ? g.wordIds.includes(w._id || w.id) : true;
-    }
+    // Эхлээд фолдэр сонгоогүй л бол ямар ч үг харагдахгүй — фолдэр нээж байж дотор нь орно.
+    let matchGroup;
+    if (activeGroup === 'UNGROUPED') matchGroup = ungroupedWords.includes(w);
+    else if (activeGroup) { const g = groups.find(x => x.id === activeGroup); matchGroup = g ? g.wordIds.includes(w._id || w.id) : false; }
+    else matchGroup = false;
     return matchTab && matchSearch && matchGroup;
   });
 
@@ -318,7 +360,84 @@ export default function VocabPage() {
       <div style={{ padding: '0 28px', display: 'grid', gridTemplateColumns: '1fr 268px', gap: 18 }}>
         {/* Main */}
         <div>
-          {/* Search + Filter */}
+          {/* Folder list — компьютерийн фолдэр мэт доош жагсаана, эхлээд энэ л харагдана */}
+          <div className="card" style={{ padding: 0, overflow: 'hidden', marginBottom: 12 }}>
+            <div style={{ padding: '10px 16px', borderBottom: '1.5px solid var(--border)' }}>
+              <span style={{ fontSize: 11.5, fontWeight: 800, color: 'var(--muted)', letterSpacing: 0.4 }}>📁 БҮЛГҮҮД</span>
+            </div>
+            {ungroupedWords.length > 0 && (
+              <div onClick={() => setActiveGr('UNGROUPED')} style={{
+                display: 'flex', alignItems: 'center', gap: 12, padding: '11px 16px', cursor: 'pointer',
+                background: activeGroup === 'UNGROUPED' ? 'var(--purple-light)' : 'transparent', transition: 'background 0.12s',
+              }}
+              onMouseEnter={e => { if (activeGroup !== 'UNGROUPED') e.currentTarget.style.background = 'var(--bg-alt)'; }}
+              onMouseLeave={e => { if (activeGroup !== 'UNGROUPED') e.currentTarget.style.background = 'transparent'; }}
+              >
+                <div style={{ width: 34, height: 34, borderRadius: 9, background: 'var(--muted)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 16, flexShrink: 0 }}>📂</div>
+                <span style={{ flex: 1, fontWeight: 800, fontSize: 14, color: activeGroup === 'UNGROUPED' ? 'var(--purple)' : 'var(--text)' }}>Ерөнхий</span>
+                <span style={{ fontSize: 12, color: 'var(--muted)', fontWeight: 600 }}>{ungroupedWords.length} үг</span>
+                <span style={{ color: 'var(--muted)', fontSize: 15 }}>›</span>
+              </div>
+            )}
+            {groups.map(g => (
+              <div key={g.id} onClick={() => setActiveGr(g.id)} style={{
+                display: 'flex', alignItems: 'center', gap: 12, padding: '11px 16px', cursor: 'pointer',
+                borderTop: '1px solid var(--border)',
+                background: activeGroup === g.id ? `${g.color}14` : 'transparent', transition: 'background 0.12s',
+              }}
+              onMouseEnter={e => { if (activeGroup !== g.id) e.currentTarget.style.background = 'var(--bg-alt)'; }}
+              onMouseLeave={e => { if (activeGroup !== g.id) e.currentTarget.style.background = 'transparent'; }}
+              >
+                <div style={{ width: 34, height: 34, borderRadius: 9, background: g.color, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 16, flexShrink: 0 }}>📁</div>
+                <span style={{ flex: 1, fontWeight: 800, fontSize: 14, color: activeGroup === g.id ? g.color : 'var(--text)' }}>{g.name}</span>
+                <span style={{ fontSize: 12, color: 'var(--muted)', fontWeight: 600 }}>{g.wordIds.length} үг</span>
+                <span style={{ color: 'var(--muted)', fontSize: 15 }}>›</span>
+              </div>
+            ))}
+            <button onClick={openCreateGroup} style={{
+              display: 'flex', alignItems: 'center', gap: 12, width: '100%', padding: '11px 16px',
+              border: 'none', borderTop: '1px solid var(--border)', cursor: 'pointer',
+              fontFamily: 'inherit', background: 'transparent', textAlign: 'left',
+            }}
+            onMouseEnter={e => e.currentTarget.style.background = 'var(--bg-alt)'}
+            onMouseLeave={e => e.currentTarget.style.background = 'transparent'}
+            >
+              <div style={{ width: 34, height: 34, borderRadius: 9, border: '1.5px dashed var(--purple-mid)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 16, flexShrink: 0, color: 'var(--purple)' }}>➕</div>
+              <span style={{ fontWeight: 800, fontSize: 14, color: 'var(--purple)' }}>Шинэ бүлэг</span>
+            </button>
+          </div>
+
+          {/* Идэвхтэй фолдэрийн толгой хэсэг — сонгосон фолдэрийн доторх үгсийг харуулна */}
+          {activeGroup === 'UNGROUPED' && (
+            <div style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '12px 16px', borderRadius: 14, marginBottom: 12, background: 'var(--bg-alt)', border: '1.5px solid var(--border)', flexWrap: 'wrap' }}>
+              <button onClick={() => setActiveGr(null)} className="btn btn-ghost" style={{ padding: '8px 10px', fontSize: 13 }}>← Буцах</button>
+              <div style={{ width: 36, height: 36, borderRadius: 10, background: 'var(--muted)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 18, color: '#fff', flexShrink: 0 }}>📂</div>
+              <div style={{ flex: 1, minWidth: 120 }}>
+                <div style={{ fontWeight: 900, fontSize: 15, color: 'var(--text)' }}>Ерөнхий</div>
+                <div style={{ fontSize: 12, color: 'var(--muted)', fontWeight: 600 }}>{ungroupedWords.length} үг</div>
+              </div>
+            </div>
+          )}
+          {activeGroup && activeGroup !== 'UNGROUPED' && (() => {
+            const g = groups.find(x => x.id === activeGroup); if (!g) return null;
+            return (
+              <div style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '12px 16px', borderRadius: 14, marginBottom: 12, background: `${g.color}12`, border: `1.5px solid ${g.color}44`, flexWrap: 'wrap' }}>
+                <button onClick={() => setActiveGr(null)} className="btn btn-ghost" style={{ padding: '8px 10px', fontSize: 13 }}>← Буцах</button>
+                <div style={{ width: 36, height: 36, borderRadius: 10, background: g.color, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 18, color: '#fff', flexShrink: 0 }}>📁</div>
+                <div style={{ flex: 1, minWidth: 120 }}>
+                  <div style={{ fontWeight: 900, fontSize: 15, color: 'var(--text)' }}>{g.name}</div>
+                  <div style={{ fontSize: 12, color: 'var(--muted)', fontWeight: 600 }}>{g.wordIds.length} үг</div>
+                </div>
+                <button onClick={() => { setAtgSearch(''); setAddToGroupId(g.id); }} className="btn btn-purple" style={{ padding: '8px 16px', fontSize: 12.5 }}>➕ Үг нэмэх</button>
+                {g.wordIds.length >= 4 && <button onClick={() => router.push('/vocab/practice')} className="btn btn-ghost" style={{ padding: '8px 16px', fontSize: 12.5 }}>🎮 Тоглох</button>}
+                <button onClick={() => openEditGroup(g)} className="btn btn-ghost" style={{ padding: '8px 12px', fontSize: 12.5 }}>✏️ Засах</button>
+                <button onClick={() => deleteGroup(g.id)} className="btn btn-ghost" style={{ padding: '8px 12px', fontSize: 12.5, color: 'var(--red)' }}>🗑️</button>
+              </div>
+            );
+          })()}
+
+          {/* Search + Filter — зөвхөн фолдэр нээгдсэн үед */}
+          {activeGroup && (
           <div style={{ display: 'flex', gap: 10, marginBottom: 14 }}>
             <div style={{ flex: 1, position: 'relative' }}>
               <span style={{ position: 'absolute', left: 14, top: '50%', transform: 'translateY(-50%)', color: 'var(--muted)' }}>🔍</span>
@@ -338,37 +457,10 @@ export default function VocabPage() {
               {SORT_OPTIONS.map(o => <option key={o}>{o}</option>)}
             </select>
           </div>
+          )}
 
-          {/* Groups bar */}
-          <div style={{ display: 'flex', gap: 8, marginBottom: 10, overflowX: 'auto', paddingBottom: 4, alignItems: 'center' }}>
-            <span style={{ fontSize: 12, fontWeight: 800, color: 'var(--muted)', flexShrink: 0 }}>📁 Бүлэг:</span>
-            <button onClick={() => setActiveGr(null)} style={{ padding: '7px 14px', borderRadius: 100, fontSize: 12, fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit', border: `1.5px solid ${!activeGroup ? 'var(--purple)' : 'var(--border)'}`, whiteSpace: 'nowrap', background: !activeGroup ? 'var(--purple-light)' : '#fff', color: !activeGroup ? 'var(--purple)' : 'var(--text-sub)' }}>Бүх үг ({stats.total})</button>
-            {groups.map(g => (
-              <button key={g.id} onClick={() => setActiveGr(g.id)} style={{ display: 'flex', alignItems: 'center', gap: 7, padding: '7px 14px', borderRadius: 100, fontSize: 12, fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit', border: `1.5px solid ${activeGroup === g.id ? g.color : 'var(--border)'}`, whiteSpace: 'nowrap', background: activeGroup === g.id ? `${g.color}18` : '#fff', color: activeGroup === g.id ? g.color : 'var(--text-sub)' }}>
-                <span style={{ width: 9, height: 9, borderRadius: '50%', background: g.color || 'var(--purple)' }} />{g.name} ({g.wordIds.length})
-              </button>
-            ))}
-            <button onClick={openCreateGroup} style={{ padding: '7px 14px', borderRadius: 100, fontSize: 12, fontWeight: 800, cursor: 'pointer', fontFamily: 'inherit', border: '1.5px dashed var(--purple-mid)', whiteSpace: 'nowrap', background: '#fff', color: 'var(--purple)' }}>➕ Шинэ бүлэг</button>
-          </div>
-
-          {/* Active group banner */}
-          {activeGroup && (() => {
-            const g = groups.find(x => x.id === activeGroup); if (!g) return null;
-            return (
-              <div style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '12px 16px', borderRadius: 14, marginBottom: 12, background: `${g.color}12`, border: `1.5px solid ${g.color}44`, flexWrap: 'wrap' }}>
-                <div style={{ width: 36, height: 36, borderRadius: 10, background: g.color, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 18, color: '#fff', flexShrink: 0 }}>📁</div>
-                <div style={{ flex: 1, minWidth: 120 }}>
-                  <div style={{ fontWeight: 900, fontSize: 15, color: 'var(--text)' }}>{g.name}</div>
-                  <div style={{ fontSize: 12, color: 'var(--muted)', fontWeight: 600 }}>{g.wordIds.length} үг</div>
-                </div>
-                <button onClick={() => { setAtgSearch(''); setAddToGroupId(g.id); }} className="btn btn-purple" style={{ padding: '8px 16px', fontSize: 12.5 }}>➕ Үг нэмэх</button>
-                {g.wordIds.length >= 4 && <button onClick={() => router.push('/vocab/practice')} className="btn btn-ghost" style={{ padding: '8px 16px', fontSize: 12.5 }}>🎮 Тоглох</button>}
-                <button onClick={() => deleteGroup(g.id)} className="btn btn-ghost" style={{ padding: '8px 12px', fontSize: 12.5, color: 'var(--red)' }}>🗑️</button>
-              </div>
-            );
-          })()}
-
-          {/* Tabs */}
+          {/* Tabs — зөвхөн фолдэр нээгдсэн үед */}
+          {activeGroup && (
           <div style={{ display: 'flex', gap: 6, marginBottom: 14, overflowX: 'auto', paddingBottom: 4 }}>
             {TABS.map(t => (
               <button key={t} onClick={() => setTab(t)} style={{
@@ -382,9 +474,16 @@ export default function VocabPage() {
               </button>
             ))}
           </div>
+          )}
 
-          {/* Word list */}
-          {filtered.length === 0 ? (
+          {/* Word list — зөвхөн фолдэр нээгдсэн үед */}
+          {!activeGroup ? (
+            <div className="card" style={{ textAlign: 'center', padding: 48 }}>
+              <div style={{ fontSize: 48, marginBottom: 14 }}>👈</div>
+              <h3 style={{ fontWeight: 800, color: 'var(--text)', marginBottom: 8 }}>Фолдэр сонгоно уу</h3>
+              <p style={{ color: 'var(--muted)', fontSize: 13 }}>Дээрх жагсаалтаас бүлэг нээгээд дотор нь байгаа үгсээ харна уу</p>
+            </div>
+          ) : filtered.length === 0 ? (
             <div className="card" style={{ textAlign: 'center', padding: 48 }}>
               <div style={{ fontSize: 48, marginBottom: 14 }}>📦</div>
               <h3 style={{ fontWeight: 800, color: 'var(--text)', marginBottom: 8 }}>Үг байхгүй</h3>
@@ -554,23 +653,24 @@ export default function VocabPage() {
             <h2 style={{ fontWeight: 900, fontSize: 18, marginBottom: 20 }}>Шинэ үг нэмэх</h2>
             <div style={{ display: 'flex', flexDirection: 'column', gap: 12, marginBottom: 20 }}>
               <div>
-                <label style={{ fontWeight: 700, fontSize: 13, color: 'var(--text-sub)', display: 'block', marginBottom: 6 }}>Хятад үг</label>
+                <label style={{ fontWeight: 700, fontSize: 13, color: 'var(--text-sub)', display: 'block', marginBottom: 6 }}>{isEn ? 'Англи үг' : 'Хятад үг'}</label>
                 <div style={{ display: 'flex', gap: 8 }}>
-                  <input type="text" value={newWord.front} onChange={e => setNewWord(n => ({ ...n, front: e.target.value }))} onBlur={lookupWord} placeholder="ж: 你好" style={{ flex: 1 }} />
+                  <input type="text" value={newWord.front} onChange={e => setNewWord(n => ({ ...n, front: e.target.value }))} onBlur={lookupWord} placeholder={isEn ? 'ж: hello' : 'ж: 你好'} style={{ flex: 1 }} />
                   <button type="button" onClick={lookupWord} disabled={lookupBusy} className="btn btn-light" style={{ padding: '0 14px', fontSize: 13, whiteSpace: 'nowrap', flexShrink: 0 }}>{lookupBusy ? '...' : '🔍 Толиос олох'}</button>
                 </div>
-                <div style={{ fontSize: 11, color: 'var(--muted)', marginTop: 4 }}>Хятад үгээ бичээд товч дарвал орчуулга, pinyin автоматаар олдоно.</div>
+                <div style={{ fontSize: 11, color: 'var(--muted)', marginTop: 4 }}>{isEn ? 'Англи үгээ бичээд товч дарвал орчуулга, дуудлага автоматаар олдоно.' : 'Хятад үгээ бичээд товч дарвал орчуулга, pinyin автоматаар олдоно.'}</div>
               </div>
               <div>
                 <label style={{ fontWeight: 700, fontSize: 13, color: 'var(--text-sub)', display: 'block', marginBottom: 6 }}>Монгол утга</label>
                 <input type="text" value={newWord.back} onChange={e => setNewWord(n => ({ ...n, back: e.target.value }))} placeholder="ж: Сайн уу" />
               </div>
               <div>
-                <label style={{ fontWeight: 700, fontSize: 13, color: 'var(--text-sub)', display: 'block', marginBottom: 6 }}>Pinyin (заавал биш)</label>
-                <input type="text" value={newWord.hint} onChange={e => setNewWord(n => ({ ...n, hint: e.target.value }))} placeholder="ж: nǐ hǎo" />
+                <label style={{ fontWeight: 700, fontSize: 13, color: 'var(--text-sub)', display: 'block', marginBottom: 6 }}>{isEn ? 'IPA дуудлага (заавал биш)' : 'Pinyin (заавал биш)'}</label>
+                <input type="text" value={newWord.hint} onChange={e => setNewWord(n => ({ ...n, hint: e.target.value }))} placeholder={isEn ? 'ж: /həˈloʊ/' : 'ж: nǐ hǎo'} />
               </div>
             </div>
-            {activeGroup && (() => { const g = groups.find(x => x.id === activeGroup); return g ? <div style={{ fontSize: 12, color: g.color, fontWeight: 700, marginBottom: 12 }}>📁 "{g.name}" бүлэгт нэмэгдэнэ</div> : null; })()}
+            {activeGroup === 'UNGROUPED' && <div style={{ fontSize: 12, color: 'var(--muted)', fontWeight: 700, marginBottom: 12 }}>📂 "Ерөнхий" бүлэгт нэмэгдэнэ</div>}
+            {activeGroup && activeGroup !== 'UNGROUPED' && (() => { const g = groups.find(x => x.id === activeGroup); return g ? <div style={{ fontSize: 12, color: g.color, fontWeight: 700, marginBottom: 12 }}>📁 "{g.name}" бүлэгт нэмэгдэнэ</div> : null; })()}
             <div style={{ display: 'flex', gap: 10 }}>
               <button className="btn btn-ghost" onClick={() => setShowAdd(false)} style={{ flex: 1 }}>Болих</button>
               <button className="btn btn-purple" onClick={addWord} disabled={addLoading} style={{ flex: 1 }}>
@@ -581,15 +681,15 @@ export default function VocabPage() {
         </div>
       )}
 
-      {/* Create group modal */}
+      {/* Create/edit group modal */}
       {showGroupModal && (
         <div style={{ position: 'fixed', inset: 0, background: 'rgba(15,10,30,0.4)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 500, backdropFilter: 'blur(4px)' }}
           onClick={e => { if (e.target === e.currentTarget) setShowGroupModal(false); }}>
           <div className="card" style={{ width: 380, padding: 28, maxWidth: '90vw' }}>
-            <h2 style={{ fontWeight: 900, fontSize: 18, marginBottom: 4 }}>📁 Шинэ бүлэг үүсгэх</h2>
+            <h2 style={{ fontWeight: 900, fontSize: 18, marginBottom: 4 }}>{editingGroupId == null ? '📁 Шинэ бүлэг үүсгэх' : '📁 Бүлэг засах'}</h2>
             <p style={{ fontSize: 12.5, color: 'var(--muted)', marginBottom: 18 }}>Үгсээ сэдвээр нь бүлэглэж, тусад нь сурах боломжтой.</p>
             <label style={{ fontWeight: 700, fontSize: 13, color: 'var(--text-sub)', display: 'block', marginBottom: 6 }}>Бүлгийн нэр</label>
-            <input type="text" value={newGroupName} autoFocus onChange={e => setNewGroupName(e.target.value)} onKeyDown={e => { if (e.key === 'Enter') confirmCreateGroup(); }} placeholder="ж: HSK 1 үгс, Аяллын үгс" style={{ marginBottom: 16 }} />
+            <input type="text" value={newGroupName} autoFocus onChange={e => setNewGroupName(e.target.value)} onKeyDown={e => { if (e.key === 'Enter') confirmGroupModal(); }} placeholder="ж: HSK 1 үгс, Аяллын үгс" style={{ marginBottom: 16 }} />
             <label style={{ fontWeight: 700, fontSize: 13, color: 'var(--text-sub)', display: 'block', marginBottom: 8 }}>Өнгө</label>
             <div style={{ display: 'flex', gap: 10, marginBottom: 22 }}>
               {GROUP_COLORS.map(c => (
@@ -598,7 +698,7 @@ export default function VocabPage() {
             </div>
             <div style={{ display: 'flex', gap: 10 }}>
               <button className="btn btn-ghost" onClick={() => setShowGroupModal(false)} style={{ flex: 1 }}>Болих</button>
-              <button className="btn btn-purple" onClick={confirmCreateGroup} style={{ flex: 1 }}>Үүсгэх</button>
+              <button className="btn btn-purple" onClick={confirmGroupModal} style={{ flex: 1 }}>{editingGroupId == null ? 'Үүсгэх' : 'Хадгалах'}</button>
             </div>
           </div>
         </div>
