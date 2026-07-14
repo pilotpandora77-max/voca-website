@@ -1,5 +1,5 @@
 'use client';
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/lib/auth';
 import api from '@/lib/api';
@@ -25,6 +25,13 @@ const EN_LOOKUP = (() => {
 const TABS = ['Бүгд', 'Шинэ', 'Сурч байгаа', 'Давтах', 'Мэддэг болсон', 'Сагсархаг үг'];
 const SORT_OPTIONS = ['А-Я', 'Я-А', 'Шинэ нэмэгдсэн', 'Хуучин нэмэгдсэн'];
 const LEVEL_OPTIONS = ['Бүгд', 'HSK 1', 'HSK 2', 'HSK 3', 'HSK 4', 'HSK 5', 'HSK 6'];
+const GROUP_COLORS = ['#7C3AED', '#EC4899', '#10B981', '#F59E0B', '#3B82F6', '#EF4444', '#14B8A6', '#8B5CF6'];
+const DEFAULT_GROUP = 'Ерөнхий';
+
+function hashColor(name) {
+  let h = 0; for (const c of name) h = (h * 31 + c.charCodeAt(0)) >>> 0;
+  return GROUP_COLORS[h % GROUP_COLORS.length];
+}
 
 function ProgressRing({ pct, r = 52, stroke = 9 }) {
   const circ = 2 * Math.PI * r;
@@ -73,86 +80,131 @@ export default function VocabPage() {
   const [aiLoading, setAiLoad]    = useState(false);
   const [expandedId, setExp]      = useState(null);
   const [calDays, setCalDays]     = useState([]);
-  const [groups, setGroups]       = useState([]);     // [{id,name,color,wordIds:[]}]
-  const [activeGroup, setActiveGr]= useState(null);   // group id
+
+  // Фолдэрийн ГИШҮҮНЧЛЭЛ нь тус тусын үгийн `group` талбараар шууд тодорхойлогдоно
+  // (яг апп шиг) — тусад нь wordIds массив хадгалдаггүй болсон тул апп/вэб хоёр
+  // үргэлж ижил өгөгдлөөр (backend-ийн word.group) фолдэрлэдэг. `groupMeta`
+  // нь зөвхөн харагдах өнгө зэрэг нэмэлт мэдээллийг хадгална.
+  const [groupMeta, setGroupMeta] = useState({});      // { [name]: { color } }
+  const [legacyGroups, setLegacyGroups] = useState(null); // хуучин wordIds-based өгөгдөл — нэг удаагийн шилжилтэд
+  const [activeGroup, setActiveGr]= useState(null);    // фолдэрийн нэр (string) | null
   const [showGroupModal, setShowGroupModal] = useState(false);
-  const [editingGroupId, setEditingGroupId] = useState(null); // null = creating, else editing this group id
+  const [editingGroupName, setEditingGroupName] = useState(null); // null = creating, else editing this name
   const [newGroupName, setNewGroupName] = useState('');
   const [newGroupColor, setNewGroupColor] = useState('#7C3AED');
-  const [addToGroupId, setAddToGroupId] = useState(null); // group id for "add words" modal
+  const [addToGroupName, setAddToGroupName] = useState(null); // group name for "add words" modal
   const [addToGroupSearch, setAtgSearch] = useState('');
 
   useEffect(() => {
     if (!authLoad && !user) router.push('/login');
     if (user) loadData();
-    // Бүлгүүдийг backend-ээс (байвал) синк; эс бөгөөс хуучин localStorage-оос (migration)
-    let old = []; try { old = JSON.parse(localStorage.getItem('voca_word_groups') || '[]'); } catch {}
-    loadUserData('wordGroups', old).then(g => { if (Array.isArray(g)) setGroups(g); });
+    loadUserData('wordGroups', []).then(raw => {
+      if (Array.isArray(raw)) {
+        // Хуучин хэлбэр (wordIds-based) — өнгөний мэдээллийг шинэ metadata руу
+        // хөрвүүлж, storage-г шинэ бүтэцтэй болгож дахин бичнэ. Гишүүнчлэлийг
+        // доорхи migration effect нь backend word.group рүү бичнэ.
+        const meta = {};
+        raw.forEach(g => { if (g?.name) meta[g.name] = { color: g.color }; });
+        setGroupMeta(meta);
+        setLegacyGroups(raw);
+        if (raw.length) saveUserData('wordGroups', meta);
+      } else if (raw && typeof raw === 'object') {
+        setGroupMeta(raw);
+      }
+    });
   }, [authLoad, user]);
 
-  // Нэг удаа: хуучин вэб бүлгүүдийн гишүүн үгсийн backend `group`-ийг бүлгийн нэрээр шинэчилнэ
-  // → ингэснээр өмнө вэб дээр үүсгэсэн бүлгүүд апп дээр гарч ирнэ.
+  // Нэг удаа: хуучин вэб бүлгүүдийн (wordIds-based) гишүүн үгсийн backend
+  // `group`-ийг бүлгийн нэрээр шинэчилнэ → ингэснээр өмнө вэб дээр үүсгэсэн
+  // бүлгүүд апп дээр гарч ирнэ, мөн цаашид апп/вэб ижил өгөгдлөөр ажиллана.
   useEffect(() => {
-    if (!user || typeof window === 'undefined') return;
+    if (!user || typeof window === 'undefined' || !legacyGroups) return;
     if (localStorage.getItem('voca_groups_synced_v1')) return;
-    if (!groups.length || !words.length) return;
+    if (!legacyGroups.length || !words.length) return;
     const widToGroup = {};
-    groups.forEach(g => (g.wordIds || []).forEach(wid => { widToGroup[wid] = g.name; }));
+    legacyGroups.forEach(g => (g.wordIds || []).forEach(wid => { widToGroup[wid] = g.name; }));
     const patches = words.filter(w => {
       const id = w._id || w.id;
-      return id && !String(id).startsWith('local-') && widToGroup[id] && (w.group || 'Ерөнхий') !== widToGroup[id];
+      return id && !String(id).startsWith('local-') && widToGroup[id] && (w.group || DEFAULT_GROUP) !== widToGroup[id];
     });
     if (patches.length === 0) { localStorage.setItem('voca_groups_synced_v1', '1'); return; }
     Promise.all(patches.map(w => api.patch(`/api/words/${w._id || w.id}`, { group: widToGroup[w._id || w.id] }).catch(() => {})))
-      .then(() => { localStorage.setItem('voca_groups_synced_v1', '1'); });
-  }, [groups, words, user]);
+      .then(() => {
+        setWords(ws => ws.map(w => (widToGroup[w._id || w.id] ? { ...w, group: widToGroup[w._id || w.id] } : w)));
+        localStorage.setItem('voca_groups_synced_v1', '1');
+      });
+  }, [legacyGroups, words, user]);
 
-  const GROUP_COLORS = ['#7C3AED', '#EC4899', '#10B981', '#F59E0B', '#3B82F6', '#EF4444', '#14B8A6', '#8B5CF6'];
-  function saveGroups(g) { setGroups(g); saveUserData('wordGroups', g); }
-  function openCreateGroup() { setEditingGroupId(null); setNewGroupName(''); setNewGroupColor(GROUP_COLORS[groups.length % GROUP_COLORS.length]); setShowGroupModal(true); }
-  function openEditGroup(g) { setEditingGroupId(g.id); setNewGroupName(g.name); setNewGroupColor(g.color || GROUP_COLORS[0]); setShowGroupModal(true); }
+  function saveGroupMeta(m) { setGroupMeta(m); saveUserData('wordGroups', m); }
+
+  function openCreateGroup() {
+    setEditingGroupName(null); setNewGroupName('');
+    setNewGroupColor(GROUP_COLORS[Object.keys(groupMeta).length % GROUP_COLORS.length]);
+    setShowGroupModal(true);
+  }
+  function openEditGroup(g) {
+    setEditingGroupName(g.name); setNewGroupName(g.name); setNewGroupColor(g.color);
+    setShowGroupModal(true);
+  }
+
   async function confirmGroupModal() {
     const name = newGroupName.trim();
     if (!name) { alert('Бүлгийн нэр оруулна уу.'); return; }
-    if (groups.some(g => g.id !== editingGroupId && g.name === name)) { alert('Энэ нэртэй бүлэг бий.'); return; }
 
-    if (editingGroupId == null) {
-      const g = { id: Date.now(), name, color: newGroupColor, wordIds: [] };
-      saveGroups([...groups, g]);
-      setActiveGr(g.id);
+    // Локал кэш хуучирсан байж болзошгүй тул (сүлжээ удаан/алдаатай үед)
+    // сервэрээс шинэ мэдээлэл татаж, давхцах нэрийг эцсийн байдлаар дахин
+    // шалгана — ингэснээр хоёр өөр бүлэг санамсаргүй нэг нэрэнд нийлэхээс
+    // сэргийлнэ.
+    let freshWords = words;
+    try {
+      const { data: fresh } = await api.get('/api/words');
+      if (Array.isArray(fresh)) freshWords = fresh;
+    } catch {}
+    const freshNames = new Set(freshWords.map(w => w.group || DEFAULT_GROUP));
+    Object.keys(groupMeta).forEach(n => freshNames.add(n));
+    if (name !== editingGroupName && freshNames.has(name)) { alert('Энэ нэртэй бүлэг бий.'); return; }
+
+    if (editingGroupName == null) {
+      // Шинэ хоосон бүлэг — зөвхөн metadata-д бүртгэнэ, үг нэмэгдэх хүртэл хоосон харагдана
+      saveGroupMeta({ ...groupMeta, [name]: { color: newGroupColor } });
+      setActiveGr(name);
       setShowGroupModal(false);
       return;
     }
 
-    const g = groups.find(x => x.id === editingGroupId);
-    if (!g) { setShowGroupModal(false); return; }
-    const oldName = g.name;
-    saveGroups(groups.map(x => x.id === editingGroupId ? { ...x, name, color: newGroupColor } : x));
+    const oldName = editingGroupName;
+    const nextMeta = { ...groupMeta };
+    delete nextMeta[oldName];
+    nextMeta[name] = { color: newGroupColor };
+    saveGroupMeta(nextMeta);
     if (oldName !== name) {
-      const affectedIds = new Set([...(g.wordIds || []), ...words.filter(w => w.group === oldName).map(w => w._id || w.id)]);
+      const affected = freshWords.filter(w => (w.group || DEFAULT_GROUP) === oldName);
+      const affectedIds = new Set(affected.map(w => w._id || w.id));
       setWords(ws => ws.map(w => (affectedIds.has(w._id || w.id) ? { ...w, group: name } : w)));
-      await Promise.all([...affectedIds].filter(id => !String(id).startsWith('local-')).map(id => api.patch(`/api/words/${id}`, { group: name }).catch(() => {})));
+      await Promise.all(affected.filter(w => !String(w._id || w.id).startsWith('local-'))
+        .map(w => api.patch(`/api/words/${w._id || w.id}`, { group: name }).catch(() => {})));
+      if (activeGroup === oldName) setActiveGr(name);
     }
     setShowGroupModal(false);
   }
-  function deleteGroup(id) {
-    if (!confirm('Энэ бүлгийг устгах уу? (Үгс устахгүй)')) return;
-    saveGroups(groups.filter(g => g.id !== id));
-    if (activeGroup === id) setActiveGr(null);
+
+  async function deleteGroup(name) {
+    if (!confirm(`"${name}" бүлгийг устгах уу? (Үгс устахгүй, "${DEFAULT_GROUP}" рүү шилжинэ)`)) return;
+    const affected = words.filter(w => (w.group || DEFAULT_GROUP) === name);
+    setWords(ws => ws.map(w => ((w.group || DEFAULT_GROUP) === name ? { ...w, group: DEFAULT_GROUP } : w)));
+    const nextMeta = { ...groupMeta }; delete nextMeta[name]; saveGroupMeta(nextMeta);
+    if (activeGroup === name) setActiveGr(null);
+    await Promise.all(affected.filter(w => !String(w._id || w.id).startsWith('local-'))
+      .map(w => api.patch(`/api/words/${w._id || w.id}`, { group: DEFAULT_GROUP }).catch(() => {})));
   }
-  function toggleWordInGroup(gid, wid) {
-    let added = false, gname = '';
-    saveGroups(groups.map(g => {
-      if (g.id !== gid) return g;
-      gname = g.name;
-      const has = g.wordIds.includes(wid);
-      added = !has;
-      return { ...g, wordIds: has ? g.wordIds.filter(x => x !== wid) : [...g.wordIds, wid] };
-    }));
-    // Backend дээрх үгийн `group`-ийг шинэчилнэ → апп дээр энэ бүлэгт харагдана (зөвхөн backend-д хадгалагдсан үгэнд)
+
+  // Үгийг заасан бүлэгт шилжүүлнэ (нэг үг зэрэг зөвхөн НЭГ бүлэгт байна — апп шиг)
+  async function setWordGroup(word, groupName) {
+    const wid = word._id || word.id;
+    const finalGroup = groupName || DEFAULT_GROUP;
+    setWords(ws => ws.map(w => ((w._id || w.id) === wid ? { ...w, group: finalGroup } : w)));
     if (wid && !String(wid).startsWith('local-')) {
-      api.patch(`/api/words/${wid}`, { group: added ? gname : 'Ерөнхий' }).catch(() => {});
-      setWords(ws => ws.map(w => ((w._id || w.id) === wid ? { ...w, group: added ? gname : 'Ерөнхий' } : w)));
+      try { await api.patch(`/api/words/${wid}`, { group: finalGroup }); } catch {}
     }
   }
 
@@ -233,12 +285,11 @@ export default function VocabPage() {
     const back = (newWord.back || '').trim();
     if (!front || !back) { alert('Хятад үг болон Монгол утгыг бөглөнө үү.'); return; }
     setAddLoad(true);
-    // Идэвхтэй бүлгийн нэрийг backend дээрх үгийн `group` талбарт бичнэ → апп дээр тэр бүлэгт харагдана
-    const activeGroupName = activeGroup ? (groups.find(g => g.id === activeGroup)?.name || '') : '';
+    // Идэвхтэй бүлгийн нэрийг backend дээрх үгийн `group` талбарт шууд бичнэ → апп дээр тэр бүлэгт харагдана
     const payload = {
       front: newWord.front, back: newWord.back, hint: newWord.hint,
       word: newWord.front, meaning: newWord.back, reading: newWord.hint, lang,
-      ...(activeGroupName ? { group: activeGroupName } : {}),
+      group: activeGroup || DEFAULT_GROUP,
     };
     // 1) Optimistic — шууд харагдана, localStorage-д хадгална (backend амжаагүй ч)
     const localId = 'local-' + Date.now();
@@ -249,8 +300,6 @@ export default function VocabPage() {
       const local = JSON.parse(localStorage.getItem('voca_local_words') || '[]');
       localStorage.setItem('voca_local_words', JSON.stringify([added, ...local]));
     } catch {}
-    // Идэвхтэй бүлэг байвал шинэ үгийг түүнд автоматаар нэмнэ ("Ерөнхий" бол өөрөө backend-ийн анхдагч)
-    if (activeGroup && activeGroup !== 'UNGROUPED') toggleWordInGroup(activeGroup, localId);
     setNewWord({ front: '', back: '', hint: '' });
     setShowAdd(false);
     setAddLoad(false);
@@ -260,11 +309,8 @@ export default function VocabPage() {
       if (data && (data._id || data.id)) {
         const local = JSON.parse(localStorage.getItem('voca_local_words') || '[]');
         localStorage.setItem('voca_local_words', JSON.stringify(local.filter(x => x._id !== localId)));
-        // локал түр id-г бодит backend id-р солих → утсан дээр синк болно
         const realId = data._id || data.id;
         setWords(w => w.map(x => (x._id === localId ? { ...data, _id: realId } : x)));
-        // Бүлгийн доторх түр id-г бодит id-р солих (вэбийн бүлэг зөв ажиллана)
-        if (activeGroup && activeGroup !== 'UNGROUPED') saveGroups(groups.map(g => g.id === activeGroup ? { ...g, wordIds: g.wordIds.map(x => (x === localId ? realId : x)) } : g));
       }
     } catch (e) {
       const msg = e.response?.data?.code === 'WORD_LIMIT'
@@ -282,7 +328,6 @@ export default function VocabPage() {
       const local = JSON.parse(localStorage.getItem('voca_local_words') || '[]');
       localStorage.setItem('voca_local_words', JSON.stringify(local.filter(x => (x._id || x.id) !== id)));
     } catch {}
-    // Backend рүү устгах оролдлого (локал үг бол алдаа гарвал үл тоомсорлоно)
     if (!String(id).startsWith('local-')) {
       try { await api.delete(`/api/words/${id}`); } catch {}
     }
@@ -300,9 +345,15 @@ export default function VocabPage() {
     setAiLoad(false);
   }
 
-  // Ямар ч бүлэгт багтаагүй үгс — "Ерөнхий" гэсэн далд фолдэрт харагдана,
-  // ингэснээр бүх үг ямар нэг фолдэрийн дотор байх (гээгдэхгүй).
-  const ungroupedWords = words.filter(w => !groups.some(g => (g.wordIds || []).includes(w._id || w.id)));
+  // Фолдэрүүдийг үгсийн `group` талбараас шууд гаргаж авна (яг апп шиг) —
+  // тусад нь wordIds массив байхгүй тул хоцрогдол/зөрчил гарахгүй.
+  const namedGroups = {};
+  words.forEach(w => { const g = w.group; if (g && g !== DEFAULT_GROUP) (namedGroups[g] = namedGroups[g] || []).push(w); });
+  Object.keys(groupMeta).forEach(n => { if (n !== DEFAULT_GROUP && !namedGroups[n]) namedGroups[n] = []; });
+  const ungroupedWords = words.filter(w => !w.group || w.group === DEFAULT_GROUP);
+  const derivedGroups = Object.entries(namedGroups)
+    .map(([name, ws]) => ({ name, color: groupMeta[name]?.color || hashColor(name), words: ws }))
+    .sort((a, b) => b.words.length - a.words.length);
 
   const filtered = words.filter(w => {
     const matchTab = tab === 'Бүгд' ? true
@@ -315,10 +366,7 @@ export default function VocabPage() {
     const q = search.toLowerCase();
     const matchSearch = !q || (w.front || w.word || '').toLowerCase().includes(q) || (w.back || w.meaning || '').toLowerCase().includes(q) || (w.hint || w.reading || '').toLowerCase().includes(q);
     // Эхлээд фолдэр сонгоогүй л бол ямар ч үг харагдахгүй — фолдэр нээж байж дотор нь орно.
-    let matchGroup;
-    if (activeGroup === 'UNGROUPED') matchGroup = ungroupedWords.includes(w);
-    else if (activeGroup) { const g = groups.find(x => x.id === activeGroup); matchGroup = g ? g.wordIds.includes(w._id || w.id) : false; }
-    else matchGroup = false;
+    const matchGroup = activeGroup ? (w.group || DEFAULT_GROUP) === activeGroup : false;
     return matchTab && matchSearch && matchGroup;
   });
 
@@ -366,31 +414,31 @@ export default function VocabPage() {
               <span style={{ fontSize: 11.5, fontWeight: 800, color: 'var(--muted)', letterSpacing: 0.4 }}>📁 БҮЛГҮҮД</span>
             </div>
             {ungroupedWords.length > 0 && (
-              <div onClick={() => setActiveGr('UNGROUPED')} style={{
+              <div onClick={() => setActiveGr(DEFAULT_GROUP)} style={{
                 display: 'flex', alignItems: 'center', gap: 12, padding: '11px 16px', cursor: 'pointer',
-                background: activeGroup === 'UNGROUPED' ? 'var(--purple-light)' : 'transparent', transition: 'background 0.12s',
+                background: activeGroup === DEFAULT_GROUP ? 'var(--purple-light)' : 'transparent', transition: 'background 0.12s',
               }}
-              onMouseEnter={e => { if (activeGroup !== 'UNGROUPED') e.currentTarget.style.background = 'var(--bg-alt)'; }}
-              onMouseLeave={e => { if (activeGroup !== 'UNGROUPED') e.currentTarget.style.background = 'transparent'; }}
+              onMouseEnter={e => { if (activeGroup !== DEFAULT_GROUP) e.currentTarget.style.background = 'var(--bg-alt)'; }}
+              onMouseLeave={e => { if (activeGroup !== DEFAULT_GROUP) e.currentTarget.style.background = 'transparent'; }}
               >
                 <div style={{ width: 34, height: 34, borderRadius: 9, background: 'var(--muted)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 16, flexShrink: 0 }}>📂</div>
-                <span style={{ flex: 1, fontWeight: 800, fontSize: 14, color: activeGroup === 'UNGROUPED' ? 'var(--purple)' : 'var(--text)' }}>Ерөнхий</span>
+                <span style={{ flex: 1, fontWeight: 800, fontSize: 14, color: activeGroup === DEFAULT_GROUP ? 'var(--purple)' : 'var(--text)' }}>{DEFAULT_GROUP}</span>
                 <span style={{ fontSize: 12, color: 'var(--muted)', fontWeight: 600 }}>{ungroupedWords.length} үг</span>
                 <span style={{ color: 'var(--muted)', fontSize: 15 }}>›</span>
               </div>
             )}
-            {groups.map(g => (
-              <div key={g.id} onClick={() => setActiveGr(g.id)} style={{
+            {derivedGroups.map(g => (
+              <div key={g.name} onClick={() => setActiveGr(g.name)} style={{
                 display: 'flex', alignItems: 'center', gap: 12, padding: '11px 16px', cursor: 'pointer',
                 borderTop: '1px solid var(--border)',
-                background: activeGroup === g.id ? `${g.color}14` : 'transparent', transition: 'background 0.12s',
+                background: activeGroup === g.name ? `${g.color}14` : 'transparent', transition: 'background 0.12s',
               }}
-              onMouseEnter={e => { if (activeGroup !== g.id) e.currentTarget.style.background = 'var(--bg-alt)'; }}
-              onMouseLeave={e => { if (activeGroup !== g.id) e.currentTarget.style.background = 'transparent'; }}
+              onMouseEnter={e => { if (activeGroup !== g.name) e.currentTarget.style.background = 'var(--bg-alt)'; }}
+              onMouseLeave={e => { if (activeGroup !== g.name) e.currentTarget.style.background = 'transparent'; }}
               >
                 <div style={{ width: 34, height: 34, borderRadius: 9, background: g.color, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 16, flexShrink: 0 }}>📁</div>
-                <span style={{ flex: 1, fontWeight: 800, fontSize: 14, color: activeGroup === g.id ? g.color : 'var(--text)' }}>{g.name}</span>
-                <span style={{ fontSize: 12, color: 'var(--muted)', fontWeight: 600 }}>{g.wordIds.length} үг</span>
+                <span style={{ flex: 1, fontWeight: 800, fontSize: 14, color: activeGroup === g.name ? g.color : 'var(--text)' }}>{g.name}</span>
+                <span style={{ fontSize: 12, color: 'var(--muted)', fontWeight: 600 }}>{g.words.length} үг</span>
                 <span style={{ color: 'var(--muted)', fontSize: 15 }}>›</span>
               </div>
             ))}
@@ -408,30 +456,30 @@ export default function VocabPage() {
           </div>
 
           {/* Идэвхтэй фолдэрийн толгой хэсэг — сонгосон фолдэрийн доторх үгсийг харуулна */}
-          {activeGroup === 'UNGROUPED' && (
+          {activeGroup === DEFAULT_GROUP && (
             <div style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '12px 16px', borderRadius: 14, marginBottom: 12, background: 'var(--bg-alt)', border: '1.5px solid var(--border)', flexWrap: 'wrap' }}>
               <button onClick={() => setActiveGr(null)} className="btn btn-ghost" style={{ padding: '8px 10px', fontSize: 13 }}>← Буцах</button>
               <div style={{ width: 36, height: 36, borderRadius: 10, background: 'var(--muted)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 18, color: '#fff', flexShrink: 0 }}>📂</div>
               <div style={{ flex: 1, minWidth: 120 }}>
-                <div style={{ fontWeight: 900, fontSize: 15, color: 'var(--text)' }}>Ерөнхий</div>
+                <div style={{ fontWeight: 900, fontSize: 15, color: 'var(--text)' }}>{DEFAULT_GROUP}</div>
                 <div style={{ fontSize: 12, color: 'var(--muted)', fontWeight: 600 }}>{ungroupedWords.length} үг</div>
               </div>
             </div>
           )}
-          {activeGroup && activeGroup !== 'UNGROUPED' && (() => {
-            const g = groups.find(x => x.id === activeGroup); if (!g) return null;
+          {activeGroup && activeGroup !== DEFAULT_GROUP && (() => {
+            const g = derivedGroups.find(x => x.name === activeGroup); if (!g) return null;
             return (
               <div style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '12px 16px', borderRadius: 14, marginBottom: 12, background: `${g.color}12`, border: `1.5px solid ${g.color}44`, flexWrap: 'wrap' }}>
                 <button onClick={() => setActiveGr(null)} className="btn btn-ghost" style={{ padding: '8px 10px', fontSize: 13 }}>← Буцах</button>
                 <div style={{ width: 36, height: 36, borderRadius: 10, background: g.color, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 18, color: '#fff', flexShrink: 0 }}>📁</div>
                 <div style={{ flex: 1, minWidth: 120 }}>
                   <div style={{ fontWeight: 900, fontSize: 15, color: 'var(--text)' }}>{g.name}</div>
-                  <div style={{ fontSize: 12, color: 'var(--muted)', fontWeight: 600 }}>{g.wordIds.length} үг</div>
+                  <div style={{ fontSize: 12, color: 'var(--muted)', fontWeight: 600 }}>{g.words.length} үг</div>
                 </div>
-                <button onClick={() => { setAtgSearch(''); setAddToGroupId(g.id); }} className="btn btn-purple" style={{ padding: '8px 16px', fontSize: 12.5 }}>➕ Үг нэмэх</button>
-                {g.wordIds.length >= 4 && <button onClick={() => router.push('/vocab/practice')} className="btn btn-ghost" style={{ padding: '8px 16px', fontSize: 12.5 }}>🎮 Тоглох</button>}
+                <button onClick={() => { setAtgSearch(''); setAddToGroupName(g.name); }} className="btn btn-purple" style={{ padding: '8px 16px', fontSize: 12.5 }}>➕ Үг нэмэх</button>
+                {g.words.length >= 4 && <button onClick={() => router.push('/vocab/practice')} className="btn btn-ghost" style={{ padding: '8px 16px', fontSize: 12.5 }}>🎮 Тоглох</button>}
                 <button onClick={() => openEditGroup(g)} className="btn btn-ghost" style={{ padding: '8px 12px', fontSize: 12.5 }}>✏️ Засах</button>
-                <button onClick={() => deleteGroup(g.id)} className="btn btn-ghost" style={{ padding: '8px 12px', fontSize: 12.5, color: 'var(--red)' }}>🗑️</button>
+                <button onClick={() => deleteGroup(g.name)} className="btn btn-ghost" style={{ padding: '8px 12px', fontSize: 12.5, color: 'var(--red)' }}>🗑️</button>
               </div>
             );
           })()}
@@ -498,6 +546,7 @@ export default function VocabPage() {
                 const front = w.front || w.word || w.simplified || '';
                 const back  = w.back  || w.meaning || w.meaningEn || '';
                 const hint  = w.hint  || w.reading || w.pinyin || '';
+                const wGroup = w.group || DEFAULT_GROUP;
                 return (
                   <div key={wid || i} className="card" style={{
                     padding: 0, overflow: 'hidden',
@@ -539,14 +588,14 @@ export default function VocabPage() {
                             <div style={{ fontWeight: 700, fontSize: 14, color: 'var(--text)' }}>{back}</div>
                           </div>
                         </div>
-                        {/* Бүлэгт нэмэх */}
+                        {/* Бүлэгт шилжүүлэх — нэг үг зэрэг зөвхөн нэг бүлэгт байна */}
                         <div style={{ marginBottom: 12 }}>
-                          <div style={{ fontSize: 11, fontWeight: 700, color: 'var(--muted)', marginBottom: 6 }}>📁 БҮЛЭГТ НЭМЭХ</div>
+                          <div style={{ fontSize: 11, fontWeight: 700, color: 'var(--muted)', marginBottom: 6 }}>📁 БҮЛЭГ</div>
                           <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
-                            {groups.length === 0 && <button onClick={openCreateGroup} style={{ padding: '5px 12px', borderRadius: 100, fontSize: 11.5, fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit', border: '1.5px dashed var(--purple-mid)', background: '#fff', color: 'var(--purple)' }}>➕ Бүлэг үүсгэх</button>}
-                            {groups.map(g => {
-                              const inG = g.wordIds.includes(wid);
-                              return <button key={g.id} onClick={() => toggleWordInGroup(g.id, wid)} style={{ padding: '5px 12px', borderRadius: 100, fontSize: 11.5, fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit', border: `1.5px solid ${inG ? 'var(--purple)' : 'var(--border)'}`, background: inG ? 'var(--purple-light)' : '#fff', color: inG ? 'var(--purple)' : 'var(--text-sub)' }}>{inG ? '✓ ' : ''}{g.name}</button>;
+                            {derivedGroups.length === 0 && <button onClick={openCreateGroup} style={{ padding: '5px 12px', borderRadius: 100, fontSize: 11.5, fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit', border: '1.5px dashed var(--purple-mid)', background: '#fff', color: 'var(--purple)' }}>➕ Бүлэг үүсгэх</button>}
+                            {derivedGroups.map(g => {
+                              const inG = wGroup === g.name;
+                              return <button key={g.name} onClick={() => setWordGroup(w, inG ? DEFAULT_GROUP : g.name)} style={{ padding: '5px 12px', borderRadius: 100, fontSize: 11.5, fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit', border: `1.5px solid ${inG ? g.color : 'var(--border)'}`, background: inG ? `${g.color}18` : '#fff', color: inG ? g.color : 'var(--text-sub)' }}>{inG ? '✓ ' : ''}{g.name}</button>;
                             })}
                           </div>
                         </div>
@@ -669,8 +718,8 @@ export default function VocabPage() {
                 <input type="text" value={newWord.hint} onChange={e => setNewWord(n => ({ ...n, hint: e.target.value }))} placeholder={isEn ? 'ж: /həˈloʊ/' : 'ж: nǐ hǎo'} />
               </div>
             </div>
-            {activeGroup === 'UNGROUPED' && <div style={{ fontSize: 12, color: 'var(--muted)', fontWeight: 700, marginBottom: 12 }}>📂 "Ерөнхий" бүлэгт нэмэгдэнэ</div>}
-            {activeGroup && activeGroup !== 'UNGROUPED' && (() => { const g = groups.find(x => x.id === activeGroup); return g ? <div style={{ fontSize: 12, color: g.color, fontWeight: 700, marginBottom: 12 }}>📁 "{g.name}" бүлэгт нэмэгдэнэ</div> : null; })()}
+            {activeGroup === DEFAULT_GROUP && <div style={{ fontSize: 12, color: 'var(--muted)', fontWeight: 700, marginBottom: 12 }}>📂 "{DEFAULT_GROUP}" бүлэгт нэмэгдэнэ</div>}
+            {activeGroup && activeGroup !== DEFAULT_GROUP && (() => { const g = derivedGroups.find(x => x.name === activeGroup); return g ? <div style={{ fontSize: 12, color: g.color, fontWeight: 700, marginBottom: 12 }}>📁 "{g.name}" бүлэгт нэмэгдэнэ</div> : null; })()}
             <div style={{ display: 'flex', gap: 10 }}>
               <button className="btn btn-ghost" onClick={() => setShowAdd(false)} style={{ flex: 1 }}>Болих</button>
               <button className="btn btn-purple" onClick={addWord} disabled={addLoading} style={{ flex: 1 }}>
@@ -686,7 +735,7 @@ export default function VocabPage() {
         <div style={{ position: 'fixed', inset: 0, background: 'rgba(15,10,30,0.4)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 500, backdropFilter: 'blur(4px)' }}
           onClick={e => { if (e.target === e.currentTarget) setShowGroupModal(false); }}>
           <div className="card" style={{ width: 380, padding: 28, maxWidth: '90vw' }}>
-            <h2 style={{ fontWeight: 900, fontSize: 18, marginBottom: 4 }}>{editingGroupId == null ? '📁 Шинэ бүлэг үүсгэх' : '📁 Бүлэг засах'}</h2>
+            <h2 style={{ fontWeight: 900, fontSize: 18, marginBottom: 4 }}>{editingGroupName == null ? '📁 Шинэ бүлэг үүсгэх' : '📁 Бүлэг засах'}</h2>
             <p style={{ fontSize: 12.5, color: 'var(--muted)', marginBottom: 18 }}>Үгсээ сэдвээр нь бүлэглэж, тусад нь сурах боломжтой.</p>
             <label style={{ fontWeight: 700, fontSize: 13, color: 'var(--text-sub)', display: 'block', marginBottom: 6 }}>Бүлгийн нэр</label>
             <input type="text" value={newGroupName} autoFocus onChange={e => setNewGroupName(e.target.value)} onKeyDown={e => { if (e.key === 'Enter') confirmGroupModal(); }} placeholder="ж: HSK 1 үгс, Аяллын үгс" style={{ marginBottom: 16 }} />
@@ -698,15 +747,15 @@ export default function VocabPage() {
             </div>
             <div style={{ display: 'flex', gap: 10 }}>
               <button className="btn btn-ghost" onClick={() => setShowGroupModal(false)} style={{ flex: 1 }}>Болих</button>
-              <button className="btn btn-purple" onClick={confirmGroupModal} style={{ flex: 1 }}>{editingGroupId == null ? 'Үүсгэх' : 'Хадгалах'}</button>
+              <button className="btn btn-purple" onClick={confirmGroupModal} style={{ flex: 1 }}>{editingGroupName == null ? 'Үүсгэх' : 'Хадгалах'}</button>
             </div>
           </div>
         </div>
       )}
 
       {/* Add words to group modal */}
-      {addToGroupId && (() => {
-        const g = groups.find(x => x.id === addToGroupId); if (!g) return null;
+      {addToGroupName && (() => {
+        const g = derivedGroups.find(x => x.name === addToGroupName); if (!g) return null;
         const q = addToGroupSearch.toLowerCase();
         const list = words.filter(w => {
           const f = (w.front || w.word || ''), b = (w.back || w.meaning || '');
@@ -714,22 +763,22 @@ export default function VocabPage() {
         });
         return (
           <div style={{ position: 'fixed', inset: 0, background: 'rgba(15,10,30,0.4)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 500, backdropFilter: 'blur(4px)' }}
-            onClick={e => { if (e.target === e.currentTarget) setAddToGroupId(null); }}>
+            onClick={e => { if (e.target === e.currentTarget) setAddToGroupName(null); }}>
             <div className="card" style={{ width: 480, maxWidth: '92vw', padding: 24, maxHeight: '80vh', display: 'flex', flexDirection: 'column' }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 6 }}>
                 <span style={{ width: 12, height: 12, borderRadius: '50%', background: g.color }} />
                 <h2 style={{ fontWeight: 900, fontSize: 17 }}>"{g.name}" бүлэгт үг нэмэх</h2>
               </div>
-              <p style={{ fontSize: 12.5, color: 'var(--muted)', marginBottom: 14 }}>Үгсээ сонгож тэмдэглэнэ үү. (Эсвэл "Шинэ үг нэмэх"-ээр шинээр нэмж болно)</p>
+              <p style={{ fontSize: 12.5, color: 'var(--muted)', marginBottom: 14 }}>Үгсээ сонгож тэмдэглэнэ үү (нэг үг зэрэг зөвхөн нэг бүлэгт байх тул өөр бүлэгт байсан бол шилжинэ). Эсвэл "Шинэ үг нэмэх"-ээр шинээр нэмж болно.</p>
               <input type="text" value={addToGroupSearch} onChange={e => setAtgSearch(e.target.value)} placeholder="Үг хайх..." style={{ marginBottom: 12 }} />
               <div style={{ flex: 1, overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: 6 }}>
                 {list.length === 0 && <p style={{ color: 'var(--muted)', textAlign: 'center', padding: 20, fontSize: 13 }}>Үг алга. Эхлээд үг нэмнэ үү.</p>}
                 {list.map(w => {
                   const wid = w._id || w.id;
-                  const inG = g.wordIds.includes(wid);
+                  const inG = (w.group || DEFAULT_GROUP) === g.name;
                   const f = w.front || w.word || '', b = w.back || w.meaning || '';
                   return (
-                    <div key={wid} onClick={() => toggleWordInGroup(g.id, wid)} style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '10px 12px', borderRadius: 10, cursor: 'pointer', border: `1.5px solid ${inG ? g.color : 'var(--border)'}`, background: inG ? `${g.color}12` : '#fff' }}>
+                    <div key={wid} onClick={() => setWordGroup(w, inG ? DEFAULT_GROUP : g.name)} style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '10px 12px', borderRadius: 10, cursor: 'pointer', border: `1.5px solid ${inG ? g.color : 'var(--border)'}`, background: inG ? `${g.color}12` : '#fff' }}>
                       <span style={{ width: 20, height: 20, borderRadius: 6, border: `2px solid ${inG ? g.color : 'var(--border)'}`, background: inG ? g.color : '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#fff', fontSize: 12, fontWeight: 900, flexShrink: 0 }}>{inG ? '✓' : ''}</span>
                       <span style={{ fontWeight: 800, fontSize: 15, color: 'var(--text)' }}>{f}</span>
                       <span style={{ fontSize: 13, color: 'var(--text-sub)' }}>{b}</span>
@@ -738,8 +787,8 @@ export default function VocabPage() {
                 })}
               </div>
               <div style={{ display: 'flex', gap: 10, marginTop: 14 }}>
-                <button className="btn btn-ghost" onClick={() => { setAddToGroupId(null); setShowAdd(true); }} style={{ flex: 1 }}>➕ Шинэ үг үүсгэх</button>
-                <button className="btn btn-purple" onClick={() => setAddToGroupId(null)} style={{ flex: 1 }}>Болсон</button>
+                <button className="btn btn-ghost" onClick={() => { setAddToGroupName(null); setShowAdd(true); }} style={{ flex: 1 }}>➕ Шинэ үг үүсгэх</button>
+                <button className="btn btn-purple" onClick={() => setAddToGroupName(null)} style={{ flex: 1 }}>Болсон</button>
               </div>
             </div>
           </div>
