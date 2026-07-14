@@ -221,7 +221,7 @@ export default function VocabPage() {
       try { local = JSON.parse(localStorage.getItem('voca_local_words') || '[]'); } catch {}
       const keyset = new Set(wList.map(w => `${w.front || w.word || ''}|${w.back || w.meaning || ''}`));
       const extra = local.filter(w => !keyset.has(`${w.front || ''}|${w.back || ''}`));
-      const merged = [...extra, ...wList];
+      const merged = [...wList, ...extra];
       setWords(merged);
       setStats({
         total:   merged.length,
@@ -294,8 +294,8 @@ export default function VocabPage() {
     };
     // 1) Optimistic — шууд харагдана, localStorage-д хадгална (backend амжаагүй ч)
     const localId = 'local-' + Date.now();
-    const added = { ...payload, _id: localId, id: localId, status: 'new' };
-    setWords(w => [added, ...w]);
+    const added = { ...payload, _id: localId, id: localId, status: 'new', createdAt: new Date().toISOString() };
+    setWords(w => [...w, added]);
     setStats(s => ({ ...s, total: s.total + 1 }));
     try {
       const local = JSON.parse(localStorage.getItem('voca_local_words') || '[]');
@@ -339,7 +339,7 @@ export default function VocabPage() {
     try {
       const { data } = await api.post('/api/words/generate');
       if (Array.isArray(data)) {
-        setWords(w => [...data, ...w]);
+        setWords(w => [...w, ...data]);
         setStats(s => ({ ...s, total: s.total + data.length }));
       }
     } catch (e) { alert(e.response?.data?.error || 'AI алдаа'); }
@@ -369,7 +369,7 @@ export default function VocabPage() {
     // Эхлээд фолдэр сонгоогүй л бол ямар ч үг харагдахгүй — фолдэр нээж байж дотор нь орно.
     const matchGroup = activeGroup ? (w.group || DEFAULT_GROUP) === activeGroup : false;
     return matchTab && matchSearch && matchGroup;
-  });
+  }).sort((a, b) => new Date(a.createdAt || 0) - new Date(b.createdAt || 0)); // шинээр нэмсэн үг хамгийн доор
 
   const pct = stats.total > 0 ? Math.round((stats.known / stats.total) * 100) : 0;
 
