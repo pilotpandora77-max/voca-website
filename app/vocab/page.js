@@ -75,7 +75,7 @@ export default function VocabPage() {
   const [stats, setStats]         = useState({ total: 0, learned: 0, review: 0, known: 0 });
   const [streak, setStreak]       = useState(0);
   const [showAdd, setShowAdd]     = useState(false);
-  const [newWord, setNewWord]     = useState({ front: '', back: '', hint: '' });
+  const [newWord, setNewWord]     = useState({ front: '', back: '', hint: '', pos: '' });
   const [addLoading, setAddLoad]  = useState(false);
   const [aiLoading, setAiLoad]    = useState(false);
   const [expandedId, setExp]      = useState(null);
@@ -251,14 +251,14 @@ export default function VocabPage() {
     const q = (newWord.front || '').trim();
     if (!q) { alert(isEn ? 'Эхлээд Англи үг бичнэ үү.' : 'Эхлээд Хятад үг бичнэ үү.'); return; }
     setLookupBusy(true);
-    let reading = '', mn = '';
+    let reading = '', mn = '', pos = '';
     if (isEn) {
       const local = EN_LOOKUP[q.toLowerCase()];
       if (local) { reading = local.reading || ''; mn = local.mn || ''; }
       if (!reading || !mn) {
         try {
           const { data } = await api.get(`/api/english/${encodeURIComponent(q.toLowerCase())}`);
-          if (data) { reading = reading || data.ipa || ''; mn = mn || data.mn || ''; }
+          if (data) { reading = reading || data.ipa || ''; mn = mn || data.mn || ''; pos = data.posMn || ''; }
         } catch {}
       }
     } else {
@@ -271,13 +271,14 @@ export default function VocabPage() {
           if (d) {
             reading = reading || d.pinyin || d.reading || '';
             mn = mn || d.mn || d.meaning || (Array.isArray(d.definitions) ? d.definitions.join('; ') : (d.english || ''));
+            pos = d.pos || ''; // таамагласан (CC-CEDICT-д аймгийн тэмдэглэгээ байдаггүй)
           }
         } catch {}
       }
     }
     setLookupBusy(false);
     if (!reading && !mn) { alert('Толь бичгээс олдсонгүй. Гараар бөглөнө үү.'); return; }
-    setNewWord(n => ({ ...n, hint: reading || n.hint, back: mn || n.back }));
+    setNewWord(n => ({ ...n, hint: reading || n.hint, back: mn || n.back, pos: pos || n.pos }));
   }
 
   async function addWord() {
@@ -288,7 +289,7 @@ export default function VocabPage() {
     // Идэвхтэй бүлгийн нэрийг backend дээрх үгийн `group` талбарт шууд бичнэ → апп дээр тэр бүлэгт харагдана
     const payload = {
       front: newWord.front, back: newWord.back, hint: newWord.hint,
-      word: newWord.front, meaning: newWord.back, reading: newWord.hint, lang,
+      word: newWord.front, meaning: newWord.back, reading: newWord.hint, lang, pos: newWord.pos,
       group: activeGroup || DEFAULT_GROUP,
     };
     // 1) Optimistic — шууд харагдана, localStorage-д хадгална (backend амжаагүй ч)
@@ -300,7 +301,7 @@ export default function VocabPage() {
       const local = JSON.parse(localStorage.getItem('voca_local_words') || '[]');
       localStorage.setItem('voca_local_words', JSON.stringify([added, ...local]));
     } catch {}
-    setNewWord({ front: '', back: '', hint: '' });
+    setNewWord({ front: '', back: '', hint: '', pos: '' });
     setShowAdd(false);
     setAddLoad(false);
     // 2) Backend рүү хадгалах оролдлого (амжвал локал хувийг арилгаж, бодит id-р солино)
@@ -595,6 +596,12 @@ export default function VocabPage() {
                             <div style={{ fontSize: 11, fontWeight: 700, color: 'var(--muted)', marginBottom: 4 }}>МОНГОЛ</div>
                             <div style={{ fontWeight: 700, fontSize: 14, color: 'var(--text)' }}>{back}</div>
                           </div>
+                          {w.pos && (
+                            <div>
+                              <div style={{ fontSize: 11, fontWeight: 700, color: 'var(--muted)', marginBottom: 4 }}>ҮГИЙН АЙМАГ</div>
+                              <div style={{ fontWeight: 700, fontSize: 14, color: 'var(--purple)' }}>{w.pos}</div>
+                            </div>
+                          )}
                         </div>
                         {/* Бүлэгт шилжүүлэх — нэг үг зэрэг зөвхөн нэг бүлэгт байна */}
                         <div style={{ marginBottom: 12 }}>
@@ -712,10 +719,16 @@ export default function VocabPage() {
               <div>
                 <label style={{ fontWeight: 700, fontSize: 13, color: 'var(--text-sub)', display: 'block', marginBottom: 6 }}>{isEn ? 'Англи үг' : 'Хятад үг'}</label>
                 <div style={{ display: 'flex', gap: 8 }}>
-                  <input type="text" value={newWord.front} onChange={e => setNewWord(n => ({ ...n, front: e.target.value }))} onBlur={lookupWord} placeholder={isEn ? 'ж: hello' : 'ж: 你好'} style={{ flex: 1 }} />
+                  <input type="text" value={newWord.front} onChange={e => setNewWord(n => ({ ...n, front: e.target.value, pos: '' }))} onBlur={lookupWord} placeholder={isEn ? 'ж: hello' : 'ж: 你好'} style={{ flex: 1 }} />
                   <button type="button" onClick={lookupWord} disabled={lookupBusy} className="btn btn-light" style={{ padding: '0 14px', fontSize: 13, whiteSpace: 'nowrap', flexShrink: 0 }}>{lookupBusy ? '...' : '🔍 Толиос олох'}</button>
                 </div>
                 <div style={{ fontSize: 11, color: 'var(--muted)', marginTop: 4 }}>{isEn ? 'Англи үгээ бичээд товч дарвал орчуулга, дуудлага автоматаар олдоно.' : 'Хятад үгээ бичээд товч дарвал орчуулга, pinyin автоматаар олдоно.'}</div>
+                {newWord.pos && (
+                  <div style={{ display: 'inline-flex', alignItems: 'center', gap: 5, background: 'var(--purple-light)', borderRadius: 100, padding: '4px 11px', marginTop: 8 }}>
+                    <span style={{ color: 'var(--purple)', fontSize: 12, fontWeight: 800 }}>{newWord.pos}</span>
+                    {!isEn && <span style={{ color: 'var(--purple)', fontSize: 10.5, opacity: 0.7 }}>(таамаг)</span>}
+                  </div>
+                )}
               </div>
               <div>
                 <label style={{ fontWeight: 700, fontSize: 13, color: 'var(--text-sub)', display: 'block', marginBottom: 6 }}>Монгол утга</label>

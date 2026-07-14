@@ -30,7 +30,7 @@ const LOCAL_EN = getCourses('en').flatMap(c => c.words).map(w => ({
 function normalizeEnEntry(e) {
   return {
     simplified: e.word, traditional: e.word, pinyin: e.ipa, reading: e.ipa,
-    mn: e.mn, meaning: e.mn, english: e.word, definitions: e.pos ? [e.pos] : [],
+    mn: e.mn, meaning: e.mn, english: e.word, definitions: e.posMn ? [e.posMn] : [], pos: e.posMn || '',
     examples: e.example ? [{ en: e.example, mn: '' }] : [], level: e.level,
   };
 }
@@ -274,6 +274,7 @@ export default function DictionaryPage() {
       await api.post('/api/words', {
         front: wordVal, back: meaning, hint: reading,
         word: wordVal, meaning, meaningEn: enMeaning, reading, lang: isEn ? 'en' : 'zh',
+        pos: word.pos || '',
       });
       setAdded('✓ Нэмэгдлэ!');
       setTimeout(() => setAdded(''), 2500);
@@ -448,7 +449,8 @@ export default function DictionaryPage() {
                         background: 'none', border: 'none', cursor: 'pointer', fontSize: 14,
                         color: 'var(--muted)', padding: '2px 6px', borderRadius: 6, fontFamily: 'inherit',
                       }}>🔊</button>
-                      <span className="tag tag-purple">Үг</span>
+                      <span className="tag tag-purple">{selected.pos || 'Үг'}</span>
+                      {!isEn && selected.pos && <span style={{ fontSize: 10.5, color: 'var(--muted)' }}>(таамаг)</span>}
                     </div>
                     <div style={{ display: 'flex', flexDirection: 'column', gap: 5 }}>
                       {/* English */}
