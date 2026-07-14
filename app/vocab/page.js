@@ -464,6 +464,10 @@ export default function VocabPage() {
                 <div style={{ fontWeight: 900, fontSize: 15, color: 'var(--text)' }}>{DEFAULT_GROUP}</div>
                 <div style={{ fontSize: 12, color: 'var(--muted)', fontWeight: 600 }}>{ungroupedWords.length} үг</div>
               </div>
+              {ungroupedWords.length > 0 && (
+                <a href={`/vocab/print?group=${encodeURIComponent(DEFAULT_GROUP)}`} target="_blank" rel="noopener noreferrer"
+                  className="btn btn-ghost" style={{ padding: '8px 14px', fontSize: 12.5, textDecoration: 'none' }}>📄 PDF татах</a>
+              )}
             </div>
           )}
           {activeGroup && activeGroup !== DEFAULT_GROUP && (() => {
@@ -478,6 +482,10 @@ export default function VocabPage() {
                 </div>
                 <button onClick={() => { setAtgSearch(''); setAddToGroupName(g.name); }} className="btn btn-purple" style={{ padding: '8px 16px', fontSize: 12.5 }}>➕ Үг нэмэх</button>
                 {g.words.length >= 4 && <button onClick={() => router.push('/vocab/practice')} className="btn btn-ghost" style={{ padding: '8px 16px', fontSize: 12.5 }}>🎮 Тоглох</button>}
+                {g.words.length > 0 && (
+                  <a href={`/vocab/print?group=${encodeURIComponent(g.name)}`} target="_blank" rel="noopener noreferrer"
+                    className="btn btn-ghost" style={{ padding: '8px 14px', fontSize: 12.5, textDecoration: 'none' }}>📄 PDF татах</a>
+                )}
                 <button onClick={() => openEditGroup(g)} className="btn btn-ghost" style={{ padding: '8px 12px', fontSize: 12.5 }}>✏️ Засах</button>
                 <button onClick={() => deleteGroup(g.name)} className="btn btn-ghost" style={{ padding: '8px 12px', fontSize: 12.5, color: 'var(--red)' }}>🗑️</button>
               </div>
