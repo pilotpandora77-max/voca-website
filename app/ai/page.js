@@ -3,20 +3,32 @@ import { useState, useEffect, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/lib/auth';
 import api from '@/lib/api';
+import { useLang } from '@/lib/LangContext';
 
-const SUGGESTIONS = [
+const SUGGESTIONS_ZH = [
   '你好 гэдгийн утга юу вэ?',
   'HSK 1 хамгийн чухал 10 үг',
   '我 vs 我的 ялгаа юу вэ?',
   'Дуудлагын 4 аялгыг тайлбарла',
 ];
+const SUGGESTIONS_EN = [
+  'Present Perfect цагийг тайлбарла',
+  'CEFR A1 хамгийн чухал 10 үг',
+  'a vs the ялгаа юу вэ?',
+  'IPA дуудлагын тэмдэгтийг тайлбарла',
+];
 
 export default function AiPage() {
   const { user, loading: authLoad } = useAuth();
   const router = useRouter();
+  const { lang } = useLang();
+  const isEn = lang === 'en';
+  const SUGGESTIONS = isEn ? SUGGESTIONS_EN : SUGGESTIONS_ZH;
 
   const [messages, setMessages] = useState([
-    { role: 'assistant', content: 'Сайн байна уу! Би voca AI — таны Хятад хэлний туслах багш. Дурын асуулт тавьж болно! 🐼✨' },
+    { role: 'assistant', content: isEn
+      ? 'Сайн байна уу! Би voca AI — таны Англи хэлний туслах багш. Дурын асуулт тавьж болно! 🐼✨'
+      : 'Сайн байна уу! Би voca AI — таны Хятад хэлний туслах багш. Дурын асуулт тавьж болно! 🐼✨' },
   ]);
   const [input, setInput]  = useState('');
   const [sending, setSend] = useState(false);
@@ -31,6 +43,16 @@ export default function AiPage() {
     bottomRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages]);
 
+  // `lang` (сурч буй хэл) localStorage-оос async ачаалагддаг тул анхны
+  // мэндчилгээ бичигдэх мөчид хоцорч ирж болно — ярилцлага эхлээгүй л бол засна.
+  useEffect(() => {
+    setMessages(prev => (prev.length === 1 && prev[0].role === 'assistant'
+      ? [{ role: 'assistant', content: isEn
+          ? 'Сайн байна уу! Би voca AI — таны Англи хэлний туслах багш. Дурын асуулт тавьж болно! 🐼✨'
+          : 'Сайн байна уу! Би voca AI — таны Хятад хэлний туслах багш. Дурын асуулт тавьж болно! 🐼✨' }]
+      : prev));
+  }, [isEn]);
+
   async function send(text) {
     const t = (text || input).trim();
     if (!t || sending) return;
@@ -44,7 +66,7 @@ export default function AiPage() {
       const history = [...messages, userMsg]
         .filter(m => m.role !== 'error')
         .map(m => ({ role: m.role, content: m.content }));
-      const { data } = await api.post('/api/ai/chat', { messages: history });
+      const { data } = await api.post('/api/ai/chat', { messages: history, course: lang });
       setMessages(prev => [...prev, { role: 'assistant', content: data.reply }]);
     } catch (err) {
       const msg = err.response?.data?.error || 'Холболт амжилтгүй. Дахин оролдоно уу.';
@@ -87,10 +109,10 @@ export default function AiPage() {
             🐼
           </div>
           <div>
-            <h1 style={{ fontSize: 17, fontWeight: 900, color: '#EDE9FF', letterSpacing: -0.3 }}>AI Хятад хэлний багш</h1>
+            <h1 style={{ fontSize: 17, fontWeight: 900, color: '#EDE9FF', letterSpacing: -0.3 }}>{isEn ? 'AI Англи хэлний багш' : 'AI Хятад хэлний багш'}</h1>
             <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginTop: 2 }}>
               <div style={{ width: 7, height: 7, borderRadius: '50%', background: '#22C55E', boxShadow: '0 0 6px #22C55E' }} />
-              <span style={{ fontSize: 12, color: 'var(--muted)', fontWeight: 600 }}>Онлайн • Claude AI</span>
+              <span style={{ fontSize: 12, color: 'var(--muted)', fontWeight: 600 }}>Онлайн • GPT-4o</span>
             </div>
           </div>
         </div>
@@ -197,7 +219,7 @@ export default function AiPage() {
             type="text"
             value={input}
             onChange={e => setInput(e.target.value)}
-            placeholder="Асуулт бичих... (жш: 你好 гэдгийн утга юу вэ?)"
+            placeholder={isEn ? 'Асуулт бичих... (жш: Present Perfect гэж юу вэ?)' : 'Асуулт бичих... (жш: 你好 гэдгийн утга юу вэ?)'}
             disabled={sending}
             autoFocus
             style={{ flex: 1, fontSize: 15 }}
