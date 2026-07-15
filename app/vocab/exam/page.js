@@ -1,0 +1,465 @@
+'use client';
+import { useState, useEffect, useRef, useMemo } from 'react';
+import { useRouter } from 'next/navigation';
+import { useAuth } from '@/lib/auth';
+import api from '@/lib/api';
+
+const DEFAULT_GROUP = 'Ерөнхий';
+const COUNTS = [10, 20, 9999];
+const TIMES  = [5, 10, 9999];
+// Matching өөрөө багц (batch) дотроо ажилладаг тул "асуулт бүрд холих" биш
+// "хэсэг бүрд өөр төрөл" загвар — апп дээрхтэй адил дараалал.
+const EXAM_ORDER = [
+  { key: 'flash',  title: 'Флэшкарт',        icon: '🗂️', color: '#34D399' },
+  { key: 'choice', title: 'Сонголттой тест', icon: '📝', color: '#60A5FA' },
+  { key: 'listen', title: 'Дуут сонсох тест',icon: '🎧', color: '#A855F7' },
+  { key: 'type',   title: 'Үг бичих тест',   icon: '⌨️', color: '#FB923C' },
+  { key: 'match',  title: 'Холбох тест',     icon: '🔗', color: '#F472B6' },
+];
+
+function shuffle(a) { a = [...a]; for (let i = a.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [a[i], a[j]] = [a[j], a[i]]; } return a; }
+
+function speak(text, lang = 'zh-CN') {
+  if (typeof window === 'undefined' || !window.speechSynthesis) return;
+  window.speechSynthesis.cancel();
+  const u = new SpeechSynthesisUtterance(text);
+  u.lang = lang; u.rate = 0.85;
+  window.speechSynthesis.speak(u);
+}
+function speakWord(w) { speak(w.word, w.lang === 'en' ? 'en-US' : 'zh-CN'); }
+
+async function saveMastery(word, rating) {
+  const now = Date.now();
+  const oldM = word.mastery ?? 0;
+  let newM, nextReview;
+  if (rating === 'again') { newM = 0; nextReview = new Date(now + 30 * 60 * 1000).toISOString(); }
+  else { newM = Math.min(oldM + 1, 2); const days = newM === 1 ? 1 : newM === 2 ? 7 : 0.5; nextReview = new Date(now + days * 86400 * 1000).toISOString(); }
+  const rc = (word.reviewCount || 0) + 1;
+  try { await api.patch(`/api/words/${word._id || word.id}`, { mastery: newM, nextReview, reviewCount: rc }); } catch {}
+}
+
+function gradeFor(pct) {
+  if (pct >= 90) return { label: 'Гайхалтай!', emoji: '🏆', color: '#22C55E' };
+  if (pct >= 75) return { label: 'Маш сайн',   emoji: '⭐', color: '#3B82F6' };
+  if (pct >= 60) return { label: 'Сайн',       emoji: '👍', color: '#F59E0B' };
+  if (pct >= 40) return { label: 'Дунд зэрэг', emoji: '📚', color: '#FB923C' };
+  return          { label: 'Дахин хичээе',   emoji: '💪', color: '#EF4444' };
+}
+
+export default function VocabExamPage() {
+  const { user, loading: authLoad } = useAuth();
+  const router = useRouter();
+
+  const [allWords, setAllWords] = useState([]);
+  const [loading, setLoading]   = useState(true);
+  const [count, setCount]       = useState(20);
+  const [time, setTime]         = useState(10);
+
+  const [started, setStarted]   = useState(false);
+  const [segments, setSegments] = useState([]);
+  const [segIdx, setSegIdx]     = useState(0);
+  const [type, setType]         = useState('flash');
+  const [words, setWords]       = useState([]);
+  const [idx, setIdx]           = useState(0);
+  const [revealed, setRevealed] = useState(false);
+  const [picked, setPicked]     = useState(null);
+  const [typed, setTyped]       = useState('');
+  const [known, setKnown]       = useState(0);
+  const [wrong, setWrong]       = useState(0);
+  const [missed, setMissed]     = useState([]);
+  const [done, setDone]         = useState(false);
+  const [elapsed, setElapsed]   = useState(0);
+  const [streakMsg, setStreakMsg] = useState('');
+  const [examXp, setExamXp]     = useState(null);
+  const startRef = useRef(0);
+  const timerRef = useRef(null);
+
+  useEffect(() => {
+    if (!authLoad && !user) router.push('/login');
+    if (!authLoad && user) {
+      api.get('/api/words').then(({ data }) => setAllWords(Array.isArray(data) ? data : [])).catch(() => {}).finally(() => setLoading(false));
+    }
+  }, [authLoad, user]);
+
+  useEffect(() => {
+    if (!started || done) { clearInterval(timerRef.current); return; }
+    timerRef.current = setInterval(() => {
+      const e = Math.floor((Date.now() - startRef.current) / 1000);
+      setElapsed(e);
+      if (time < 9999 && e >= time * 60) finish();
+    }, 1000);
+    return () => clearInterval(timerRef.current);
+  }, [started, done]);
+
+  useEffect(() => {
+    if (!done) return;
+    api.post('/api/streak/checkin').then(({ data }) => setStreakMsg(data?.message || '')).catch(() => {});
+    api.post('/api/stats/exam', { correct: known, total: known + wrong }).then(({ data }) => setExamXp(data)).catch(() => {});
+  }, [done]);
+
+  function beginExam() {
+    const pool = shuffle(allWords).slice(0, count >= 9999 ? allWords.length : count);
+    const n = EXAM_ORDER.length;
+    const per = Math.max(1, Math.floor(pool.length / n));
+    const segs = EXAM_ORDER.map((t, i) => ({
+      type: t.key,
+      words: pool.slice(i * per, i === n - 1 ? pool.length : (i + 1) * per),
+    })).filter(sg => sg.words.length > 0);
+    setSegments(segs); setSegIdx(0);
+    setWords(segs[0].words); setType(segs[0].type);
+    setIdx(0); setKnown(0); setWrong(0); setMissed([]); setRevealed(false); setPicked(null); setTyped(''); setDone(false);
+    setStarted(true); startRef.current = Date.now(); setElapsed(0); setStreakMsg(''); setExamXp(null);
+  }
+
+  function finish() { clearInterval(timerRef.current); setElapsed(Math.floor((Date.now() - startRef.current) / 1000)); setDone(true); }
+
+  function nextSegmentOrFinish() {
+    const nb = segIdx + 1;
+    if (nb < segments.length) {
+      setSegIdx(nb); setWords(segments[nb].words); setType(segments[nb].type);
+      setIdx(0); setRevealed(false); setPicked(null); setTyped('');
+    } else {
+      finish();
+    }
+  }
+
+  async function answer(correct) {
+    const cur = words[idx];
+    if (correct) setKnown(k => k + 1); else { setWrong(w => w + 1); setMissed(m => [...m, cur]); }
+    saveMastery(cur, correct ? 'good' : 'again');
+    const nx = idx + 1;
+    if (nx >= words.length) { nextSegmentOrFinish(); return; }
+    setIdx(nx); setRevealed(false); setPicked(null); setTyped('');
+  }
+
+  if (authLoad || loading) return (
+    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '80vh' }}><div className="spinner" /></div>
+  );
+
+  // ── Intro / settings ──────────────────────────────────────────
+  if (!started) {
+    return (
+      <div style={{ maxWidth: 620, margin: '0 auto', padding: '28px 28px 40px' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 14, marginBottom: 22 }}>
+          <button onClick={() => router.push('/vocab')} style={{
+            color: 'var(--muted)', textDecoration: 'none', fontSize: 18, cursor: 'pointer',
+            width: 36, height: 36, display: 'flex', alignItems: 'center', justifyContent: 'center',
+            background: 'var(--bg-alt)', borderRadius: 10, border: '1px solid var(--border)', fontFamily: 'inherit',
+          }}>←</button>
+          <h1 style={{ fontSize: 20, fontWeight: 900, color: 'var(--text)' }}>🎓 Нэгдсэн шалгалт</h1>
+        </div>
+
+        <div className="card" style={{ marginBottom: 14 }}>
+          <h2 style={{ fontWeight: 900, fontSize: 16, color: 'var(--text)', marginBottom: 4 }}>Бүх бүлгийн үгсээр</h2>
+          <p style={{ fontSize: 13, color: 'var(--muted)', fontWeight: 600, marginBottom: 12 }}>
+            Флэшкарт, Сонголттой тест, Дуут сонсох тест, Үг бичих тест, Холбох тест — бүх төрлийн даалгавар дараалан холилдоно. Дуусахад нэмэлт XP авна.
+          </p>
+          <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
+            {EXAM_ORDER.map(t => (
+              <span key={t.key} style={{
+                display: 'inline-flex', alignItems: 'center', gap: 6, borderRadius: 100,
+                background: t.color + '18', border: `1px solid ${t.color}44`, color: t.color,
+                padding: '6px 12px', fontSize: 12, fontWeight: 800,
+              }}>{t.icon} {t.title}</span>
+            ))}
+          </div>
+        </div>
+
+        <div className="card" style={{ marginBottom: 18 }}>
+          <h2 style={{ fontWeight: 900, fontSize: 16, color: 'var(--text)', marginBottom: 10 }}>Тохиргоо</h2>
+          {[
+            { label: 'Үгийн тоо', value: count >= 9999 ? `Бүгд (${allWords.length})` : `${count} үг`, onClick: () => setCount(c => COUNTS[(COUNTS.indexOf(c) + 1) % COUNTS.length]) },
+            { label: 'Хугацаа', value: time >= 9999 ? 'Хязгааргүй' : `${time} минут`, onClick: () => setTime(t => TIMES[(TIMES.indexOf(t) + 1) % TIMES.length]) },
+          ].map((r, i) => (
+            <button key={r.label} onClick={r.onClick} style={{
+              display: 'flex', width: '100%', justifyContent: 'space-between', alignItems: 'center',
+              padding: '13px 0', borderTop: i > 0 ? '1px solid var(--border)' : 'none',
+              background: 'none', border: 'none', borderTopWidth: i > 0 ? 1 : 0, cursor: 'pointer', fontFamily: 'inherit',
+            }}>
+              <span style={{ fontSize: 14, fontWeight: 700, color: 'var(--text)' }}>{r.label}</span>
+              <span style={{ fontSize: 14, fontWeight: 800, color: 'var(--purple)' }}>{r.value} ›</span>
+            </button>
+          ))}
+        </div>
+
+        <button className="btn btn-purple" disabled={allWords.length < 5} onClick={beginExam} style={{ width: '100%', padding: '15px', fontSize: 15 }}>
+          {allWords.length < 5 ? 'Хамгийн багадаа 5 үг хэрэгтэй' : 'Шалгалт эхлүүлэх'}
+        </button>
+      </div>
+    );
+  }
+
+  // ── Result ───────────────────────────────────────────────────
+  if (done) {
+    const total = known + wrong || words.length;
+    const pct = total ? Math.round((known / total) * 100) : 0;
+    const mm = String(Math.floor(elapsed / 60)).padStart(2, '0'), ss = String(elapsed % 60).padStart(2, '0');
+    const grade = gradeFor(pct);
+    return (
+      <div style={{ maxWidth: 560, margin: '0 auto', padding: '28px 28px 48px', textAlign: 'center' }}>
+        <h1 style={{ fontSize: 24, fontWeight: 900, color: 'var(--text)', marginTop: 10 }}>Шалгалт дууслаа! 🎉</h1>
+        <p style={{ color: 'var(--muted)', fontWeight: 600, marginTop: 4 }}>Сайхан ажиллаа.</p>
+
+        <div style={{
+          display: 'inline-flex', alignItems: 'center', gap: 8, borderRadius: 100, border: `1.5px solid ${grade.color}55`,
+          background: grade.color + '18', padding: '10px 18px', marginTop: 14,
+        }}>
+          <span style={{ fontSize: 20 }}>{grade.emoji}</span>
+          <span style={{ fontSize: 16, fontWeight: 900, color: grade.color }}>{grade.label}</span>
+        </div>
+
+        {!!examXp?.xp && (
+          <div style={{ marginTop: 10 }}>
+            <span style={{ background: 'var(--purple-light)', color: 'var(--purple-dark)', borderRadius: 100, padding: '9px 16px', fontWeight: 800, fontSize: 13.5, display: 'inline-block' }}>
+              🎉 +{examXp.xp} XP нэмэгдлээ!
+            </span>
+          </div>
+        )}
+        {!!streakMsg && (
+          <div style={{ marginTop: 10 }}>
+            <span style={{ background: '#FEF3C7', color: '#B45309', borderRadius: 100, padding: '9px 16px', fontWeight: 800, fontSize: 13.5, display: 'inline-block' }}>
+              {streakMsg}
+            </span>
+          </div>
+        )}
+
+        <div style={{ display: 'flex', justifyContent: 'center', margin: '26px 0' }}>
+          <svg width={190} height={190}>
+            <circle cx={95} cy={95} r={78} stroke="var(--border)" strokeWidth={14} fill="none" />
+            <circle cx={95} cy={95} r={78} stroke="var(--purple)" strokeWidth={14} fill="none" strokeLinecap="round"
+              strokeDasharray={2 * Math.PI * 78} strokeDashoffset={2 * Math.PI * 78 * (1 - pct / 100)}
+              transform="rotate(-90 95 95)" style={{ transition: 'stroke-dashoffset 0.6s ease' }} />
+            <text x={95} y={92} textAnchor="middle" fontSize={40} fontWeight={900} fill="var(--text)">{pct}%</text>
+            <text x={95} y={116} textAnchor="middle" fontSize={13} fontWeight={700} fill="var(--muted)">{known} / {total} зөв</text>
+          </svg>
+        </div>
+
+        <div style={{ display: 'flex', gap: 10, marginBottom: 8 }}>
+          {[{ ic: '✅', c: '#10B981', v: known, l: 'Зөв хариулт' }, { ic: '❌', c: '#EF4444', v: wrong, l: 'Буруу хариулт' }, { ic: '⏱️', c: '#3B82F6', v: `${mm}:${ss}`, l: 'Хугацаа' }].map((x, i) => (
+            <div key={i} className="card" style={{ flex: 1, textAlign: 'center', padding: '16px 10px' }}>
+              <div style={{ fontSize: 20 }}>{x.ic}</div>
+              <div style={{ fontSize: 18, fontWeight: 900, color: x.c, marginTop: 4 }}>{x.v}</div>
+              <div style={{ fontSize: 10.5, color: 'var(--muted)', fontWeight: 700, marginTop: 2 }}>{x.l}</div>
+            </div>
+          ))}
+        </div>
+
+        {missed.length > 0 && (
+          <div className="card" style={{ textAlign: 'left', marginTop: 12 }}>
+            <div style={{ fontWeight: 900, fontSize: 15, color: 'var(--text)', marginBottom: 8 }}>Алдсан үгс ({missed.length})</div>
+            {missed.map((w, i) => (
+              <div key={(w._id || w.id) + '-' + i} style={{ display: 'flex', justifyContent: 'space-between', gap: 10, padding: '9px 0', borderTop: i > 0 ? '1px solid var(--border)' : 'none' }}>
+                <span style={{ fontWeight: 800, fontSize: 14, color: 'var(--text)' }}>{w.word}</span>
+                <span style={{ fontSize: 13, color: 'var(--muted)', fontWeight: 600 }}>{w.meaning}</span>
+              </div>
+            ))}
+          </div>
+        )}
+
+        <button className="btn btn-purple" onClick={beginExam} style={{ width: '100%', marginTop: 20, padding: '15px' }}>Дахин шалгалт өгөх</button>
+        <button className="btn btn-ghost" onClick={() => router.push('/vocab')} style={{ width: '100%', marginTop: 10, padding: '13px' }}>Буцах</button>
+      </div>
+    );
+  }
+
+  // ── Running exam ─────────────────────────────────────────────
+  const cur = words[idx];
+  const total = words.length;
+  const typeMeta = EXAM_ORDER.find(t => t.key === type);
+
+  return (
+    <div style={{ maxWidth: 560, margin: '0 auto', padding: '20px 24px 40px' }}>
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 10 }}>
+        <button onClick={() => router.push('/vocab')} style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: 22, color: 'var(--text)', fontFamily: 'inherit' }}>✕</button>
+        <div style={{ textAlign: 'center' }}>
+          <div style={{ fontWeight: 900, fontSize: 15, color: 'var(--text)' }}>{typeMeta?.icon} {typeMeta?.title}</div>
+          <div style={{ fontSize: 12, color: 'var(--muted)', fontWeight: 700 }}>{idx + 1} / {total} · {segIdx + 1}/{segments.length} үе шат</div>
+        </div>
+        <div style={{ width: 22 }} />
+      </div>
+      <div style={{ height: 8, background: 'var(--border)', borderRadius: 5, overflow: 'hidden', marginBottom: 20 }}>
+        <div style={{ height: '100%', width: `${(idx / total) * 100}%`, background: 'var(--purple)', borderRadius: 5, transition: 'width 0.25s' }} />
+      </div>
+
+      {type === 'flash'  && <FlashQ word={cur} revealed={revealed} onReveal={() => setRevealed(true)} onAnswer={answer} />}
+      {type === 'choice' && <ChoiceQ word={cur} all={allWords} field="meaning" prompt="Энэ үгийн утга юу вэ?" picked={picked} setPicked={setPicked} onNext={answer} />}
+      {type === 'listen' && <ChoiceQ word={cur} all={allWords} field="word" prompt="Дуу сонсоод зөв хариултыг сонгоно уу." listen picked={picked} setPicked={setPicked} onNext={answer} />}
+      {type === 'type'   && <TypeQ word={cur} typed={typed} setTyped={setTyped} revealed={revealed} onCheck={() => setRevealed(true)} onNext={answer} />}
+      {type === 'match'  && <MatchQ words={words} onDone={(ok, tot) => { setKnown(k => k + ok); setWrong(w => w + (tot - ok)); nextSegmentOrFinish(); }} />}
+    </div>
+  );
+}
+
+function FlashQ({ word, revealed, onReveal, onAnswer }) {
+  if (!word) return null;
+  return (
+    <div>
+      <div onClick={onReveal} style={{
+        cursor: 'pointer', minHeight: 240, borderRadius: 20, border: '1.5px solid var(--border)', background: 'var(--bg-alt)',
+        display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: 24, marginBottom: 20, textAlign: 'center',
+      }}>
+        {!revealed ? (
+          <>
+            <div style={{ fontSize: 44, fontWeight: 900, color: 'var(--text)' }}>{word.word}</div>
+            {word.reading && <div style={{ fontSize: 16, color: 'var(--muted)', fontWeight: 600, marginTop: 8 }}>/{word.reading}/</div>}
+            <button onClick={e => { e.stopPropagation(); speakWord(word); }} style={{
+              width: 52, height: 52, borderRadius: 26, background: 'var(--purple)', border: 'none', color: '#fff',
+              fontSize: 20, cursor: 'pointer', marginTop: 18,
+            }}>🔊</button>
+            <div style={{ fontSize: 12, color: 'var(--muted)', fontWeight: 600, marginTop: 14 }}>(дарж хариулт харах)</div>
+          </>
+        ) : (
+          <>
+            <div style={{ fontSize: 26, fontWeight: 900, color: 'var(--purple)' }}>{word.meaning}</div>
+            {word.example && <div style={{ fontSize: 13, color: 'var(--muted)', fontWeight: 600, marginTop: 12 }}>{word.example}</div>}
+          </>
+        )}
+      </div>
+      <div style={{ fontSize: 13, color: 'var(--muted)', fontWeight: 700, textAlign: 'center', marginBottom: 10 }}>Утгыг санаж байна уу?</div>
+      <div style={{ display: 'flex', gap: 12 }}>
+        <button className="btn btn-red" onClick={() => onAnswer(false)} style={{ flex: 1, padding: '15px' }}>✕ Мэдэхгүй</button>
+        <button className="btn btn-green" onClick={() => onAnswer(true)} style={{ flex: 1, padding: '15px' }}>✓ Мэднэ</button>
+      </div>
+    </div>
+  );
+}
+
+function ChoiceQ({ word, all, field, prompt, listen, picked, setPicked, onNext }) {
+  const [list, setList] = useState([]);
+  useEffect(() => {
+    if (!word) return;
+    const wid = word._id || word.id;
+    const others = shuffle(all.filter(w => (w._id || w.id) !== wid)).slice(0, 3);
+    setList(shuffle([word, ...others]));
+    setPicked(null);
+    if (listen) speakWord(word);
+  }, [word?._id, word?.id]);
+  if (!word) return null;
+
+  return (
+    <div>
+      {listen ? (
+        <div style={{ textAlign: 'center', margin: '20px 0' }}>
+          <div style={{ fontSize: 14, color: 'var(--muted)', fontWeight: 700, marginBottom: 14 }}>{prompt}</div>
+          <button onClick={() => speakWord(word)} style={{
+            width: 72, height: 72, borderRadius: 36, background: 'var(--purple)', border: 'none', color: '#fff', fontSize: 26, cursor: 'pointer',
+          }}>▶️</button>
+        </div>
+      ) : (
+        <>
+          <div style={{ fontSize: 32, fontWeight: 900, color: 'var(--text)', marginTop: 6 }}>{word.word}</div>
+          <div style={{ fontSize: 14, color: 'var(--muted)', fontWeight: 700, marginTop: 6, marginBottom: 14 }}>{prompt}</div>
+        </>
+      )}
+      <div>
+        {list.map((o, i) => {
+          const sel = picked === i;
+          return (
+            <div key={(o._id || o.id) + '-' + i} onClick={() => setPicked(i)} style={{
+              display: 'flex', alignItems: 'center', gap: 12, borderRadius: 14, padding: 14, marginBottom: 10, cursor: 'pointer',
+              border: `2px solid ${sel ? 'var(--purple)' : 'var(--border)'}`, background: sel ? 'var(--purple-light)' : 'var(--bg-alt)',
+            }}>
+              <div style={{
+                width: 26, height: 26, borderRadius: 13, border: `2px solid ${sel ? 'var(--purple)' : 'var(--border)'}`,
+                background: sel ? 'var(--purple)' : 'transparent', color: sel ? '#fff' : 'var(--muted)',
+                display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 12, fontWeight: 900, flexShrink: 0,
+              }}>{String.fromCharCode(65 + i)}</div>
+              <span style={{ fontSize: 14.5, fontWeight: sel ? 800 : 600, color: sel ? 'var(--purple)' : 'var(--text-sub)' }}>{field === 'word' ? o.word : o.meaning}</span>
+            </div>
+          );
+        })}
+      </div>
+      <button className="btn btn-purple" disabled={picked == null} onClick={() => onNext(list[picked]?.id === word.id || list[picked]?._id === word._id)}
+        style={{ width: '100%', padding: '15px', marginTop: 8 }}>Дараагийн асуулт</button>
+    </div>
+  );
+}
+
+function TypeQ({ word, typed, setTyped, revealed, onCheck, onNext }) {
+  if (!word) return null;
+  const correct = typed.trim().toLowerCase() === (word.word || '').toLowerCase() || typed.trim().toLowerCase() === (word.meaning || '').toLowerCase();
+  return (
+    <div>
+      <div style={{ fontSize: 26, fontWeight: 900, color: 'var(--text)', marginTop: 6 }}>{word.meaning}</div>
+      <div style={{ fontSize: 14, color: 'var(--muted)', fontWeight: 700, marginTop: 6, marginBottom: 14 }}>Энэ үгийг бичнэ үү:</div>
+      <input type="text" value={typed} onChange={e => setTyped(e.target.value)} disabled={revealed} autoCapitalize="off"
+        placeholder="Хариултаа бич..." style={{
+          fontSize: 18, fontWeight: 700, padding: 16, borderRadius: 14,
+          border: `2px solid ${revealed ? (correct ? 'var(--green)' : 'var(--red)') : 'var(--border)'}`,
+          background: revealed ? (correct ? 'var(--green-light)' : 'var(--red-light)') : 'var(--bg-alt)', width: '100%',
+        }} />
+      {revealed && !correct && <div style={{ color: 'var(--green)', fontWeight: 800, marginTop: 10, fontSize: 14 }}>Зөв хариулт: {word.word}</div>}
+      {!revealed ? (
+        <button className="btn btn-purple" disabled={!typed.trim()} onClick={onCheck} style={{ width: '100%', padding: '15px', marginTop: 18 }}>Шалгах</button>
+      ) : (
+        <button className="btn btn-purple" onClick={() => onNext(correct)} style={{ width: '100%', padding: '15px', marginTop: 18 }}>Дараагийн асуулт</button>
+      )}
+    </div>
+  );
+}
+
+function MatchQ({ words, onDone }) {
+  const BATCH = 4;
+  const batches = useMemo(() => { const b = []; for (let i = 0; i < words.length; i += BATCH) b.push(words.slice(i, i + BATCH)); return b; }, [words]);
+  const [bi, setBi] = useState(0);
+  const [correct, setCorrect] = useState(0);
+  const [rights, setRights] = useState(() => shuffle(batches[0] || []));
+  const [selL, setSelL] = useState(null);
+  const [matched, setMatched] = useState({});
+  const [wrongFlash, setWrongFlash] = useState(null);
+
+  useEffect(() => { setRights(shuffle(batches[bi] || [])); setSelL(null); setMatched({}); }, [bi]);
+
+  function idOf(w) { return w._id || w.id; }
+
+  function tapRight(r) {
+    if (selL == null) return;
+    const lw = (batches[bi] || [])[selL];
+    if (!lw) return;
+    if (idOf(lw) === idOf(r)) {
+      const nm = { ...matched, [idOf(lw)]: true }; setMatched(nm); setCorrect(c => c + 1); setSelL(null);
+      if (Object.keys(nm).length >= (batches[bi] || []).length) {
+        const nb = bi + 1;
+        if (nb >= batches.length) { setTimeout(() => onDone(correct + 1, words.length), 350); }
+        else setTimeout(() => setBi(nb), 350);
+      }
+    } else { setWrongFlash(idOf(r)); setTimeout(() => setWrongFlash(null), 400); }
+  }
+
+  const curBatch = batches[bi] || [];
+  return (
+    <div>
+      <div style={{ fontSize: 14, color: 'var(--muted)', fontWeight: 700, marginBottom: 16 }}>Үгийг утгатай нь холбоно уу. ({bi + 1}/{batches.length})</div>
+      <div style={{ display: 'flex', gap: 12 }}>
+        <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: 10 }}>
+          {curBatch.map((w, i) => {
+            const m = matched[idOf(w)]; const sel = selL === i;
+            return (
+              <div key={idOf(w)} onClick={() => !m && setSelL(i)} style={{
+                borderRadius: 12, border: `2px solid ${m ? 'var(--green)' : sel ? 'var(--purple)' : 'var(--border)'}`,
+                background: m ? 'var(--green-light)' : sel ? 'var(--purple-light)' : 'var(--bg-alt)',
+                padding: 14, minHeight: 52, display: 'flex', alignItems: 'center', cursor: m ? 'default' : 'pointer',
+              }}>
+                <span style={{ fontSize: 14, fontWeight: (sel || m) ? 800 : 700, color: m ? 'var(--green-dark)' : sel ? 'var(--purple)' : 'var(--text)' }}>{w.word}</span>
+              </div>
+            );
+          })}
+        </div>
+        <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: 10 }}>
+          {rights.map(r => {
+            const m = matched[idOf(r)]; const bad = wrongFlash === idOf(r);
+            return (
+              <div key={idOf(r)} onClick={() => !m && tapRight(r)} style={{
+                borderRadius: 12, border: `2px solid ${m ? 'var(--green)' : bad ? 'var(--red)' : 'var(--border)'}`,
+                background: m ? 'var(--green-light)' : bad ? 'var(--red-light)' : 'var(--bg-alt)',
+                padding: 14, minHeight: 52, display: 'flex', alignItems: 'center', cursor: m ? 'default' : 'pointer',
+              }}>
+                <span style={{ fontSize: 13.5, fontWeight: m ? 800 : 700, color: m ? 'var(--green-dark)' : 'var(--text)' }}>{r.meaning}</span>
+              </div>
+            );
+          })}
+        </div>
+      </div>
+    </div>
+  );
+}

@@ -409,6 +409,27 @@ export default function VocabPage() {
       <div style={{ padding: '0 28px', display: 'grid', gridTemplateColumns: '1fr 268px', gap: 18 }}>
         {/* Main */}
         <div>
+          {/* Нэгдсэн шалгалт — бүх бүлгийн үгсийг холин, бүх төрлийн тестээр шалгана */}
+          {stats.total >= 10 && (
+            <div onClick={() => router.push('/vocab/exam')} style={{
+              display: 'flex', alignItems: 'center', gap: 14, cursor: 'pointer',
+              background: 'var(--purple)', borderRadius: 18, padding: 16, marginBottom: 12,
+              transition: 'filter 0.15s',
+            }}
+            onMouseEnter={e => { e.currentTarget.style.filter = 'brightness(1.06)'; }}
+            onMouseLeave={e => { e.currentTarget.style.filter = ''; }}
+            >
+              <div style={{ width: 46, height: 46, borderRadius: 14, background: 'rgba(255,255,255,0.2)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 22, flexShrink: 0 }}>🎓</div>
+              <div style={{ flex: 1 }}>
+                <div style={{ fontSize: 16, fontWeight: 900, color: '#fff' }}>Нэгдсэн шалгалт</div>
+                <div style={{ fontSize: 12, color: 'rgba(255,255,255,0.85)', fontWeight: 600, marginTop: 3, lineHeight: 1.4 }}>
+                  Бүх бүлгийн үгсээр, бүх төрлийн даалгавар холилдсон шалгалт өг — нэмэлт XP аваарай!
+                </div>
+              </div>
+              <span style={{ color: '#fff', fontSize: 18 }}>›</span>
+            </div>
+          )}
+
           {/* Folder list — компьютерийн фолдэр мэт доош жагсаана, эхлээд энэ л харагдана */}
           <div className="card" style={{ padding: 0, overflow: 'hidden', marginBottom: 12 }}>
             <div style={{ padding: '10px 16px', borderBottom: '1.5px solid var(--border)' }}>
