@@ -7,7 +7,7 @@ import PageHeader from '@/components/PageHeader';
 import { useLang } from '@/lib/LangContext';
 
 const API_BASE = process.env.NEXT_PUBLIC_API_URL || '';
-const TABS = ['Бүгд', 'Найзууд', 'Миний', 'Хадгалсан'];
+const TABS = ['Бүгд', 'Дагаж буй', 'Шилдэг', 'Зөвлөгөө', 'Асуулт', 'Хуваалцсан'];
 
 // XP реакцууд — пост эзэн reaction тус бүрд +5 XP авна
 const REACTIONS = [
@@ -18,12 +18,39 @@ const REACTIONS = [
   { e: '🧠', label: 'Smart' },
 ];
 
+// Composer категори — Зөвлөгөө/Асуулт таб-ыг шүүхэд ашиглана
+const CATEGORIES = [
+  { id: 'general', emoji: '💬', label: 'Ярилцлага' },
+  { id: 'question', emoji: '❓', label: 'Асуулт' },
+  { id: 'advice', emoji: '💡', label: 'Зөвлөгөө' },
+];
+
 const RULES = [
   { icon: '💬', t: 'Нийгмийн чатлах дүрэм' },
   { icon: '📝', t: 'Пост оруулах дүрэм' },
   { icon: '👥', t: 'Группын дүрэм' },
   { icon: '⚠️', t: 'Алдаа мэдээлэх заавар' },
 ];
+
+// XP → Level (backend social.js-тэй ижил босго)
+const LEVEL_THRESHOLDS = [0, 100, 300, 600, 1000, 1500, 2200, 3000, 4000, 5500, 7500, 10000];
+function levelFromXp(xp = 0) {
+  let level = 1;
+  for (let i = 1; i < LEVEL_THRESHOLDS.length; i++) { if (xp >= LEVEL_THRESHOLDS[i]) level = i + 1; else break; }
+  return level;
+}
+function levelProgress(xp = 0) {
+  const level = levelFromXp(xp);
+  const cur = LEVEL_THRESHOLDS[level - 1] ?? 0;
+  const next = LEVEL_THRESHOLDS[level] ?? (cur + 2500);
+  return { level, cur, next, pct: Math.min(100, Math.round(((xp - cur) / (next - cur)) * 100)) };
+}
+const STREAK_MILESTONES = [3, 7, 14, 30, 60, 100, 200, 365];
+function daysToNextReward(streak = 0) {
+  const next = STREAK_MILESTONES.find(m => m > streak);
+  return next ? next - streak : 0;
+}
+const WEEKDAY_MN = ['Д', 'М', 'Л', 'П', 'Б', 'Б', 'Н'];
 
 function relTime(iso) {
   if (!iso) return 'одоо';
@@ -39,27 +66,35 @@ export default function SocialPage() {
   const { user, loading: authLoad } = useAuth();
   const router = useRouter();
   const { lang } = useLang();
-  const [streak, setStreak] = useState(0);
+  const [stats, setStats]   = useState(null);   // /api/stats — streak, xp, weekActivity
   const [tab, setTab]       = useState('Бүгд');
   const [posts, setPosts]   = useState([]);
+  const [friendIds, setFriendIds] = useState(new Set());
   const [loading, setLoad]  = useState(true);
   const [input, setInput]   = useState('');
-  const [pendingImg, setPendingImg] = useState(null); // base64 preview before posting
+  const [category, setCategory] = useState('general');
+  const [postMode, setPostMode] = useState('text'); // text | poll | word
+  const [pendingImg, setPendingImg] = useState(null);
+  const [pollQ, setPollQ]   = useState('');
+  const [pollOpts, setPollOpts] = useState(['', '']);
+  const [wcWord, setWcWord] = useState('');
+  const [wcMeaning, setWcMeaning] = useState('');
+  const [wcExtra, setWcExtra] = useState('');
   const [saved, setSaved]   = useState({});
   const [toast, setToast]   = useState('');
-  const [openComments, setOpenComments] = useState(null); // post id
-  const [comments, setComments] = useState({}); // postId -> []
+  const [openComments, setOpenComments] = useState(null);
+  const [comments, setComments] = useState({});
   const [commentText, setCommentText] = useState('');
   // Community v2
   const [trending, setTrending]   = useState([]);
   const [online, setOnline]       = useState({ count: 0, users: [] });
-  const [active, setActive]       = useState([]);        // топ 3 (7 хоногийн XP)
+  const [active, setActive]       = useState([]);
   const [challenge, setChallenge] = useState(null);
   const [chInput, setChInput]     = useState('');
-  const [events, setEvents]       = useState([]);
+  const [newGroups, setNewGroups] = useState([]);
   const [notifs, setNotifs]       = useState({ items: [], unread: 0 });
   const [showNotifs, setShowNotifs] = useState(false);
-  const [profileCard, setProfileCard] = useState(null);  // profile modal data
+  const [profileCard, setProfileCard] = useState(null);
   const [searchQ, setSearchQ]     = useState('');
   const [searchRes, setSearchRes] = useState(null);
   const composerRef = useRef(null);
@@ -71,17 +106,17 @@ export default function SocialPage() {
     if (!authLoad && !user) router.push('/login');
     if (!authLoad && user) {
       load();
-      api.get('/api/streak').then(r => setStreak(r.data.streak || 0)).catch(() => {});
+      api.get('/api/stats').then(r => setStats(r.data)).catch(() => {});
+      api.get('/api/friends').then(r => setFriendIds(new Set((r.data || []).map(f => f.id)))).catch(() => {});
       api.get('/api/social/trending').then(r => setTrending(r.data || [])).catch(() => {});
       api.get('/api/social/online').then(r => setOnline(r.data || { count: 0, users: [] })).catch(() => {});
       api.get('/api/stats/leaderboard/weekly').then(r => setActive((r.data?.rankings || []).slice(0, 3))).catch(() => {});
-      api.get('/api/social/events').then(r => setEvents(r.data || [])).catch(() => {});
+      api.get('/api/groups/public').then(r => setNewGroups((r.data || []).slice(0, 3))).catch(() => {});
       api.get('/api/social/notifications').then(r => setNotifs(r.data || { items: [], unread: 0 })).catch(() => {});
     }
     try { setSaved(JSON.parse(localStorage.getItem('voca_social_saved') || '{}')); } catch {}
   }, [authLoad, user]);
 
-  // Challenge — сурч буй хэлээр (lang localStorage-оос async ирдэг тул тусад нь)
   useEffect(() => {
     if (!authLoad && user) {
       api.get(`/api/social/challenge?course=${lang === 'en' ? 'en' : 'zh'}`)
@@ -100,14 +135,29 @@ export default function SocialPage() {
 
   function showToast(t) { setToast(t); clearTimeout(toastT.current); toastT.current = setTimeout(() => setToast(''), 2600); }
 
+  function resetComposer() {
+    setInput(''); setPendingImg(null); setCategory('general'); setPostMode('text');
+    setPollQ(''); setPollOpts(['', '']); setWcWord(''); setWcMeaning(''); setWcExtra('');
+  }
+
   async function publish() {
-    const text = input.trim();
-    if (!text && !pendingImg) return;
-    const body = { text, images: pendingImg ? [pendingImg] : [] };
-    setInput(''); setPendingImg('');
+    let body;
+    if (postMode === 'poll') {
+      const opts = pollOpts.map(o => o.trim()).filter(Boolean);
+      if (!pollQ.trim() || opts.length < 2) { showToast('Асуулт болон 2+ сонголт бичнэ үү'); return; }
+      body = { category: 'poll', poll: { question: pollQ.trim(), options: opts } };
+    } else if (postMode === 'word') {
+      if (!wcWord.trim()) { showToast('Үгээ бичнэ үү'); return; }
+      body = { category: 'word', wordCard: { word: wcWord.trim(), meaning: wcMeaning.trim(), extra: wcExtra.trim() } };
+    } else {
+      const text = input.trim();
+      if (!text && !pendingImg) return;
+      body = { text, images: pendingImg ? [pendingImg] : [], category };
+    }
     try {
       const { data } = await api.post('/api/posts', body);
       setPosts(p => [data, ...p]);
+      resetComposer();
       showToast(data.earnedXp ? `Пост нийтлэгдлээ! +${data.earnedXp} XP 🎉` : 'Пост нийтлэгдлээ! 🎉');
     } catch (e) {
       if (e.response?.status === 403) showToast('Зөвхөн Premium гишүүд пост нийтэлж болно 👑');
@@ -120,20 +170,16 @@ export default function SocialPage() {
     if (!file) return;
     if (file.size > 4 * 1024 * 1024) { showToast('Зураг 4MB-аас бага байх ёстой'); return; }
     const reader = new FileReader();
-    reader.onload = () => { setPendingImg(reader.result); composerRef.current?.focus(); };
+    reader.onload = () => { setPostMode('text'); setPendingImg(reader.result); composerRef.current?.focus(); };
     reader.readAsDataURL(file);
   }
 
   async function react(id, emoji) {
-    // optimistic toggle (нэг хэрэглэгч нэг reaction)
     setPosts(ps => ps.map(p => {
       if (p.id !== id) return p;
       const r = { ...(p.reactions || {}) };
       const had = (r[emoji] || []).includes(user.id);
-      for (const e of Object.keys(r)) {
-        r[e] = r[e].filter(x => x !== user.id);
-        if (!r[e].length) delete r[e];
-      }
+      for (const e of Object.keys(r)) { r[e] = r[e].filter(x => x !== user.id); if (!r[e].length) delete r[e]; }
       if (!had) r[emoji] = [...(r[emoji] || []), user.id];
       return { ...p, reactions: r };
     }));
@@ -141,6 +187,36 @@ export default function SocialPage() {
       const { data } = await api.post(`/api/posts/${id}/react`, { emoji });
       setPosts(ps => ps.map(p => p.id === id ? { ...p, reactions: data.reactions } : p));
     } catch {}
+  }
+
+  async function vote(post, optionIndex) {
+    setPosts(ps => ps.map(p => {
+      if (p.id !== post.id || !p.poll) return p;
+      const options = p.poll.options.map((o, i) => {
+        const had = o.votes.includes(user.id);
+        if (i === optionIndex && !had) return { ...o, votes: [...o.votes, user.id] };
+        return { ...o, votes: o.votes.filter(x => x !== user.id) };
+      });
+      return { ...p, poll: { ...p.poll, options } };
+    }));
+    try {
+      const { data } = await api.post(`/api/posts/${post.id}/poll/vote`, { optionIndex });
+      setPosts(ps => ps.map(p => p.id === post.id ? { ...p, poll: data.poll } : p));
+    } catch {}
+  }
+
+  async function share(post) {
+    setPosts(ps => ps.map(p => {
+      if (p.id !== post.id) return p;
+      const shares = p.shares || [];
+      const has = shares.includes(user.id);
+      return { ...p, shares: has ? shares.filter(x => x !== user.id) : [...shares, user.id] };
+    }));
+    try {
+      await navigator.clipboard?.writeText(`${window.location.origin}/social#${post.id}`);
+      showToast('Холбоос хуулагдлаа 🔗');
+    } catch {}
+    try { await api.post(`/api/posts/${post.id}/share`); } catch {}
   }
 
   function toggleSave(id) {
@@ -202,25 +278,35 @@ export default function SocialPage() {
     }, 350);
   }
 
-  async function joinEvent(id) {
+  async function joinGroup(id) {
     try {
-      const { data } = await api.post(`/api/social/events/${id}/join`);
-      setEvents(evs => evs.map(e => e.id === id ? { ...e, joined: data.joined, attendeeCount: data.attendeeCount } : e));
-      showToast(data.joined ? 'Арга хэмжээнд бүртгүүллээ 🎉' : 'Бүртгэлээс гарлаа');
-    } catch {}
+      await api.post(`/api/groups/${id}/join`);
+      setNewGroups(gs => gs.filter(g => g.id !== id));
+      showToast('Группд нэгдлээ 🎉');
+    } catch (e) { showToast(e.response?.data?.error || 'Алдаа гарлаа'); }
   }
 
-  const filtered = posts.filter(p => {
-    if (tab === 'Миний') return p.userId === user.id;
-    if (tab === 'Хадгалсан') return saved[p.id];
-    return true; // Бүгд, Найзууд (найзаар шүүх backend талд хийгдээгүй тул бүгд)
-  });
+  const filtered = posts
+    .filter(p => {
+      if (tab === 'Дагаж буй') return friendIds.has(p.userId);
+      if (tab === 'Зөвлөгөө') return p.category === 'advice';
+      if (tab === 'Асуулт') return p.category === 'question';
+      if (tab === 'Хуваалцсан') return saved[p.id];
+      return true;
+    })
+    .sort((a, b) => {
+      if (tab !== 'Шилдэг') return 0;
+      const score = p => Object.values(p.reactions || {}).reduce((s, arr) => s + arr.length, 0);
+      return score(b) - score(a);
+    });
 
   const challengeDone = challenge && (challenge.myUsedWords?.length || 0) >= (challenge.words?.length || 5);
+  const myLevel = stats ? levelProgress(stats.xp) : null;
+  const nextReward = stats ? daysToNextReward(stats.streak) : 0;
 
   return (
     <div style={{ paddingBottom: 40 }}>
-      <PageHeader title="Нийгэм" subtitle="Бидний нийгэмлэгт тавтай морил! Хамтдаа суралцаж, хөгжицгөөе." streak={streak}
+      <PageHeader title="Нийгэм" subtitle="Бидний нийгэмлэгт тавтай морил! Хамтдаа суралцаж, хөгжицгөөе." streak={stats?.streak || 0}
         actions={
           <div style={{ display: 'flex', gap: 8, position: 'relative' }}>
             <button onClick={openNotifs} style={{ position: 'relative', padding: '9px 12px', fontSize: 16, borderRadius: 10, border: '1.5px solid var(--border)', background: 'var(--bg-alt)', cursor: 'pointer' }}>
@@ -243,32 +329,122 @@ export default function SocialPage() {
           </div>
         } />
 
-      <div style={{ padding: '0 28px', display: 'grid', gridTemplateColumns: 'minmax(0,1fr) 320px', gap: 20, alignItems: 'start' }}>
+      {/* Banner */}
+      <div style={{ margin: '0 28px 20px', borderRadius: 22, padding: '30px 32px', position: 'relative', overflow: 'hidden',
+        background: 'linear-gradient(135deg, #2B1156, #4C1D95 55%, #6D28D9)' }}>
+        <div style={{ position: 'absolute', right: 24, top: '50%', transform: 'translateY(-50%)', fontSize: 72, opacity: 0.9 }}>🐼🌍</div>
+        <div style={{ maxWidth: 480, position: 'relative' }}>
+          <h2 style={{ fontSize: 24, fontWeight: 900, color: '#fff', lineHeight: 1.25, marginBottom: 8 }}>Шинэ ертөнцийг үгээр нээцгээе 🌍</h2>
+          <p style={{ fontSize: 13.5, color: 'rgba(255,255,255,0.8)', fontWeight: 600, marginBottom: 16 }}>Өдөр бүр шинэ үг, шинэ мэдлэг, шинэ найзууд. Чи ганцаараа биш. Бид хамтдаа!</p>
+          <div style={{ display: 'flex', gap: 10 }}>
+            <button onClick={() => composerRef.current?.focus()} className="btn" style={{ background: '#fff', color: '#4C1D95', padding: '10px 18px', fontWeight: 800, fontSize: 13 }}>+ Нийтлэл үүсгэх</button>
+            <button onClick={() => router.push('/vocab')} className="btn" style={{ background: 'rgba(255,255,255,0.12)', color: '#fff', border: '1.5px solid rgba(255,255,255,0.3)', padding: '10px 18px', fontWeight: 800, fontSize: 13 }}>+ Бүлэг хайх</button>
+          </div>
+        </div>
+      </div>
+
+      <div style={{ padding: '0 28px', display: 'grid', gridTemplateColumns: '250px minmax(0,1fr) 320px', gap: 20, alignItems: 'start' }}>
+        {/* ── Left sidebar ── */}
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+          <div className="card">
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 6 }}>
+              <span style={{ fontSize: 20 }}>🔥</span>
+              <div>
+                <div style={{ fontWeight: 900, fontSize: 18, color: 'var(--text)', lineHeight: 1 }}>{stats?.streak || 0} өдрийн цуваа</div>
+              </div>
+            </div>
+            {nextReward > 0 && <div style={{ fontSize: 11.5, color: 'var(--muted)', fontWeight: 600, marginBottom: 10 }}>Дараагийн шагнал: {nextReward} өдөр</div>}
+            <div style={{ display: 'flex', gap: 4, marginBottom: 12 }}>
+              {(stats?.weekActivity || []).map((d, i) => (
+                <div key={d.date} title={d.date} style={{ flex: 1, textAlign: 'center' }}>
+                  <div style={{ width: '100%', aspectRatio: '1', borderRadius: 8, background: d.studied ? 'var(--purple)' : 'var(--bg-alt)', border: '1.5px solid ' + (d.studied ? 'var(--purple)' : 'var(--border)'), display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 11 }}>
+                    {d.studied ? '✓' : ''}
+                  </div>
+                  <div style={{ fontSize: 9.5, color: 'var(--muted)', fontWeight: 700, marginTop: 3 }}>{WEEKDAY_MN[i % 7]}</div>
+                </div>
+              ))}
+            </div>
+            <button onClick={() => router.push('/vocab/practice')} className="btn btn-purple" style={{ width: '100%', padding: '9px 0', fontSize: 13 }}>Давтах</button>
+          </div>
+
+          <div className="card">
+            <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 10 }}>
+              <div style={{ width: 42, height: 42, borderRadius: '50%', background: 'var(--purple-light)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 20 }}>{user?.avatarEmoji || user?.username?.[0]?.toUpperCase()}</div>
+              <div style={{ minWidth: 0 }}>
+                <div style={{ fontWeight: 900, fontSize: 14, color: 'var(--text)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{user?.username}</div>
+                <div style={{ fontSize: 11.5, color: 'var(--muted)', fontWeight: 700 }}>Level {myLevel?.level ?? 1}</div>
+              </div>
+            </div>
+            {myLevel && (
+              <>
+                <div style={{ height: 7, borderRadius: 4, background: 'var(--bg-alt)', overflow: 'hidden', marginBottom: 5 }}>
+                  <div style={{ height: '100%', width: `${myLevel.pct}%`, background: 'linear-gradient(90deg, var(--purple), #A78BFA)', borderRadius: 4 }} />
+                </div>
+                <div style={{ fontSize: 11, color: 'var(--muted)', fontWeight: 700, textAlign: 'right' }}>{stats.xp} / {myLevel.next} XP</div>
+              </>
+            )}
+          </div>
+        </div>
+
         {/* ── Main feed ── */}
         <div>
-          <div style={{ display: 'flex', gap: 26, borderBottom: '1.5px solid var(--border)', marginBottom: 18, overflowX: 'auto' }}>
+          <div style={{ display: 'flex', gap: 22, borderBottom: '1.5px solid var(--border)', marginBottom: 18, overflowX: 'auto' }}>
             {TABS.map(t => (
-              <button key={t} onClick={() => setTab(t)} style={{ padding: '10px 0', border: 'none', background: 'none', cursor: 'pointer', fontFamily: 'inherit', fontWeight: 800, fontSize: 14, whiteSpace: 'nowrap', color: tab === t ? 'var(--purple)' : 'var(--muted)', borderBottom: tab === t ? '2.5px solid var(--purple)' : '2.5px solid transparent', marginBottom: -1.5 }}>{t}</button>
+              <button key={t} onClick={() => setTab(t)} style={{ padding: '10px 0', border: 'none', background: 'none', cursor: 'pointer', fontFamily: 'inherit', fontWeight: 800, fontSize: 13.5, whiteSpace: 'nowrap', color: tab === t ? 'var(--purple)' : 'var(--muted)', borderBottom: tab === t ? '2.5px solid var(--purple)' : '2.5px solid transparent', marginBottom: -1.5 }}>{t}</button>
             ))}
           </div>
 
           {/* Composer */}
           <div className="card" style={{ marginBottom: 16 }}>
-            <div style={{ display: 'flex', gap: 12, marginBottom: pendingImg ? 12 : 12 }}>
-              <div style={{ width: 40, height: 40, borderRadius: '50%', background: 'var(--purple-light)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 19, flexShrink: 0 }}>{user?.avatarEmoji || user?.username?.[0]?.toUpperCase()}</div>
-              <input ref={composerRef} value={input} onChange={e => setInput(e.target.value)} onKeyDown={e => { if (e.key === 'Enter') publish(); }} placeholder="Юу шинэ байна? (#hashtag ашиглаж болно)" style={{ flex: 1, background: 'var(--bg-alt)', borderRadius: 14 }} />
-              <input ref={imageInputRef} type="file" accept="image/*" onChange={onPickImage} style={{ display: 'none' }} />
-            </div>
+            {postMode === 'poll' ? (
+              <div style={{ marginBottom: 12 }}>
+                <input value={pollQ} onChange={e => setPollQ(e.target.value)} placeholder="Санал асуулгын асуулт..." style={{ width: '100%', background: 'var(--bg-alt)', marginBottom: 8, fontWeight: 700 }} />
+                {pollOpts.map((o, i) => (
+                  <div key={i} style={{ display: 'flex', gap: 6, marginBottom: 6 }}>
+                    <input value={o} onChange={e => setPollOpts(ps => ps.map((x, j) => j === i ? e.target.value : x))} placeholder={`Сонголт ${i + 1}`} style={{ flex: 1, background: 'var(--bg-alt)', fontSize: 13.5 }} />
+                    {pollOpts.length > 2 && <button onClick={() => setPollOpts(ps => ps.filter((_, j) => j !== i))} style={{ background: 'none', border: 'none', color: 'var(--muted)', cursor: 'pointer' }}>✕</button>}
+                  </div>
+                ))}
+                {pollOpts.length < 4 && <button onClick={() => setPollOpts(ps => [...ps, ''])} style={{ background: 'none', border: 'none', color: 'var(--purple)', fontWeight: 700, fontSize: 12.5, cursor: 'pointer', padding: '4px 0' }}>+ Сонголт нэмэх</button>}
+              </div>
+            ) : postMode === 'word' ? (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 8, marginBottom: 12 }}>
+                <input value={wcWord} onChange={e => setWcWord(e.target.value)} placeholder="Үг (жш: 你好 / hello)" style={{ background: 'var(--bg-alt)', fontWeight: 700 }} />
+                <input value={wcMeaning} onChange={e => setWcMeaning(e.target.value)} placeholder="Утга (жш: сайн байна уу)" style={{ background: 'var(--bg-alt)', fontSize: 13.5 }} />
+                <input value={wcExtra} onChange={e => setWcExtra(e.target.value)} placeholder="Дуудлага/тайлбар (заавал биш)" style={{ background: 'var(--bg-alt)', fontSize: 13.5 }} />
+              </div>
+            ) : (
+              <div style={{ display: 'flex', gap: 12, marginBottom: 12 }}>
+                <div style={{ width: 40, height: 40, borderRadius: '50%', background: 'var(--purple-light)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 19, flexShrink: 0 }}>{user?.avatarEmoji || user?.username?.[0]?.toUpperCase()}</div>
+                <input ref={composerRef} value={input} onChange={e => setInput(e.target.value)} onKeyDown={e => { if (e.key === 'Enter') publish(); }} placeholder="Юу шинэ байна? (#hashtag ашиглаж болно)" style={{ flex: 1, background: 'var(--bg-alt)', borderRadius: 14 }} />
+              </div>
+            )}
             {pendingImg && (
               <div style={{ position: 'relative', marginBottom: 12, maxWidth: 240 }}>
                 <img src={pendingImg} alt="" style={{ width: '100%', borderRadius: 10 }} />
                 <button onClick={() => setPendingImg('')} style={{ position: 'absolute', top: 6, right: 6, background: 'rgba(0,0,0,0.6)', color: '#fff', border: 'none', borderRadius: '50%', width: 26, height: 26, cursor: 'pointer' }}>✕</button>
               </div>
             )}
-            <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-              <button onClick={() => imageInputRef.current?.click()} style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '8px 14px', borderRadius: 10, border: '1.5px solid var(--border)', background: 'var(--bg-alt)', cursor: 'pointer', fontFamily: 'inherit', fontWeight: 700, fontSize: 12.5, color: 'var(--text-sub)' }}>🖼️ Зураг</button>
-              <span style={{ fontSize: 11.5, color: 'var(--muted)', fontWeight: 600 }}>Пост +10 XP</span>
-              <button onClick={publish} disabled={!input.trim() && !pendingImg} className="btn btn-purple" style={{ marginLeft: 'auto', padding: '9px 22px' }}>Оруулах</button>
+
+            {postMode === 'text' && (
+              <div style={{ display: 'flex', gap: 6, marginBottom: 10, flexWrap: 'wrap' }}>
+                {CATEGORIES.map(c => (
+                  <button key={c.id} onClick={() => setCategory(c.id)} style={{ padding: '5px 11px', borderRadius: 100, fontSize: 12, fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit',
+                    border: category === c.id ? '1.5px solid var(--purple)' : '1.5px solid var(--border)',
+                    background: category === c.id ? 'var(--purple-light)' : 'var(--bg-alt)',
+                    color: category === c.id ? 'var(--purple)' : 'var(--text-sub)' }}>{c.emoji} {c.label}</button>
+                ))}
+              </div>
+            )}
+
+            <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
+              <input ref={imageInputRef} type="file" accept="image/*" onChange={onPickImage} style={{ display: 'none' }} />
+              <button onClick={() => imageInputRef.current?.click()} style={composerToolBtn(postMode === 'text' && !!pendingImg)}>🖼️ Зураг</button>
+              <button onClick={() => showToast('Reel нийтлэх тун удахгүй нэмэгдэнэ 🎬')} style={composerToolBtn(false)}>🎬 Reel</button>
+              <button onClick={() => setPostMode(m => m === 'poll' ? 'text' : 'poll')} style={composerToolBtn(postMode === 'poll')}>📊 Санал асуулга</button>
+              <button onClick={() => setPostMode(m => m === 'word' ? 'text' : 'word')} style={composerToolBtn(postMode === 'word')}>📖 Үг хуваалцах</button>
+              <span style={{ flex: 1 }} />
+              <button onClick={publish} className="btn btn-purple" style={{ padding: '9px 22px' }}>Нийтлэх</button>
             </div>
           </div>
 
@@ -277,27 +453,72 @@ export default function SocialPage() {
             <div style={{ textAlign: 'center', padding: 40 }}><div className="spinner" style={{ margin: '0 auto' }} /></div>
           ) : (
             <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
-              {filtered.length === 0 && <div className="card" style={{ textAlign: 'center', padding: 40, color: 'var(--muted)' }}>{tab === 'Хадгалсан' ? 'Хадгалсан пост алга.' : 'Одоогоор пост алга байна. Эхний пост бичээрэй!'}</div>}
+              {filtered.length === 0 && <div className="card" style={{ textAlign: 'center', padding: 40, color: 'var(--muted)' }}>
+                {tab === 'Хуваалцсан' ? 'Хадгалсан пост алга.' : tab === 'Дагаж буй' ? 'Найзуудынхаа пост үзэхийн тулд эхлээд найз нэмнэ үү.' : 'Одоогоор пост алга байна. Эхний пост бичээрэй!'}
+              </div>}
               {filtered.map(p => {
                 const reactions = p.reactions || {};
+                const shares = p.shares || [];
                 const badge = p.posterAdmin ? { t: 'Admin', c: '#EF4444' } : p.posterPremium ? { t: 'Pro', c: '#7C3AED' } : null;
+                const catInfo = CATEGORIES.find(c => c.id === p.category);
                 return (
-                  <div key={p.id} className="card">
+                  <div key={p.id} id={p.id} className="card">
                     <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 12 }}>
                       <div onClick={() => openProfile(p.userId)} style={{ width: 44, height: 44, borderRadius: '50%', background: 'var(--purple-light)', border: '2px solid var(--purple-mid)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 19, flexShrink: 0, cursor: 'pointer' }}>{p.avatarEmoji || p.username?.[0]?.toUpperCase()}</div>
                       <div style={{ flex: 1, minWidth: 0 }}>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
                           <span onClick={() => openProfile(p.userId)} style={{ fontWeight: 800, fontSize: 14.5, color: 'var(--text)', cursor: 'pointer' }}>{p.username}</span>
+                          {p.authorLevel != null && <span style={{ fontSize: 10.5, fontWeight: 800, color: 'var(--purple)', background: 'var(--purple-light)', borderRadius: 6, padding: '1px 7px' }}>⭐ Level {p.authorLevel}</span>}
                           {badge && <span style={{ fontSize: 10, fontWeight: 800, color: '#fff', background: badge.c, borderRadius: 6, padding: '1px 7px' }}>{badge.t}</span>}
+                          {catInfo && <span style={{ fontSize: 10.5, fontWeight: 700, color: 'var(--text-sub)' }}>{catInfo.emoji} {catInfo.label}</span>}
                         </div>
                         <div style={{ fontSize: 12, color: 'var(--muted)' }}>{relTime(p.createdAt)}</div>
                       </div>
                       {p.userId === user.id && <button onClick={() => deletePost(p.id)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--muted)', fontSize: 16 }}>🗑️</button>}
                     </div>
+
                     {p.text && <div style={{ fontSize: 14.5, color: 'var(--text)', lineHeight: 1.6, whiteSpace: 'pre-wrap', marginBottom: p.images?.length ? 12 : 14 }}>{p.text}</div>}
                     {(p.images || []).map((im, i) => (
                       <img key={i} src={imgUrl(im)} alt="" style={{ width: '100%', maxHeight: 440, objectFit: 'cover', borderRadius: 12, marginBottom: 12 }} />
                     ))}
+
+                    {/* Word card */}
+                    {p.wordCard && (
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 14, background: 'linear-gradient(135deg, var(--purple-light), transparent)', border: '1.5px solid var(--purple-mid)', borderRadius: 14, padding: '14px 18px', marginBottom: 12 }}>
+                        <span style={{ fontSize: 26 }}>📖</span>
+                        <div>
+                          <div style={{ fontWeight: 900, fontSize: 19, color: 'var(--text)' }}>{p.wordCard.word}</div>
+                          {p.wordCard.extra && <div style={{ fontSize: 12, color: 'var(--muted)', fontWeight: 600 }}>{p.wordCard.extra}</div>}
+                          {p.wordCard.meaning && <div style={{ fontSize: 13.5, color: 'var(--text-sub)', fontWeight: 600, marginTop: 2 }}>{p.wordCard.meaning}</div>}
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Poll */}
+                    {p.poll && (() => {
+                      const totalVotes = p.poll.options.reduce((s, o) => s + o.votes.length, 0);
+                      const myVoteIdx = p.poll.options.findIndex(o => o.votes.includes(user.id));
+                      return (
+                        <div style={{ marginBottom: 12 }}>
+                          <div style={{ fontWeight: 800, fontSize: 14.5, color: 'var(--text)', marginBottom: 10 }}>📊 {p.poll.question}</div>
+                          {p.poll.options.map((o, i) => {
+                            const pct = totalVotes ? Math.round((o.votes.length / totalVotes) * 100) : 0;
+                            const mine = i === myVoteIdx;
+                            return (
+                              <button key={i} onClick={() => vote(p, i)} style={{ display: 'block', width: '100%', textAlign: 'left', position: 'relative', borderRadius: 10, border: '1.5px solid ' + (mine ? 'var(--purple)' : 'var(--border)'), background: 'var(--bg-alt)', overflow: 'hidden', marginBottom: 6, cursor: 'pointer', padding: '9px 12px' }}>
+                                <div style={{ position: 'absolute', inset: 0, width: `${pct}%`, background: 'var(--purple-light)', transition: 'width .3s' }} />
+                                <div style={{ position: 'relative', display: 'flex', justifyContent: 'space-between', fontSize: 13, fontWeight: 700, color: 'var(--text)' }}>
+                                  <span>{mine ? '✓ ' : ''}{o.text}</span>
+                                  <span style={{ color: 'var(--muted)' }}>{pct}%</span>
+                                </div>
+                              </button>
+                            );
+                          })}
+                          <div style={{ fontSize: 11.5, color: 'var(--muted)', fontWeight: 600 }}>{totalVotes} санал өгсөн</div>
+                        </div>
+                      );
+                    })()}
+
                     <div style={{ display: 'flex', alignItems: 'center', gap: 6, paddingTop: 12, borderTop: '1px solid var(--border)', flexWrap: 'wrap' }}>
                       {REACTIONS.map(r => {
                         const uids = reactions[r.e] || [];
@@ -313,10 +534,10 @@ export default function SocialPage() {
                         );
                       })}
                       <button onClick={() => openCmt(p.id)} style={{ display: 'flex', alignItems: 'center', gap: 7, background: 'none', border: 'none', cursor: 'pointer', fontFamily: 'inherit', fontWeight: 700, fontSize: 13.5, color: 'var(--text-sub)', marginLeft: 4 }}>💬 {p.commentCount || 0}</button>
+                      <button onClick={() => share(p)} style={{ display: 'flex', alignItems: 'center', gap: 7, background: 'none', border: 'none', cursor: 'pointer', fontFamily: 'inherit', fontWeight: 700, fontSize: 13.5, color: shares.includes(user.id) ? 'var(--purple)' : 'var(--text-sub)' }}>↗ {shares.length}</button>
                       <button onClick={() => toggleSave(p.id)} style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: 16, color: saved[p.id] ? 'var(--purple)' : 'var(--muted)', marginLeft: 'auto' }}>{saved[p.id] ? '🔖' : '🏷️'}</button>
                     </div>
 
-                    {/* Comments */}
                     {openComments === p.id && (
                       <div style={{ marginTop: 12, paddingTop: 12, borderTop: '1px solid var(--border)' }}>
                         {(comments[p.id] || []).map(c => (
@@ -343,7 +564,6 @@ export default function SocialPage() {
 
         {/* ── Right sidebar ── */}
         <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
-          {/* Search */}
           <div className="card" style={{ position: 'relative' }}>
             <input value={searchQ} onChange={e => onSearch(e.target.value)} placeholder="🔍 Хайх (хэрэглэгч, бүлэг, пост...)" style={{ width: '100%', background: 'var(--bg-alt)' }} />
             {searchRes && (
@@ -371,7 +591,6 @@ export default function SocialPage() {
             )}
           </div>
 
-          {/* Daily Challenge */}
           {challenge && challenge.words?.length > 0 && (
             <div className="card" style={{ border: '1.5px solid var(--purple-mid)', background: 'linear-gradient(135deg, var(--purple-light), transparent)' }}>
               <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 10 }}>
@@ -408,7 +627,6 @@ export default function SocialPage() {
             </div>
           )}
 
-          {/* Online + Active users */}
           <div className="card">
             <div style={{ display: 'flex', alignItems: 'center', gap: 7, marginBottom: 12 }}>
               <span style={{ width: 8, height: 8, borderRadius: '50%', background: '#22C55E', boxShadow: '0 0 6px #22C55E' }} />
@@ -428,7 +646,6 @@ export default function SocialPage() {
             ))}
           </div>
 
-          {/* Trending */}
           <div className="card">
             <h3 style={{ fontWeight: 900, fontSize: 14, color: 'var(--text)', marginBottom: 12 }}>Халуун сэдвүүд 🔥</h3>
             {trending.length === 0 && <div style={{ fontSize: 12.5, color: 'var(--muted)' }}>Постдоо #hashtag ашиглавал энд гарна.</div>}
@@ -440,21 +657,17 @@ export default function SocialPage() {
             ))}
           </div>
 
-          {/* Events */}
           <div className="card">
-            <h3 style={{ fontWeight: 900, fontSize: 14, color: 'var(--text)', marginBottom: 12 }}>📅 Арга хэмжээ</h3>
-            {events.length === 0 && <div style={{ fontSize: 12.5, color: 'var(--muted)' }}>Удахгүй болох арга хэмжээ алга.</div>}
-            {events.slice(0, 4).map(ev => (
-              <div key={ev.id} style={{ padding: '9px 0', borderBottom: '1px solid var(--border)' }}>
-                <div style={{ fontWeight: 800, fontSize: 13, color: 'var(--text)' }}>{ev.title}</div>
-                <div style={{ fontSize: 11.5, color: 'var(--muted)', margin: '3px 0 7px' }}>
-                  {new Date(ev.startsAt).toLocaleString('mn-MN', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })} · {ev.attendeeCount} оролцогч
+            <h3 style={{ fontWeight: 900, fontSize: 14, color: 'var(--text)', marginBottom: 12 }}>Шинэ бүлгүүд 👥</h3>
+            {newGroups.length === 0 && <div style={{ fontSize: 12.5, color: 'var(--muted)' }}>Нэгдэх шинэ групп алга.</div>}
+            {newGroups.map(g => (
+              <div key={g.id} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '9px 0', borderBottom: '1px solid var(--border)' }}>
+                <div style={{ width: 34, height: 34, borderRadius: 10, background: 'var(--purple-light)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 15, flexShrink: 0 }}>👥</div>
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  <div style={{ fontWeight: 800, fontSize: 13, color: 'var(--text)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{g.name}</div>
+                  <div style={{ fontSize: 11, color: 'var(--muted)', fontWeight: 600 }}>{g.members.length} гишүүн</div>
                 </div>
-                <button onClick={() => joinEvent(ev.id)} className={ev.joined ? '' : 'btn btn-purple'}
-                  style={{ padding: '5px 14px', fontSize: 12, borderRadius: 8, cursor: 'pointer', fontFamily: 'inherit', fontWeight: 700,
-                    ...(ev.joined ? { border: '1.5px solid var(--purple)', background: 'var(--purple-light)', color: 'var(--purple)' } : {}) }}>
-                  {ev.joined ? '✓ Бүртгүүлсэн' : 'Нэгдэх'}
-                </button>
+                <button onClick={() => joinGroup(g.id)} className="btn btn-purple" style={{ padding: '5px 12px', fontSize: 11.5, flexShrink: 0 }}>Нэгдэх</button>
               </div>
             ))}
           </div>
@@ -480,7 +693,7 @@ export default function SocialPage() {
             <div style={{ textAlign: 'center', marginBottom: 14 }}>
               <div style={{ width: 72, height: 72, borderRadius: '50%', background: 'var(--purple-light)', border: '3px solid var(--purple-mid)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 34, margin: '0 auto 10px' }}>{profileCard.avatarEmoji || profileCard.username?.[0]?.toUpperCase()}</div>
               <div style={{ fontWeight: 900, fontSize: 17, color: 'var(--text)' }}>{profileCard.username} {profileCard.isPremium && '👑'}</div>
-              <div style={{ fontSize: 12.5, color: 'var(--muted)', marginTop: 2 }}>Нийт #{profileCard.rank}-р байр</div>
+              <div style={{ fontSize: 12.5, color: 'var(--muted)', marginTop: 2 }}>Level {levelFromXp(profileCard.xp)} · Нийт #{profileCard.rank}-р байр</div>
             </div>
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 8, marginBottom: 14 }}>
               {[['⚡', profileCard.xp, 'XP'], ['🔥', profileCard.streak, 'Цуваа'], ['📖', profileCard.wordCount, 'Үг'], ['📝', profileCard.postCount, 'Пост']].map(([e, v, l]) => (
@@ -515,4 +728,14 @@ export default function SocialPage() {
     setPosts(ps => ps.filter(p => p.id !== id));
     try { await api.delete(`/api/posts/${id}`); } catch {}
   }
+}
+
+function composerToolBtn(active) {
+  return {
+    display: 'flex', alignItems: 'center', gap: 6, padding: '8px 14px', borderRadius: 10, cursor: 'pointer',
+    fontFamily: 'inherit', fontWeight: 700, fontSize: 12.5,
+    border: active ? '1.5px solid var(--purple)' : '1.5px solid var(--border)',
+    background: active ? 'var(--purple-light)' : 'var(--bg-alt)',
+    color: active ? 'var(--purple)' : 'var(--text-sub)',
+  };
 }
