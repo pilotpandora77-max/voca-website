@@ -77,9 +77,9 @@ export default function SocialPage() {
   const [pendingImg, setPendingImg] = useState(null);
   const [pollQ, setPollQ]   = useState('');
   const [pollOpts, setPollOpts] = useState(['', '']);
-  const [wcWord, setWcWord] = useState('');
-  const [wcMeaning, setWcMeaning] = useState('');
-  const [wcExtra, setWcExtra] = useState('');
+  const [wfTitle, setWfTitle] = useState('');
+  const [wfWords, setWfWords] = useState([{ word: '', meaning: '', extra: '' }]);
+  const [openFolders, setOpenFolders] = useState({}); // postId -> bool (expand word list)
   const [saved, setSaved]   = useState({});
   const [toast, setToast]   = useState('');
   const [openComments, setOpenComments] = useState(null);
@@ -137,7 +137,7 @@ export default function SocialPage() {
 
   function resetComposer() {
     setInput(''); setPendingImg(null); setCategory('general'); setPostMode('text');
-    setPollQ(''); setPollOpts(['', '']); setWcWord(''); setWcMeaning(''); setWcExtra('');
+    setPollQ(''); setPollOpts(['', '']); setWfTitle(''); setWfWords([{ word: '', meaning: '', extra: '' }]);
   }
 
   async function publish() {
@@ -147,8 +147,9 @@ export default function SocialPage() {
       if (!pollQ.trim() || opts.length < 2) { showToast('Асуулт болон 2+ сонголт бичнэ үү'); return; }
       body = { category: 'poll', poll: { question: pollQ.trim(), options: opts } };
     } else if (postMode === 'word') {
-      if (!wcWord.trim()) { showToast('Үгээ бичнэ үү'); return; }
-      body = { category: 'word', wordCard: { word: wcWord.trim(), meaning: wcMeaning.trim(), extra: wcExtra.trim() } };
+      const words = wfWords.map(w => ({ word: w.word.trim(), meaning: w.meaning.trim(), extra: w.extra.trim() })).filter(w => w.word);
+      if (!wfTitle.trim() || !words.length) { showToast('Багцын нэр болон дор хаяж нэг үг бичнэ үү'); return; }
+      body = { category: 'word', wordFolder: { title: wfTitle.trim(), words } };
     } else {
       const text = input.trim();
       if (!text && !pendingImg) return;
@@ -409,9 +410,18 @@ export default function SocialPage() {
               </div>
             ) : postMode === 'word' ? (
               <div style={{ display: 'flex', flexDirection: 'column', gap: 8, marginBottom: 12 }}>
-                <input value={wcWord} onChange={e => setWcWord(e.target.value)} placeholder="Үг (жш: 你好 / hello)" style={{ background: 'var(--bg-alt)', fontWeight: 700 }} />
-                <input value={wcMeaning} onChange={e => setWcMeaning(e.target.value)} placeholder="Утга (жш: сайн байна уу)" style={{ background: 'var(--bg-alt)', fontSize: 13.5 }} />
-                <input value={wcExtra} onChange={e => setWcExtra(e.target.value)} placeholder="Дуудлага/тайлбар (заавал биш)" style={{ background: 'var(--bg-alt)', fontSize: 13.5 }} />
+                <input value={wfTitle} onChange={e => setWfTitle(e.target.value)} placeholder="Багцын нэр (жш: Онгоцны буудал)" style={{ background: 'var(--bg-alt)', fontWeight: 700 }} />
+                {wfWords.map((w, i) => (
+                  <div key={i} style={{ display: 'flex', gap: 6, alignItems: 'center', background: 'var(--bg-alt)', borderRadius: 10, padding: '8px 10px' }}>
+                    <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: 6 }}>
+                      <input value={w.word} onChange={e => setWfWords(ws => ws.map((x, j) => j === i ? { ...x, word: e.target.value } : x))} placeholder="Үг (жш: 你好 / hello)" style={{ background: '#fff', fontWeight: 700, fontSize: 13.5 }} />
+                      <input value={w.meaning} onChange={e => setWfWords(ws => ws.map((x, j) => j === i ? { ...x, meaning: e.target.value } : x))} placeholder="Утга (жш: сайн байна уу)" style={{ background: '#fff', fontSize: 13 }} />
+                      <input value={w.extra} onChange={e => setWfWords(ws => ws.map((x, j) => j === i ? { ...x, extra: e.target.value } : x))} placeholder="Дуудлага/тайлбар (заавал биш)" style={{ background: '#fff', fontSize: 13 }} />
+                    </div>
+                    {wfWords.length > 1 && <button onClick={() => setWfWords(ws => ws.filter((_, j) => j !== i))} style={{ background: 'none', border: 'none', color: 'var(--muted)', cursor: 'pointer', fontSize: 15 }}>✕</button>}
+                  </div>
+                ))}
+                {wfWords.length < 30 && <button onClick={() => setWfWords(ws => [...ws, { word: '', meaning: '', extra: '' }])} style={{ background: 'none', border: 'none', color: 'var(--purple)', fontWeight: 700, fontSize: 12.5, cursor: 'pointer', padding: '4px 0', alignSelf: 'flex-start' }}>+ Үг нэмэх</button>}
               </div>
             ) : (
               <div style={{ display: 'flex', gap: 12, marginBottom: 12 }}>
@@ -482,7 +492,7 @@ export default function SocialPage() {
                       <img key={i} src={imgUrl(im)} alt="" style={{ width: '100%', maxHeight: 440, objectFit: 'cover', borderRadius: 12, marginBottom: 12 }} />
                     ))}
 
-                    {/* Word card */}
+                    {/* Word card — legacy single-word posts */}
                     {p.wordCard && (
                       <div style={{ display: 'flex', alignItems: 'center', gap: 14, background: 'linear-gradient(135deg, var(--purple-light), transparent)', border: '1.5px solid var(--purple-mid)', borderRadius: 14, padding: '14px 18px', marginBottom: 12 }}>
                         <span style={{ fontSize: 26 }}>📖</span>
@@ -493,6 +503,39 @@ export default function SocialPage() {
                         </div>
                       </div>
                     )}
+
+                    {/* Word folder — a titled collection of words */}
+                    {p.wordFolder && (() => {
+                      const isOpen = !!openFolders[p.id];
+                      const shown  = isOpen ? p.wordFolder.words : p.wordFolder.words.slice(0, 3);
+                      const rest   = p.wordFolder.words.length - shown.length;
+                      return (
+                        <div style={{ background: 'linear-gradient(135deg, var(--purple-light), transparent)', border: '1.5px solid var(--purple-mid)', borderRadius: 14, padding: '14px 18px', marginBottom: 12 }}>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 10 }}>
+                            <span style={{ fontSize: 22 }}>📁</span>
+                            <div style={{ flex: 1, minWidth: 0 }}>
+                              <div style={{ fontWeight: 900, fontSize: 15.5, color: 'var(--text)' }}>{p.wordFolder.title}</div>
+                              <div style={{ fontSize: 11.5, color: 'var(--muted)', fontWeight: 700 }}>{p.wordFolder.words.length} үг</div>
+                            </div>
+                          </div>
+                          <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+                            {shown.map((w, i) => (
+                              <div key={i} style={{ display: 'flex', alignItems: 'baseline', gap: 8, background: '#fff', borderRadius: 10, padding: '8px 12px' }}>
+                                <span style={{ fontWeight: 800, fontSize: 14, color: 'var(--text)' }}>{w.word}</span>
+                                {w.extra && <span style={{ fontSize: 11, color: 'var(--muted)', fontWeight: 600 }}>{w.extra}</span>}
+                                {w.meaning && <span style={{ fontSize: 12.5, color: 'var(--text-sub)', fontWeight: 600, marginLeft: 'auto' }}>{w.meaning}</span>}
+                              </div>
+                            ))}
+                          </div>
+                          {rest > 0 && (
+                            <button onClick={() => setOpenFolders(o => ({ ...o, [p.id]: true }))} style={{ background: 'none', border: 'none', color: 'var(--purple)', fontWeight: 700, fontSize: 12.5, cursor: 'pointer', padding: '8px 0 0' }}>+{rest} илүү үг харах</button>
+                          )}
+                          {isOpen && p.wordFolder.words.length > 3 && (
+                            <button onClick={() => setOpenFolders(o => ({ ...o, [p.id]: false }))} style={{ background: 'none', border: 'none', color: 'var(--muted)', fontWeight: 700, fontSize: 12.5, cursor: 'pointer', padding: '8px 0 0' }}>Хураах</button>
+                          )}
+                        </div>
+                      );
+                    })()}
 
                     {/* Poll */}
                     {p.poll && (() => {

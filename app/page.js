@@ -22,6 +22,14 @@ const QUICK_ACTIONS = [
   { icon: '📖', label: 'Толь', sub: 'Хайх & олох', href: '/dictionary', color: '#F59E0B', bg: '#FEF3C7' },
 ];
 
+function relTime(iso) {
+  if (!iso) return '';
+  const d = (Date.now() - new Date(iso).getTime()) / 1000;
+  if (d < 3600) return `${Math.max(1, Math.floor(d / 60))} минутын өмнө`;
+  if (d < 86400) return `${Math.floor(d / 3600)} цагийн өмнө`;
+  return `${Math.floor(d / 86400)} өдрийн өмнө`;
+}
+
 function getLevel(xp = 0) {
   const thresholds = [0, 100, 300, 600, 1000, 1500, 2200, 3000];
   let level = 1;
@@ -43,7 +51,7 @@ export default function HomePage() {
   const [current, setCurrent]     = useState(null);
   const [showBack, setShowBack]   = useState(false);
   const [stats, setStats]         = useState(null);
-  const [news, setNews]           = useState([]);
+  const [folders, setFolders]     = useState([]);
   const [leaderboard, setLB]      = useState([]);
   const [loading, setLoading]     = useState(true);
 
@@ -55,17 +63,19 @@ export default function HomePage() {
   async function load() {
     setLoading(true);
     try {
-      const [s, cards, st, lb] = await Promise.all([
+      const [s, cards, st, lb, fold] = await Promise.all([
         api.get('/api/streak'),
         api.get('/api/cards/due'),
         api.get('/api/stats').catch(() => ({ data: {} })),
         api.get('/api/stats/leaderboard').catch(() => ({ data: [] })),
+        api.get('/api/posts?category=word&limit=5').catch(() => ({ data: [] })),
       ]);
       setStreak(s.data.streak || 0);
       setDue(cards.data);
       setCurrent(cards.data[0] || null);
       setStats(st.data);
       setLB(lb.data.slice(0, 5));
+      setFolders((fold.data || []).filter(p => p.wordFolder));
     } catch {}
     setLoading(false);
   }
@@ -223,6 +233,32 @@ export default function HomePage() {
             </Link>
           ))}
         </div>
+
+        {/* ── Хамт олны үгийн багцууд (folder posts, news-style) ── */}
+        {folders.length > 0 && (
+          <div style={{ marginBottom: 16 }}>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12 }}>
+              <h2 style={{ fontWeight: 900, fontSize: 16, color: 'var(--text)' }}>📁 Хамт олны үгийн багцууд</h2>
+              <Link href="/social" style={{ fontSize: 12, color: 'var(--purple)', fontWeight: 700, textDecoration: 'none' }}>
+                Бүгд харах →
+              </Link>
+            </div>
+            <div style={{ display: 'grid', gridTemplateColumns: `repeat(${Math.min(folders.length, 3)}, 1fr)`, gap: 12 }}>
+              {folders.map(f => (
+                <Link key={f.id} href={`/social#${f.id}`} className="stat-card" style={{ textDecoration: 'none' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                    <div style={{ width: 40, height: 40, borderRadius: 12, background: 'linear-gradient(145deg,#EDE9FF,#DDD6FE)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 20, flexShrink: 0 }}>📁</div>
+                    <div style={{ minWidth: 0 }}>
+                      <div style={{ fontWeight: 800, fontSize: 14, color: 'var(--text)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{f.wordFolder.title}</div>
+                      <div style={{ fontSize: 11, color: 'var(--muted)', fontWeight: 600 }}>{f.username} • {f.wordFolder.words.length} үг</div>
+                    </div>
+                  </div>
+                  <div style={{ fontSize: 11, color: 'var(--muted)', marginTop: 10 }}>{relTime(f.createdAt)}</div>
+                </Link>
+              ))}
+            </div>
+          </div>
+        )}
 
         {/* ── Row 3: Daily Goals + Right Panel ── */}
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 380px', gap: 16 }}>
