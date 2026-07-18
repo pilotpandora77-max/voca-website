@@ -80,6 +80,8 @@ export default function SocialPage() {
   const [wfTitle, setWfTitle] = useState('');
   const [wfWords, setWfWords] = useState([{ word: '', meaning: '', extra: '' }]);
   const [openFolders, setOpenFolders] = useState({}); // postId -> bool (expand word list)
+  const [myFolders, setMyFolders] = useState([]); // caller's own vocab folders, for the word-post picker
+  const [pickedFolder, setPickedFolder] = useState(null); // name of the folder currently filled into wfTitle/wfWords
   const [saved, setSaved]   = useState({});
   const [toast, setToast]   = useState('');
   const [openComments, setOpenComments] = useState(null);
@@ -113,6 +115,7 @@ export default function SocialPage() {
       api.get('/api/stats/leaderboard/weekly').then(r => setActive((r.data?.rankings || []).slice(0, 3))).catch(() => {});
       api.get('/api/groups/public').then(r => setNewGroups((r.data || []).slice(0, 3))).catch(() => {});
       api.get('/api/social/notifications').then(r => setNotifs(r.data || { items: [], unread: 0 })).catch(() => {});
+      loadMyFolders();
     }
     try { setSaved(JSON.parse(localStorage.getItem('voca_social_saved') || '{}')); } catch {}
   }, [authLoad, user]);
@@ -131,13 +134,35 @@ export default function SocialPage() {
     setLoad(false);
   }
 
+  // Миний "Үгсийн сан"-ны бүлгүүд — Үг хуваалцах composer-ийн сонголтод зориулав.
+  const DEFAULT_GROUP = 'Ерөнхий';
+  async function loadMyFolders() {
+    try {
+      const [{ data: wds }, { data: meta }] = await Promise.all([
+        api.get('/api/words'), api.get('/api/folders'),
+      ]);
+      const metaByName = {}; (meta || []).forEach(f => { metaByName[f.name] = f; });
+      const byName = {};
+      (wds || []).forEach(w => { const g = w.group || DEFAULT_GROUP; if (g !== DEFAULT_GROUP) (byName[g] = byName[g] || []).push(w); });
+      const folders = Object.entries(byName).map(([name, ws]) => ({ name, words: ws }));
+      setMyFolders(folders);
+    } catch { setMyFolders([]); }
+  }
+
+  function pickFolder(f) {
+    if (pickedFolder === f.name) { setPickedFolder(null); setWfTitle(''); setWfWords([{ word: '', meaning: '', extra: '' }]); return; }
+    setPickedFolder(f.name);
+    setWfTitle(f.name);
+    setWfWords(f.words.map(w => ({ word: w.front || w.word || '', meaning: w.back || w.meaning || '', extra: w.hint || w.reading || w.pos || '' })));
+  }
+
   if (authLoad) return null;
 
   function showToast(t) { setToast(t); clearTimeout(toastT.current); toastT.current = setTimeout(() => setToast(''), 2600); }
 
   function resetComposer() {
     setInput(''); setPendingImg(null); setCategory('general'); setPostMode('text');
-    setPollQ(''); setPollOpts(['', '']); setWfTitle(''); setWfWords([{ word: '', meaning: '', extra: '' }]);
+    setPollQ(''); setPollOpts(['', '']); setWfTitle(''); setWfWords([{ word: '', meaning: '', extra: '' }]); setPickedFolder(null);
   }
 
   async function publish() {
@@ -149,7 +174,7 @@ export default function SocialPage() {
     } else if (postMode === 'word') {
       const words = wfWords.map(w => ({ word: w.word.trim(), meaning: w.meaning.trim(), extra: w.extra.trim() })).filter(w => w.word);
       if (!wfTitle.trim() || !words.length) { showToast('Багцын нэр болон дор хаяж нэг үг бичнэ үү'); return; }
-      body = { category: 'word', wordFolder: { title: wfTitle.trim(), words } };
+      body = { text: input.trim(), category: 'word', wordFolder: { title: wfTitle.trim(), words } };
     } else {
       const text = input.trim();
       if (!text && !pendingImg) return;
@@ -410,7 +435,20 @@ export default function SocialPage() {
               </div>
             ) : postMode === 'word' ? (
               <div style={{ display: 'flex', flexDirection: 'column', gap: 8, marginBottom: 12 }}>
-                <input value={wfTitle} onChange={e => setWfTitle(e.target.value)} placeholder="Багцын нэр (жш: Онгоцны буудал)" style={{ background: 'var(--bg-alt)', fontWeight: 700 }} />
+                <input value={input} onChange={e => setInput(e.target.value)} placeholder="Хэдэн үг хэлэх үү? (заавал биш)" style={{ background: 'var(--bg-alt)' }} />
+                {myFolders.length > 0 && (
+                  <div style={{ display: 'flex', gap: 6, overflowX: 'auto', paddingBottom: 2 }}>
+                    {myFolders.map(f => (
+                      <button key={f.name} onClick={() => pickFolder(f)} style={{
+                        flexShrink: 0, padding: '6px 12px', borderRadius: 100, fontSize: 12, fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit', whiteSpace: 'nowrap',
+                        border: pickedFolder === f.name ? '1.5px solid var(--purple)' : '1.5px solid var(--border)',
+                        background: pickedFolder === f.name ? 'var(--purple-light)' : 'var(--bg-alt)',
+                        color: pickedFolder === f.name ? 'var(--purple)' : 'var(--text-sub)',
+                      }}>{pickedFolder === f.name ? '✓ ' : '📁 '}{f.name} ({f.words.length})</button>
+                    ))}
+                  </div>
+                )}
+                <input value={wfTitle} onChange={e => { setWfTitle(e.target.value); setPickedFolder(null); }} placeholder="Багцын нэр (жш: Онгоцны буудал)" style={{ background: 'var(--bg-alt)', fontWeight: 700 }} />
                 {wfWords.map((w, i) => (
                   <div key={i} style={{ display: 'flex', gap: 6, alignItems: 'center', background: 'var(--bg-alt)', borderRadius: 10, padding: '8px 10px' }}>
                     <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: 6 }}>

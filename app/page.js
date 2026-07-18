@@ -22,14 +22,6 @@ const QUICK_ACTIONS = [
   { icon: '📖', label: 'Толь', sub: 'Хайх & олох', href: '/dictionary', color: '#F59E0B', bg: '#FEF3C7' },
 ];
 
-function relTime(iso) {
-  if (!iso) return '';
-  const d = (Date.now() - new Date(iso).getTime()) / 1000;
-  if (d < 3600) return `${Math.max(1, Math.floor(d / 60))} минутын өмнө`;
-  if (d < 86400) return `${Math.floor(d / 3600)} цагийн өмнө`;
-  return `${Math.floor(d / 86400)} өдрийн өмнө`;
-}
-
 function getLevel(xp = 0) {
   const thresholds = [0, 100, 300, 600, 1000, 1500, 2200, 3000];
   let level = 1;
@@ -52,6 +44,7 @@ export default function HomePage() {
   const [showBack, setShowBack]   = useState(false);
   const [stats, setStats]         = useState(null);
   const [folders, setFolders]     = useState([]);
+  const [openHomeFolder, setOpenHomeFolder] = useState(null); // folder id currently expanded
   const [leaderboard, setLB]      = useState([]);
   const [loading, setLoading]     = useState(true);
 
@@ -68,16 +61,23 @@ export default function HomePage() {
         api.get('/api/cards/due'),
         api.get('/api/stats').catch(() => ({ data: {} })),
         api.get('/api/stats/leaderboard').catch(() => ({ data: [] })),
-        api.get('/api/posts?category=word&limit=5').catch(() => ({ data: [] })),
+        api.get('/api/folders/public?limit=5').catch(() => ({ data: [] })),
       ]);
       setStreak(s.data.streak || 0);
       setDue(cards.data);
       setCurrent(cards.data[0] || null);
       setStats(st.data);
       setLB(lb.data.slice(0, 5));
-      setFolders((fold.data || []).filter(p => p.wordFolder));
+      setFolders(fold.data || []);
     } catch {}
     setLoading(false);
+  }
+
+  async function toggleFolderLike(f) {
+    setFolders(fs => fs.map(x => x.id === f.id
+      ? { ...x, liked: !x.liked, likeCount: x.likeCount + (x.liked ? -1 : 1) }
+      : x));
+    try { await api.post(`/api/folders/${f.id}/like`); } catch {}
   }
 
   async function addWordToVocab() {
@@ -244,18 +244,37 @@ export default function HomePage() {
               </Link>
             </div>
             <div style={{ display: 'grid', gridTemplateColumns: `repeat(${Math.min(folders.length, 3)}, 1fr)`, gap: 12 }}>
-              {folders.map(f => (
-                <Link key={f.id} href={`/social#${f.id}`} className="stat-card" style={{ textDecoration: 'none' }}>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-                    <div style={{ width: 40, height: 40, borderRadius: 12, background: 'linear-gradient(145deg,#EDE9FF,#DDD6FE)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 20, flexShrink: 0 }}>📁</div>
-                    <div style={{ minWidth: 0 }}>
-                      <div style={{ fontWeight: 800, fontSize: 14, color: 'var(--text)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{f.wordFolder.title}</div>
-                      <div style={{ fontSize: 11, color: 'var(--muted)', fontWeight: 600 }}>{f.username} • {f.wordFolder.words.length} үг</div>
+              {folders.map(f => {
+                const open = openHomeFolder === f.id;
+                return (
+                  <div key={f.id} className="stat-card" style={{ cursor: 'pointer' }} onClick={() => setOpenHomeFolder(open ? null : f.id)}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                      <div style={{ width: 40, height: 40, borderRadius: 12, background: f.color ? `${f.color}22` : 'linear-gradient(145deg,#EDE9FF,#DDD6FE)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 20, flexShrink: 0 }}>📁</div>
+                      <div style={{ minWidth: 0, flex: 1 }}>
+                        <div style={{ fontWeight: 800, fontSize: 14, color: 'var(--text)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{f.name}</div>
+                        <div style={{ fontSize: 11, color: 'var(--muted)', fontWeight: 600 }}>{f.username} • {f.wordCount} үг</div>
+                      </div>
+                      <button onClick={e => { e.stopPropagation(); toggleFolderLike(f); }} style={{
+                        display: 'flex', alignItems: 'center', gap: 4, background: 'none', border: 'none', cursor: 'pointer',
+                        color: f.liked ? '#EF4444' : 'var(--muted)', fontWeight: 700, fontSize: 12.5, flexShrink: 0,
+                      }}>
+                        {f.liked ? '❤️' : '🤍'} {f.likeCount}
+                      </button>
                     </div>
+                    {open && (
+                      <div style={{ marginTop: 10, paddingTop: 10, borderTop: '1px solid var(--border)', display: 'flex', flexDirection: 'column', gap: 4, maxHeight: 180, overflowY: 'auto' }}>
+                        {f.words.length === 0 && <div style={{ fontSize: 12, color: 'var(--muted)' }}>Хоосон багц</div>}
+                        {f.words.map((w, i) => (
+                          <div key={i} style={{ display: 'flex', justifyContent: 'space-between', gap: 8, fontSize: 12.5 }}>
+                            <span style={{ fontWeight: 700, color: 'var(--text)' }}>{w.word}</span>
+                            <span style={{ color: 'var(--muted)' }}>{w.meaning}</span>
+                          </div>
+                        ))}
+                      </div>
+                    )}
                   </div>
-                  <div style={{ fontSize: 11, color: 'var(--muted)', marginTop: 10 }}>{relTime(f.createdAt)}</div>
-                </Link>
-              ))}
+                );
+              })}
             </div>
           </div>
         )}
