@@ -5,26 +5,31 @@ import Link from 'next/link';
 import { useAuth } from '@/lib/auth';
 import api from '@/lib/api';
 import PageHeader from '@/components/PageHeader';
-import BOOKS, { BOOK_CATEGORIES, READING_TIPS, READING_BENEFITS } from '@/lib/books';
+import { BOOK_CATEGORIES, READING_TIPS, READING_BENEFITS } from '@/lib/books';
 
 export default function BooksPage() {
   const { user, loading: authLoad } = useAuth();
   const router = useRouter();
   const [streak, setStreak] = useState(0);
-  const [bm, setBm]         = useState([]);
+  const [BOOKS, setBooks]   = useState([]);
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     if (!authLoad && !user) router.push('/login');
-    if (!authLoad && user) api.get('/api/streak').then(r => setStreak(r.data.streak || 0)).catch(() => {});
-    try { setBm(JSON.parse(localStorage.getItem('voca_book_bm') || '[]')); } catch {}
+    if (!authLoad && user) {
+      api.get('/api/streak').then(r => setStreak(r.data.streak || 0)).catch(() => {});
+      api.get('/api/books').then(r => setBooks(r.data || [])).catch(() => {}).finally(() => setLoading(false));
+    }
   }, [authLoad, user]);
 
-  if (authLoad) return null;
+  if (authLoad || loading) return null;
 
-  function toggleBm(e, id) {
+  async function toggleBm(e, id) {
     e.preventDefault(); e.stopPropagation();
-    setBm(prev => { const n = prev.includes(id) ? prev.filter(x => x !== id) : [...prev, id]; localStorage.setItem('voca_book_bm', JSON.stringify(n)); return n; });
+    setBooks(bs => bs.map(b => b.id === id ? { ...b, saved: !b.saved } : b));
+    try { await api.post(`/api/books/${id}/save`); } catch {}
   }
+  const bm = BOOKS.filter(b => b.saved).map(b => b.id);
 
   return (
     <div style={{ paddingBottom: 40 }}>
@@ -46,7 +51,7 @@ export default function BooksPage() {
 
         {/* Sections */}
         {BOOK_CATEGORIES.map(c => {
-          const books = BOOKS.filter(b => b.cat === c.id);
+          const books = BOOKS.filter(b => b.category === c.id);
           return (
             <div key={c.id} id={c.id} style={{ marginBottom: 34, scrollMarginTop: 20 }}>
               <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 16 }}>
@@ -60,10 +65,12 @@ export default function BooksPage() {
                     <Cover book={b} />
                     <div style={{ fontWeight: 800, fontSize: 14.5, color: 'var(--text)', marginTop: 12, lineHeight: 1.3 }}>{b.title}</div>
                     <div style={{ fontSize: 12.5, color: 'var(--muted)', fontWeight: 500, marginBottom: 6 }}>{b.author}</div>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 4, marginBottom: 8 }}>
-                      <span style={{ color: '#F59E0B' }}>★</span>
-                      <span style={{ fontSize: 12.5, fontWeight: 800, color: 'var(--text)' }}>{b.rating}</span>
-                    </div>
+                    {b.rating && (
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 4, marginBottom: 8 }}>
+                        <span style={{ color: '#F59E0B' }}>★</span>
+                        <span style={{ fontSize: 12.5, fontWeight: 800, color: 'var(--text)' }}>{b.rating}</span>
+                      </div>
+                    )}
                     <p style={{ fontSize: 12, color: 'var(--text-sub)', lineHeight: 1.45, marginBottom: 10, minHeight: 50 }}>{b.desc}</p>
                     <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
                       <button onClick={e => toggleBm(e, b.id)} style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: 16, color: bm.includes(b.id) ? 'var(--purple)' : 'var(--muted)' }}>{bm.includes(b.id) ? '🔖' : '🏷️'}</button>
@@ -111,11 +118,13 @@ export default function BooksPage() {
 
 export function Cover({ book, big }) {
   const h = big ? 300 : 150;
+  const bg = book.cover?.bg || book.color || '#7C3AED';
+  const fg = book.cover?.fg || book.fg || '#FFFFFF';
   return (
-    <div style={{ height: h, borderRadius: 12, background: book.cover.bg, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: '14px 12px', textAlign: 'center', boxShadow: 'inset 0 0 0 1px rgba(0,0,0,0.06)', overflow: 'hidden' }}>
-      <div style={{ fontWeight: 900, fontSize: big ? 22 : 14, color: book.cover.fg, lineHeight: 1.2, letterSpacing: 0.3, textTransform: 'uppercase' }}>{book.title}</div>
-      <div style={{ width: 30, height: 2, background: book.cover.fg, opacity: 0.5, margin: big ? '14px 0' : '8px 0' }} />
-      <div style={{ fontSize: big ? 13 : 10, color: book.cover.fg, opacity: 0.85, fontWeight: 600 }}>{book.author}</div>
+    <div style={{ height: h, borderRadius: 12, background: bg, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: '14px 12px', textAlign: 'center', boxShadow: 'inset 0 0 0 1px rgba(0,0,0,0.06)', overflow: 'hidden' }}>
+      <div style={{ fontWeight: 900, fontSize: big ? 22 : 14, color: fg, lineHeight: 1.2, letterSpacing: 0.3, textTransform: 'uppercase' }}>{book.title}</div>
+      <div style={{ width: 30, height: 2, background: fg, opacity: 0.5, margin: big ? '14px 0' : '8px 0' }} />
+      <div style={{ fontSize: big ? 13 : 10, color: fg, opacity: 0.85, fontWeight: 600 }}>{book.author}</div>
     </div>
   );
 }

@@ -13,6 +13,7 @@ const DAILY_GOALS = [
   { icon: '🔥', title: 'Өдрийн чек-ин', desc: 'Өнөөдөр апп-д нэвтэрч ор.', xp: 10, key: 'checkin', total: 1 },
   { icon: '🃏', title: '5 карт давтах', desc: '5 давтах карт гүйцэтгэ.', xp: 20, key: 'reviews', total: 5 },
   { icon: '✏️', title: 'Шинэ үг нэмэх', desc: 'Шинэ 1 үг нэм.', xp: 15, key: 'words', total: 1 },
+  { icon: '📖', title: '5 хуудас унших', desc: 'Номноос 5 хуудас унш.', xp: 5, key: 'pages', total: 5 },
 ];
 
 const QUICK_ACTIONS = [
@@ -111,6 +112,7 @@ export default function HomePage() {
     checkin: 1,
     reviews: Math.min(stats?.reviewCount || 0, 5),
     words: Math.min(stats?.wordCount || 0, 1),
+    pages: Math.min(stats?.pagesReadToday || 0, 5),
   };
 
   return (
