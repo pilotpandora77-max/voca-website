@@ -77,7 +77,6 @@ export default function VocabPage() {
   const [showAdd, setShowAdd]     = useState(false);
   const [newWord, setNewWord]     = useState({ front: '', back: '', hint: '', pos: '' });
   const [addLoading, setAddLoad]  = useState(false);
-  const [aiLoading, setAiLoad]    = useState(false);
   const [expandedId, setExp]      = useState(null);
   const [calDays, setCalDays]     = useState([]);
 
@@ -357,18 +356,6 @@ export default function VocabPage() {
     if (!String(id).startsWith('local-')) {
       try { await api.delete(`/api/words/${id}`); } catch {}
     }
-  }
-
-  async function generateAI() {
-    setAiLoad(true);
-    try {
-      const { data } = await api.post('/api/words/generate');
-      if (Array.isArray(data)) {
-        setWords(w => [...w, ...data]);
-        setStats(s => ({ ...s, total: s.total + data.length }));
-      }
-    } catch (e) { alert(e.response?.data?.error || 'AI алдаа'); }
-    setAiLoad(false);
   }
 
   // Фолдэрүүдийг үгсийн `group` талбараас шууд гаргаж авна (яг апп шиг) —
@@ -718,38 +705,6 @@ export default function VocabPage() {
             </div>
           </div>
 
-          {/* AI word generator */}
-          <div className="card">
-            <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 8 }}>
-              <div style={{ width: 32, height: 32, borderRadius: 8, background: 'var(--purple-light)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 16 }}>🤖</div>
-              <div>
-                <div style={{ fontWeight: 900, fontSize: 13 }}>AI үг санал болгох</div>
-                <div style={{ fontSize: 11, color: 'var(--muted)' }}>Таны түвшинд тохирсон</div>
-              </div>
-            </div>
-            <button className="btn btn-purple" onClick={generateAI} disabled={aiLoading} style={{ width: '100%', fontSize: 12, padding: '9px' }}>
-              {aiLoading ? '⏳ Боловсруулж байна...' : '✨ Үг санал авах'}
-            </button>
-          </div>
-
-          {/* Import */}
-          <div className="card">
-            <div style={{ fontWeight: 900, fontSize: 14, marginBottom: 10 }}>📥 Импорт</div>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-              {['CSV файлаас', 'Anki deck', 'Clipboard-аас'].map(opt => (
-                <button key={opt} style={{
-                  display: 'flex', alignItems: 'center', gap: 10, padding: '10px', borderRadius: 10,
-                  background: 'var(--bg-alt)', border: '1.5px solid var(--border)', cursor: 'pointer',
-                  fontFamily: 'inherit', fontSize: 13, fontWeight: 600, color: 'var(--text)', transition: 'all 0.14s',
-                }}
-                onMouseEnter={e => { e.currentTarget.style.borderColor = 'var(--purple-mid)'; e.currentTarget.style.background = 'var(--purple-light)'; }}
-                onMouseLeave={e => { e.currentTarget.style.borderColor = 'var(--border)'; e.currentTarget.style.background = 'var(--bg-alt)'; }}
-                >
-                  <span style={{ color: 'var(--purple)' }}>↑</span> {opt}
-                </button>
-              ))}
-            </div>
-          </div>
         </div>
       </div>
 

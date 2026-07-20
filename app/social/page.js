@@ -103,6 +103,7 @@ export default function SocialPage() {
   const imageInputRef = useRef(null);
   const toastT = useRef(null);
   const searchT = useRef(null);
+  const groupSearchRef = useRef(null);
 
   useEffect(() => {
     if (!authLoad && !user) router.push('/login');
@@ -364,7 +365,7 @@ export default function SocialPage() {
           <p style={{ fontSize: 13.5, color: 'rgba(255,255,255,0.8)', fontWeight: 600, marginBottom: 16 }}>Өдөр бүр шинэ үг, шинэ мэдлэг, шинэ найзууд. Чи ганцаараа биш. Бид хамтдаа!</p>
           <div style={{ display: 'flex', gap: 10 }}>
             <button onClick={() => composerRef.current?.focus()} className="btn" style={{ background: '#fff', color: '#4C1D95', padding: '10px 18px', fontWeight: 800, fontSize: 13 }}>+ Нийтлэл үүсгэх</button>
-            <button onClick={() => router.push('/vocab')} className="btn" style={{ background: 'rgba(255,255,255,0.12)', color: '#fff', border: '1.5px solid rgba(255,255,255,0.3)', padding: '10px 18px', fontWeight: 800, fontSize: 13 }}>+ Бүлэг хайх</button>
+            <button onClick={() => { groupSearchRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' }); groupSearchRef.current?.focus(); }} className="btn" style={{ background: 'rgba(255,255,255,0.12)', color: '#fff', border: '1.5px solid rgba(255,255,255,0.3)', padding: '10px 18px', fontWeight: 800, fontSize: 13 }}>+ Бүлэг хайх</button>
           </div>
         </div>
       </div>
@@ -646,7 +647,7 @@ export default function SocialPage() {
         {/* ── Right sidebar ── */}
         <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
           <div className="card" style={{ position: 'relative' }}>
-            <input value={searchQ} onChange={e => onSearch(e.target.value)} placeholder="🔍 Хайх (хэрэглэгч, бүлэг, пост...)" style={{ width: '100%', background: 'var(--bg-alt)' }} />
+            <input ref={groupSearchRef} value={searchQ} onChange={e => onSearch(e.target.value)} placeholder="🔍 Хайх (хэрэглэгч, бүлэг, пост...)" style={{ width: '100%', background: 'var(--bg-alt)' }} />
             {searchRes && (
               <div style={{ marginTop: 10, maxHeight: 320, overflowY: 'auto' }}>
                 {searchRes.users.length === 0 && searchRes.groups.length === 0 && searchRes.posts.length === 0 && searchRes.hashtags.length === 0 &&
