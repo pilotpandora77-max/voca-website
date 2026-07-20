@@ -119,9 +119,9 @@ export default function CourseBookReader() {
         </div>
       )}
 
-      <div className="card" style={{ display: 'flex', justifyContent: 'center', padding: 12, position: 'relative', overflowX: 'auto' }}>
+      <div className="card" style={{ display: 'flex', justifyContent: 'center', padding: 12, position: 'relative', overflow: 'auto', maxHeight: '70vh' }}>
         <Document file={fileUrl(book.pdfUrl)} onLoadSuccess={({ numPages }) => setNumPages(numPages)} loading={<div style={{ padding: 60, color: 'var(--muted)' }}>Уншиж байна...</div>}>
-          <Page pageNumber={page} width={780} renderAnnotationLayer renderTextLayer />
+          <Page pageNumber={page} width={600} renderAnnotationLayer renderTextLayer />
         </Document>
 
         {selection && (
