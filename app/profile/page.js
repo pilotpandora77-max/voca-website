@@ -22,7 +22,7 @@ function getLevel(xp = 0) {
 }
 
 export default function ProfilePage() {
-  const { user, logout, loading: authLoad } = useAuth();
+  const { user, logout, loading: authLoad, refreshUser } = useAuth();
   const router = useRouter();
   const [stats, setStats]   = useState(null);
   const [lb, setLb]         = useState([]);
@@ -34,6 +34,11 @@ export default function ProfilePage() {
   const [phone, setPhone]   = useState('');
   const [emailV, setEmailV] = useState('');
   const [saving, setSaving] = useState(false);
+
+  // Профайл нэвтрэлт бүрд нэг удаа ачаалдаг user context-ыг л ашигладаг тул
+  // мобайл апп дээр солисон зураг гэх мэт өөрчлөлт хуудсыг дахин ачаалахгүйгээр
+  // харагдахгүй байх магадлалтай — тэгэхээр энэ хуудсанд ирэх бүрт шинэчилнэ.
+  useEffect(() => { refreshUser(); }, []);
 
   useEffect(() => {
     if (!authLoad && !user) router.push('/login');
