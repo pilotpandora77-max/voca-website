@@ -4,6 +4,7 @@ import { useRouter } from 'next/navigation';
 import { useAuth } from '@/lib/auth';
 import PageHeader from '@/components/PageHeader';
 import MODELS, { CATEGORIES, RELATED } from '@/lib/memoryModels';
+import api from '@/lib/api';
 
 const TABS = ['Тайлбар', 'Үндсэн бүтэц', 'Давуу тал', 'Хязгаарлалт', 'Судалгаа, ишлэл'];
 
@@ -17,9 +18,13 @@ export default function MemoryPage() {
   const [bookmarks, setBm]    = useState([]);
   const [noteText, setNote]   = useState('');
   const [myNotes, setMyNotes] = useState({}); // { modelId: [ {id,text,date} ] }
+  const [brainNews, setBrainNews] = useState(null);
 
   useEffect(() => {
     if (!authLoad && !user) router.push('/login');
+    if (!authLoad && user) {
+      api.get('/api/news/brain').then(r => setBrainNews(r.data)).catch(() => setBrainNews([]));
+    }
   }, [authLoad, user]);
 
   useEffect(() => {
@@ -65,13 +70,15 @@ export default function MemoryPage() {
   const notes = (sel && myNotes[sel.id]) || [];
   const related = (sel && RELATED[sel.id] || []).map(id => MODELS.find(m => m.id === id)).filter(Boolean);
 
-  function selectModel(id) { setSelId(id); setTab(TABS[0]); setTimeout(() => document.getElementById('mem-detail')?.scrollIntoView({ behavior: 'smooth' }), 60); }
+  function selectModel(id) { setSelId(id); setTab(TABS[0]); window.scrollTo({ top: 0, behavior: 'smooth' }); }
+  function backToGrid() { setSelId(null); window.scrollTo({ top: 0, behavior: 'smooth' }); }
 
   return (
     <div style={{ paddingBottom: 48 }}>
       <PageHeader title="🧠 Ой тогтоолтын олон улсын судалгааны загварууд"
         subtitle="Ой тогтоолтыг судлах, сайжруулахад ашигладаг үндсэн онол, загварууд." streak={streak} />
 
+      {!sel && (
       <div style={{ padding: '0 28px', display: 'grid', gridTemplateColumns: '230px minmax(0,1fr)', gap: 18, alignItems: 'start' }}>
         {/* ── Categories ── */}
         <div className="card" style={{ padding: 14 }}>
@@ -116,14 +123,37 @@ export default function MemoryPage() {
           </div>
         </div>
       </div>
+      )}
+
+      {!sel && (
+        <div style={{ padding: '24px 28px 0' }}>
+          <h2 style={{ fontWeight: 900, fontSize: 16, color: 'var(--text)', marginBottom: 14 }}>🧠 Тархи судлалын шинэ ололтууд</h2>
+          {brainNews === null && <p style={{ color: 'var(--muted)', fontSize: 13 }}>Ачаалж байна...</p>}
+          {brainNews?.length === 0 && <p style={{ color: 'var(--muted)', fontSize: 13 }}>Одоогоор мэдээ татагдсангүй.</p>}
+          {brainNews?.length > 0 && (
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(260px, 1fr))', gap: 14 }}>
+              {brainNews.slice(0, 6).map(n => (
+                <a key={n.id} href={n.url} target="_blank" rel="noopener noreferrer" className="card" style={{ textDecoration: 'none', display: 'block' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 10 }}>
+                    <span style={{ fontSize: 16 }}>{n.emoji}</span>
+                    <span style={{ fontSize: 11.5, fontWeight: 800, color: n.color }}>{n.source}</span>
+                  </div>
+                  <div style={{ fontWeight: 800, fontSize: 13.5, color: 'var(--text)', lineHeight: 1.4, marginBottom: 8 }}>{n.title}</div>
+                  <p style={{ fontSize: 12, color: 'var(--text-sub)', lineHeight: 1.5, overflow: 'hidden', display: '-webkit-box', WebkitLineClamp: 3, WebkitBoxOrient: 'vertical' }}>{n.summary}</p>
+                </a>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
 
       {/* ── Detail ── */}
       {sel && (
-        <div id="mem-detail" style={{ padding: '20px 28px 0' }}>
+        <div id="mem-detail" style={{ padding: '4px 28px 0' }}>
           <div className="card" style={{ padding: '24px 26px' }}>
             {/* top bar */}
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 20 }}>
-              <button onClick={() => setSelId(null)} style={{ display: 'flex', alignItems: 'center', gap: 6, background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-sub)', fontWeight: 700, fontSize: 14, fontFamily: 'inherit' }}>← Буцах</button>
+              <button onClick={backToGrid} style={{ display: 'flex', alignItems: 'center', gap: 6, background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-sub)', fontWeight: 700, fontSize: 14, fontFamily: 'inherit' }}>← Буцах</button>
               <button onClick={() => toggleBookmark(sel.id)} style={{ display: 'flex', alignItems: 'center', gap: 6, background: bookmarks.includes(sel.id) ? 'var(--purple-light)' : 'var(--bg-alt)', border: '1.5px solid var(--border)', borderRadius: 10, padding: '8px 14px', cursor: 'pointer', color: bookmarks.includes(sel.id) ? 'var(--purple)' : 'var(--text-sub)', fontWeight: 800, fontSize: 13, fontFamily: 'inherit' }}>
                 {bookmarks.includes(sel.id) ? '🔖 Хадгалсан' : '🏷️ Хадгалах'}
               </button>

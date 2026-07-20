@@ -12,7 +12,6 @@ const NAV = [
   { href: '/reel',       icon: '▶', label: 'Reel' },
   { href: '/vocab',      icon: '📝', label: 'Үгс' },
   { href: '/lessons',    icon: '🎯', label: 'Дасгал' },
-  { href: '/course-books', icon: '📘', label: 'Дасгалын ном' },
   { href: '/hanzi',      icon: '汉', label: 'Ханз' },
   { href: '/memory',     icon: '🧠', label: 'Ой тогтоолт' },
   { href: '/books',      icon: '📖', label: 'Номын сан' },
