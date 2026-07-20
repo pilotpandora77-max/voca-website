@@ -3,7 +3,7 @@ import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { useAuth } from '@/lib/auth';
-import api from '@/lib/api';
+import api, { uploadUrl } from '@/lib/api';
 import PageHeader from '@/components/PageHeader';
 
 const TABS = ['Бүгд', 'Англи хэл', 'Хятад хэл', 'Япон хэл', 'Солонгос хэл', 'IELTS', 'TOEIC', 'HSK', 'TOPIK', 'Бага анги', 'Дунд анги', 'Ахлах анги'];
@@ -13,6 +13,13 @@ const TAB_ICONS = {
 };
 
 export function Cover({ book, height = 150, fontSize = 15 }) {
+  if (book.coverUrl) {
+    return (
+      <div style={{ height, borderRadius: '14px 14px 0 0', overflow: 'hidden' }}>
+        <img src={uploadUrl(book.coverUrl)} alt={book.title} style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }} />
+      </div>
+    );
+  }
   return (
     <div style={{
       height, background: book.color || '#7C3AED', color: book.fg || '#FFFFFF',
