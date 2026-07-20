@@ -5,21 +5,24 @@ import { useAuth } from '@/lib/auth';
 import api from '@/lib/api';
 import PageHeader from '@/components/PageHeader';
 
-const PLANS = [
+// Үнэ/нэр backend-ээс (GET /api/billing/status-ийн plans[]) амьдаар ирнэ — эдгээр нь
+// зөвхөн admin-аас засварлагдахгүй, UI-д зориулсан статик мэдээлэл.
+const PLAN_META = [
   {
-    id: 'free', name: 'Үнэгүй', price: '0₮', period: '',
+    id: 'free', period: '',
     features: ['1,000 үг хүртэл хадгалах', 'Толь бичиг', 'Суралцах үндсэн статистик'],
   },
   {
-    id: 'standard', name: 'Стандарт', price: '15,000₮', period: '/сар',
+    id: 'standard', period: '/сар',
     features: ['1,000 үг хадгалах', 'Бүх хичээл, тоглоом', 'Толь бичиг', 'Нийтлэл харах'],
   },
   {
-    id: 'premium', name: 'Premium', price: '25,000₮', period: '/сар', best: true,
+    id: 'premium', period: '/сар', best: true,
     features: ['♾️ Хязгааргүй үг хадгалах', '✍️ Пост нийтлэх', '💬 Группийн чат үүсгэх',
                '🤝 Найзуудтай болох', '💎 Premium badge', 'Рекламгүй орчин'],
   },
 ];
+function formatPrice(n) { return n === 0 ? '0₮' : `${n.toLocaleString('en-US')}₮`; }
 
 const WHY = [
   { icon: '🔄', title: 'Уян хатан', desc: '30 хоног тутам шинэчлэгдэнэ, хүссэн үедээ цуцлах боломжтой.' },
@@ -35,7 +38,7 @@ const TESTIMONIALS = [
 ];
 
 export default function PricingPage() {
-  const { user, loading: authLoad } = useAuth();
+  const { user, loading: authLoad, refreshUser } = useAuth();
   const router = useRouter();
   const [streak, setStreak]   = useState(0);
   const [status, setStatus]   = useState(null);
@@ -62,9 +65,10 @@ export default function PricingPage() {
         const r = await api.get(`/api/billing/qpay/status/${invoice.invoiceId}`);
         if (r.data.status === 'paid') {
           clearInterval(iv);
-          const planName = PLANS.find(p => p.id === payPlan)?.name;
+          const planName = status?.plans?.find(p => p.id === payPlan)?.name;
           setPayPlan(null); setInvoice(null);
           const s = await api.get('/api/billing/status'); setStatus(s.data);
+          await refreshUser(); // sidebar-ийн багцын badge зэрэг user.plan-аас хамаарсан бүх UI шинэчлэгдэнэ
           alert(`🎉 ${planName} багц идэвхжлээ!`);
         }
       } catch {}
@@ -75,6 +79,10 @@ export default function PricingPage() {
   if (authLoad) return null;
 
   const currentPlan = status?.plan || 'free';
+  const plans = PLAN_META.map(meta => {
+    const live = status?.plans?.find(p => p.id === meta.id);
+    return { ...meta, name: live?.name || meta.id, price: live ? formatPrice(live.price) : '···' };
+  });
 
   function closeModal() { setPayPlan(null); setInvoice(null); }
 
@@ -127,7 +135,7 @@ export default function PricingPage() {
 
           {/* Pricing cards */}
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 16 }}>
-            {PLANS.map(p => {
+            {plans.map(p => {
               const isCurrent = p.id === currentPlan;
               return (
                 <div key={p.id} className={p.best ? undefined : 'card'} style={p.best ? {
@@ -233,7 +241,7 @@ export default function PricingPage() {
         <div style={{ position: 'fixed', inset: 0, background: 'rgba(15,10,30,0.4)', backdropFilter: 'blur(4px)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 100, padding: 20 }}
           onClick={e => { if (e.target === e.currentTarget) closeModal(); }}>
           <div className="card" style={{ width: '100%', maxWidth: 420, padding: '28px 30px', maxHeight: '88vh', overflowY: 'auto', textAlign: 'center' }}>
-            {(() => { const p = PLANS.find(x => x.id === payPlan); if (!p) return null; return (<>
+            {(() => { const p = plans.find(x => x.id === payPlan); if (!p) return null; return (<>
               <h2 style={{ fontWeight: 900, fontSize: 19, color: 'var(--text)' }}>{p.name} багц</h2>
               <div style={{ fontSize: 26, fontWeight: 900, color: 'var(--purple)', marginTop: 4, marginBottom: 4 }}>{p.price}{p.period}</div>
 

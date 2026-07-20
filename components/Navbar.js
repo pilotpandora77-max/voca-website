@@ -27,11 +27,13 @@ const DAYS = ['Д', 'М', 'М', 'Л', 'П', 'Б', 'Н'];
 export default function Navbar() {
   const { user, logout } = useAuth();
   const path = usePathname();
-  const [streak, setStreak] = useState(0);
+  const [streak, setStreak]   = useState(0);
+  const [planName, setPlanName] = useState('Үнэгүй багц');
 
   useEffect(() => {
     if (user) {
       api.get('/api/streak').then(r => setStreak(r.data.streak || 0)).catch(() => {});
+      api.get('/api/billing/status').then(r => setPlanName(`${r.data.planName} багц`)).catch(() => {});
     }
   }, [user]);
 
@@ -154,7 +156,7 @@ export default function Navbar() {
                 <div style={{ fontWeight: 700, fontSize: 13, color: 'var(--text)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                   {user.username}
                 </div>
-                <div style={{ fontSize: 11, color: 'var(--muted)', fontWeight: 500 }}>Үнэгүй багц</div>
+                <div style={{ fontSize: 11, color: 'var(--muted)', fontWeight: 500 }}>{planName}</div>
               </div>
             </Link>
             <button onClick={logout} style={{
