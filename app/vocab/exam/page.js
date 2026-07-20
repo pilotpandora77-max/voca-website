@@ -1,8 +1,9 @@
 'use client';
-import { useState, useEffect, useRef, useMemo } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/lib/auth';
 import api from '@/lib/api';
+import { shuffle, FlashQ, ChoiceQ, TypeQ, MatchQ } from '@/components/exercises/WordQuestions';
 
 const DEFAULT_GROUP = 'Ерөнхий';
 const COUNTS = [10, 20, 9999];
@@ -16,17 +17,6 @@ const EXAM_ORDER = [
   { key: 'type',   title: 'Үг бичих тест',   icon: '⌨️', color: '#FB923C' },
   { key: 'match',  title: 'Холбох тест',     icon: '🔗', color: '#F472B6' },
 ];
-
-function shuffle(a) { a = [...a]; for (let i = a.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [a[i], a[j]] = [a[j], a[i]]; } return a; }
-
-function speak(text, lang = 'zh-CN') {
-  if (typeof window === 'undefined' || !window.speechSynthesis) return;
-  window.speechSynthesis.cancel();
-  const u = new SpeechSynthesisUtterance(text);
-  u.lang = lang; u.rate = 0.85;
-  window.speechSynthesis.speak(u);
-}
-function speakWord(w) { speak(w.word, w.lang === 'en' ? 'en-US' : 'zh-CN'); }
 
 async function saveMastery(word, rating) {
   const now = Date.now();
@@ -286,180 +276,6 @@ export default function VocabExamPage() {
       {type === 'listen' && <ChoiceQ word={cur} all={allWords} field="word" prompt="Дуу сонсоод зөв хариултыг сонгоно уу." listen picked={picked} setPicked={setPicked} onNext={answer} />}
       {type === 'type'   && <TypeQ word={cur} typed={typed} setTyped={setTyped} revealed={revealed} onCheck={() => setRevealed(true)} onNext={answer} />}
       {type === 'match'  && <MatchQ words={words} onDone={(ok, tot) => { setKnown(k => k + ok); setWrong(w => w + (tot - ok)); nextSegmentOrFinish(); }} />}
-    </div>
-  );
-}
-
-function FlashQ({ word, revealed, onReveal, onAnswer }) {
-  if (!word) return null;
-  return (
-    <div>
-      <div onClick={onReveal} style={{
-        cursor: 'pointer', minHeight: 240, borderRadius: 20, border: '1.5px solid var(--border)', background: 'var(--bg-alt)',
-        display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: 24, marginBottom: 20, textAlign: 'center',
-      }}>
-        {!revealed ? (
-          <>
-            <div style={{ fontSize: 44, fontWeight: 900, color: 'var(--text)' }}>{word.word}</div>
-            {word.reading && <div style={{ fontSize: 16, color: 'var(--muted)', fontWeight: 600, marginTop: 8 }}>/{word.reading}/</div>}
-            <button onClick={e => { e.stopPropagation(); speakWord(word); }} style={{
-              width: 52, height: 52, borderRadius: 26, background: 'var(--purple)', border: 'none', color: '#fff',
-              fontSize: 20, cursor: 'pointer', marginTop: 18,
-            }}>🔊</button>
-            <div style={{ fontSize: 12, color: 'var(--muted)', fontWeight: 600, marginTop: 14 }}>(дарж хариулт харах)</div>
-          </>
-        ) : (
-          <>
-            <div style={{ fontSize: 26, fontWeight: 900, color: 'var(--purple)' }}>{word.meaning}</div>
-            {word.example && <div style={{ fontSize: 13, color: 'var(--muted)', fontWeight: 600, marginTop: 12 }}>{word.example}</div>}
-          </>
-        )}
-      </div>
-      <div style={{ fontSize: 13, color: 'var(--muted)', fontWeight: 700, textAlign: 'center', marginBottom: 10 }}>Утгыг санаж байна уу?</div>
-      <div style={{ display: 'flex', gap: 12 }}>
-        <button className="btn btn-red" onClick={() => onAnswer(false)} style={{ flex: 1, padding: '15px' }}>✕ Мэдэхгүй</button>
-        <button className="btn btn-green" onClick={() => onAnswer(true)} style={{ flex: 1, padding: '15px' }}>✓ Мэднэ</button>
-      </div>
-    </div>
-  );
-}
-
-function ChoiceQ({ word, all, field, prompt, listen, picked, setPicked, onNext }) {
-  const [list, setList] = useState([]);
-  useEffect(() => {
-    if (!word) return;
-    const wid = word._id || word.id;
-    const others = shuffle(all.filter(w => (w._id || w.id) !== wid)).slice(0, 3);
-    setList(shuffle([word, ...others]));
-    setPicked(null);
-    if (listen) speakWord(word);
-  }, [word?._id, word?.id]);
-  if (!word) return null;
-
-  return (
-    <div>
-      {listen ? (
-        <div style={{ textAlign: 'center', margin: '20px 0' }}>
-          <div style={{ fontSize: 14, color: 'var(--muted)', fontWeight: 700, marginBottom: 14 }}>{prompt}</div>
-          <button onClick={() => speakWord(word)} style={{
-            width: 72, height: 72, borderRadius: 36, background: 'var(--purple)', border: 'none', color: '#fff', fontSize: 26, cursor: 'pointer',
-          }}>▶️</button>
-        </div>
-      ) : (
-        <>
-          <div style={{ fontSize: 32, fontWeight: 900, color: 'var(--text)', marginTop: 6 }}>{word.word}</div>
-          <div style={{ fontSize: 14, color: 'var(--muted)', fontWeight: 700, marginTop: 6, marginBottom: 14 }}>{prompt}</div>
-        </>
-      )}
-      <div>
-        {list.map((o, i) => {
-          const sel = picked === i;
-          return (
-            <div key={(o._id || o.id) + '-' + i} onClick={() => setPicked(i)} style={{
-              display: 'flex', alignItems: 'center', gap: 12, borderRadius: 14, padding: 14, marginBottom: 10, cursor: 'pointer',
-              border: `2px solid ${sel ? 'var(--purple)' : 'var(--border)'}`, background: sel ? 'var(--purple-light)' : 'var(--bg-alt)',
-            }}>
-              <div style={{
-                width: 26, height: 26, borderRadius: 13, border: `2px solid ${sel ? 'var(--purple)' : 'var(--border)'}`,
-                background: sel ? 'var(--purple)' : 'transparent', color: sel ? '#fff' : 'var(--muted)',
-                display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 12, fontWeight: 900, flexShrink: 0,
-              }}>{String.fromCharCode(65 + i)}</div>
-              <span style={{ fontSize: 14.5, fontWeight: sel ? 800 : 600, color: sel ? 'var(--purple)' : 'var(--text-sub)' }}>{field === 'word' ? o.word : o.meaning}</span>
-            </div>
-          );
-        })}
-      </div>
-      <button className="btn btn-purple" disabled={picked == null} onClick={() => onNext(list[picked]?.id === word.id || list[picked]?._id === word._id)}
-        style={{ width: '100%', padding: '15px', marginTop: 8 }}>Дараагийн асуулт</button>
-    </div>
-  );
-}
-
-function TypeQ({ word, typed, setTyped, revealed, onCheck, onNext }) {
-  if (!word) return null;
-  const correct = typed.trim().toLowerCase() === (word.word || '').toLowerCase() || typed.trim().toLowerCase() === (word.meaning || '').toLowerCase();
-  return (
-    <div>
-      <div style={{ fontSize: 26, fontWeight: 900, color: 'var(--text)', marginTop: 6 }}>{word.meaning}</div>
-      <div style={{ fontSize: 14, color: 'var(--muted)', fontWeight: 700, marginTop: 6, marginBottom: 14 }}>Энэ үгийг бичнэ үү:</div>
-      <input type="text" value={typed} onChange={e => setTyped(e.target.value)} disabled={revealed} autoCapitalize="off"
-        placeholder="Хариултаа бич..." style={{
-          fontSize: 18, fontWeight: 700, padding: 16, borderRadius: 14,
-          border: `2px solid ${revealed ? (correct ? 'var(--green)' : 'var(--red)') : 'var(--border)'}`,
-          background: revealed ? (correct ? 'var(--green-light)' : 'var(--red-light)') : 'var(--bg-alt)', width: '100%',
-        }} />
-      {revealed && !correct && <div style={{ color: 'var(--green)', fontWeight: 800, marginTop: 10, fontSize: 14 }}>Зөв хариулт: {word.word}</div>}
-      {!revealed ? (
-        <button className="btn btn-purple" disabled={!typed.trim()} onClick={onCheck} style={{ width: '100%', padding: '15px', marginTop: 18 }}>Шалгах</button>
-      ) : (
-        <button className="btn btn-purple" onClick={() => onNext(correct)} style={{ width: '100%', padding: '15px', marginTop: 18 }}>Дараагийн асуулт</button>
-      )}
-    </div>
-  );
-}
-
-function MatchQ({ words, onDone }) {
-  const BATCH = 4;
-  const batches = useMemo(() => { const b = []; for (let i = 0; i < words.length; i += BATCH) b.push(words.slice(i, i + BATCH)); return b; }, [words]);
-  const [bi, setBi] = useState(0);
-  const [correct, setCorrect] = useState(0);
-  const [rights, setRights] = useState(() => shuffle(batches[0] || []));
-  const [selL, setSelL] = useState(null);
-  const [matched, setMatched] = useState({});
-  const [wrongFlash, setWrongFlash] = useState(null);
-
-  useEffect(() => { setRights(shuffle(batches[bi] || [])); setSelL(null); setMatched({}); }, [bi]);
-
-  function idOf(w) { return w._id || w.id; }
-
-  function tapRight(r) {
-    if (selL == null) return;
-    const lw = (batches[bi] || [])[selL];
-    if (!lw) return;
-    if (idOf(lw) === idOf(r)) {
-      const nm = { ...matched, [idOf(lw)]: true }; setMatched(nm); setCorrect(c => c + 1); setSelL(null);
-      if (Object.keys(nm).length >= (batches[bi] || []).length) {
-        const nb = bi + 1;
-        if (nb >= batches.length) { setTimeout(() => onDone(correct + 1, words.length), 350); }
-        else setTimeout(() => setBi(nb), 350);
-      }
-    } else { setWrongFlash(idOf(r)); setTimeout(() => setWrongFlash(null), 400); }
-  }
-
-  const curBatch = batches[bi] || [];
-  return (
-    <div>
-      <div style={{ fontSize: 14, color: 'var(--muted)', fontWeight: 700, marginBottom: 16 }}>Үгийг утгатай нь холбоно уу. ({bi + 1}/{batches.length})</div>
-      <div style={{ display: 'flex', gap: 12 }}>
-        <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: 10 }}>
-          {curBatch.map((w, i) => {
-            const m = matched[idOf(w)]; const sel = selL === i;
-            return (
-              <div key={idOf(w)} onClick={() => !m && setSelL(i)} style={{
-                borderRadius: 12, border: `2px solid ${m ? 'var(--green)' : sel ? 'var(--purple)' : 'var(--border)'}`,
-                background: m ? 'var(--green-light)' : sel ? 'var(--purple-light)' : 'var(--bg-alt)',
-                padding: 14, minHeight: 52, display: 'flex', alignItems: 'center', cursor: m ? 'default' : 'pointer',
-              }}>
-                <span style={{ fontSize: 14, fontWeight: (sel || m) ? 800 : 700, color: m ? 'var(--green-dark)' : sel ? 'var(--purple)' : 'var(--text)' }}>{w.word}</span>
-              </div>
-            );
-          })}
-        </div>
-        <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: 10 }}>
-          {rights.map(r => {
-            const m = matched[idOf(r)]; const bad = wrongFlash === idOf(r);
-            return (
-              <div key={idOf(r)} onClick={() => !m && tapRight(r)} style={{
-                borderRadius: 12, border: `2px solid ${m ? 'var(--green)' : bad ? 'var(--red)' : 'var(--border)'}`,
-                background: m ? 'var(--green-light)' : bad ? 'var(--red-light)' : 'var(--bg-alt)',
-                padding: 14, minHeight: 52, display: 'flex', alignItems: 'center', cursor: m ? 'default' : 'pointer',
-              }}>
-                <span style={{ fontSize: 13.5, fontWeight: m ? 800 : 700, color: m ? 'var(--green-dark)' : 'var(--text)' }}>{r.meaning}</span>
-              </div>
-            );
-          })}
-        </div>
-      </div>
     </div>
   );
 }

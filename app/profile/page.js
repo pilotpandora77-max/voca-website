@@ -34,6 +34,7 @@ export default function ProfilePage() {
   const [phone, setPhone]   = useState('');
   const [emailV, setEmailV] = useState('');
   const [saving, setSaving] = useState(false);
+  const [photoPreview, setPhotoPreview] = useState(null); // data URI хэрэглэгч шинээр сонгосон бол
 
   // Профайл нэвтрэлт бүрд нэг удаа ачаалдаг user context-ыг л ашигладаг тул
   // мобайл апп дээр солисон зураг гэх мэт өөрчлөлт хуудсыг дахин ачаалахгүйгээр
@@ -63,10 +64,20 @@ export default function ProfilePage() {
     setLoad(false);
   }
 
+  function pickPhoto(e) {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = () => setPhotoPreview(reader.result);
+    reader.readAsDataURL(file);
+  }
+
   async function save(e) {
     e.preventDefault(); setSaving(true);
     try {
-      await api.patch('/api/auth/profile', { username, phone, email: emailV, avatarEmoji: emoji, avatarColor: color });
+      const body = { username, phone, email: emailV, avatarEmoji: emoji, avatarColor: color };
+      if (photoPreview) body.avatarPhoto = photoPreview; // mobile app-тай ижил формат/талбар
+      await api.patch('/api/auth/profile', body);
       const u = JSON.parse(localStorage.getItem('user') || '{}');
       localStorage.setItem('user', JSON.stringify({ ...u, username, phone, email: emailV, avatarEmoji: emoji, avatarColor: color }));
       setEditing(false); setTimeout(() => location.reload(), 300);
@@ -269,6 +280,24 @@ export default function ProfilePage() {
           <div className="card" style={{ width: '100%', maxWidth: 440, padding: '28px 30px', maxHeight: '88vh', overflowY: 'auto' }}>
             <h2 style={{ fontWeight: 900, fontSize: 19, color: 'var(--text)', marginBottom: 20 }}>Профайл засах</h2>
             <form onSubmit={save} style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+              <div>
+                <label style={{ fontSize: 11, fontWeight: 800, color: 'var(--muted)', letterSpacing: 0.8, textTransform: 'uppercase', display: 'block', marginBottom: 10 }}>Зураг</label>
+                <label style={{ display: 'flex', alignItems: 'center', gap: 14, cursor: 'pointer' }}>
+                  <div style={{
+                    width: 62, height: 62, borderRadius: '50%', overflow: 'hidden', flexShrink: 0,
+                    background: photoPreview || user.avatarPhotoUrl ? 'transparent' : `${clrHex}22`,
+                    border: `2px solid ${clrHex}66`, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 26,
+                  }}>
+                    {photoPreview
+                      ? <img src={photoPreview} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                      : user.avatarPhotoUrl
+                      ? <img src={uploadUrl(user.avatarPhotoUrl)} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                      : emoji}
+                  </div>
+                  <span style={{ fontSize: 12.5, color: 'var(--purple)', fontWeight: 700 }}>Зураг сонгох →</span>
+                  <input type="file" accept="image/*" onChange={pickPhoto} style={{ display: 'none' }} />
+                </label>
+              </div>
               {[['Нэр', username, setUsername, 'text', ''], ['И-мэйл', emailV, setEmailV, 'email', 'name@example.com'], ['Утасны дугаар', phone, setPhone, 'tel', '9900-0000']].map(([label, val, set, type, ph]) => (
                 <div key={label}>
                   <label style={{ fontSize: 11, fontWeight: 800, color: 'var(--muted)', letterSpacing: 0.8, textTransform: 'uppercase', display: 'block', marginBottom: 7 }}>{label}</label>

@@ -10,14 +10,14 @@ import PageHeader from '@/components/PageHeader';
 const TABS = ['Бүх төрлүүд', 'Үг цээжлэх', 'Ойлгох', 'Ярих', 'Сонсох', 'Бичих', 'Дүрмийн хичээл'];
 
 const LESSONS = [
-  { id: 'flashcard', title: 'Флаш карт', icon: '🃏', bg: '#EDE9FF', desc: 'Шинэ үгсийг карт ашиглан хялбар бөгөөд хурдан цээжил.', time: '5–15 мин', skills: ['Үг цээжлэх'], href: '/vocab/practice' },
-  { id: 'choice', title: 'Сонголттой тест', icon: '✅', bg: '#ECFDF5', desc: 'Олон сонголттой асуултаар ойлголтоо шалгаарай.', time: '5–15 мин', skills: ['Ойлгох'], href: '/games' },
-  { id: 'fill', title: 'Дутуу үг нөхөх', icon: '🅰️', bg: '#FEF3C7', desc: 'Өгүүлбэр дэх дутуу үгийг нөхөж ой тогтоолтоо бататгаарай.', time: '5–15 мин', skills: ['Ойлгох'], href: '/grammar-lessons' },
-  { id: 'pronounce', title: 'Дуудлага дасгал', icon: '🎙️', bg: '#EFF6FF', desc: 'Үгээ зөв дуудаж, дуудлага сайжруулаарай.', time: '5–15 мин', skills: ['Ярих', 'Сонсох'], href: '/learn' },
-  { id: 'listen', title: 'Сонсох дасгал', icon: '🎧', bg: '#FEF2F2', desc: 'Сонсох ойлгох чадвараа дээшлүүлээрэй.', time: '5–15 мин', skills: ['Сонсох'], href: '/games' },
-  { id: 'conversation', title: 'Ярилцлагын дасгал', icon: '💬', bg: '#EFF6FF', desc: 'Бодит яриаг жишээ сонсоод, асуултад хариулаарай.', time: '10–20 мин', skills: ['Ярих', 'Сонсох'], href: '/reel' },
-  { id: 'reading', title: 'Унших ойлгох', icon: '📖', bg: '#F8F5FF', desc: 'Богино текст уншиж, ойлголтын асуултад хариулаарай.', time: '10–20 мин', skills: ['Ойлгох'], href: '/books' },
-  { id: 'writing', title: 'Бичих дасгал', icon: '✏️', bg: '#F5F0FF', desc: 'Өгүүлбэр зохиож, бичих чадвараа хөгжүүлээрэй.', time: '10–20 мин', skills: ['Бичих'], href: '/hanzi' },
+  { id: 'flashcard', title: 'Флаш карт', icon: '🃏', bg: '#EDE9FF', desc: 'Шинэ үгсийг карт ашиглан хялбар бөгөөд хурдан цээжил.', time: '5–15 мин', skills: ['Үг цээжлэх'], href: '/lessons/flashcard' },
+  { id: 'choice', title: 'Сонголттой тест', icon: '✅', bg: '#ECFDF5', desc: 'Олон сонголттой асуултаар ойлголтоо шалгаарай.', time: '5–15 мин', skills: ['Ойлгох'], href: '/lessons/choice' },
+  { id: 'fill', title: 'Дутуу үг нөхөх', icon: '🅰️', bg: '#FEF3C7', desc: 'Өгүүлбэр дэх дутуу үгийг нөхөж ой тогтоолтоо бататгаарай.', time: '5–15 мин', skills: ['Ойлгох'], href: '/lessons/fill' },
+  { id: 'pronounce', title: 'Дуудлага дасгал', icon: '🎙️', bg: '#EFF6FF', desc: 'Үгээ зөв дуудаж, дуудлага сайжруулаарай.', time: '5–15 мин', skills: ['Ярих', 'Сонсох'], href: '/lessons/pronounce' },
+  { id: 'listen', title: 'Сонсох дасгал', icon: '🎧', bg: '#FEF2F2', desc: 'Сонсох ойлгох чадвараа дээшлүүлээрэй.', time: '5–15 мин', skills: ['Сонсох'], href: '/lessons/listen' },
+  { id: 'conversation', title: 'Ярилцлагын дасгал', icon: '💬', bg: '#EFF6FF', desc: 'Бодит яриаг жишээ сонсоод, асуултад хариулаарай.', time: '10–20 мин', skills: ['Ярих', 'Сонсох'], href: null },
+  { id: 'reading', title: 'Унших ойлгох', icon: '📖', bg: '#F8F5FF', desc: 'Богино текст уншиж, ойлголтын асуултад хариулаарай.', time: '10–20 мин', skills: ['Ойлгох'], href: null },
+  { id: 'writing', title: 'Бичих дасгал', icon: '✏️', bg: '#F5F0FF', desc: 'Өгүүлбэр зохиож, бичих чадвараа хөгжүүлээрэй.', time: '10–20 мин', skills: ['Бичих'], href: '/lessons/writing' },
 ];
 
 const GRAMMAR_PREVIEW = [
@@ -47,8 +47,14 @@ export default function LessonsPage() {
   const [streak, setStreak] = useState(0);
   const [stats, setStats]   = useState(null);
   const [tab, setTab]       = useState('Бүх төрлүүд');
+  const [toast, setToast]   = useState('');
   // Дүрмийн систем хэлээр автоматаар солигдоно
   const grammarHref = '/grammar-lessons';
+
+  function showComingSoon() {
+    setToast('Энэ дасгал тун удахгүй нэмэгдэнэ 🚧');
+    setTimeout(() => setToast(''), 2500);
+  }
 
   useEffect(() => {
     if (!authLoad && !user) router.push('/login');
@@ -94,28 +100,16 @@ export default function LessonsPage() {
                       <span>🕐 {l.time}</span>
                       <span>📊 {l.skills.join(', ')}</span>
                     </div>
-                    <Link href={l.href} className="btn btn-light" style={{ textDecoration: 'none', fontSize: 13, padding: '8px', textAlign: 'center', justifyContent: 'center' }}>Эхлэх →</Link>
+                    {l.href ? (
+                      <Link href={l.href} className="btn btn-light" style={{ textDecoration: 'none', fontSize: 13, padding: '8px', textAlign: 'center', justifyContent: 'center' }}>Эхлэх →</Link>
+                    ) : (
+                      <button type="button" onClick={() => showComingSoon()} className="btn btn-light" style={{ fontSize: 13, padding: '8px', opacity: 0.7 }}>Тун удахгүй</button>
+                    )}
                   </div>
                 </div>
               ))}
             </div>
           )}
-
-          {/* IELTS banner */}
-          <Link href="/ielts" style={{ textDecoration: 'none', display: 'block', marginBottom: 16 }}>
-            <div style={{ borderRadius: 18, padding: '22px 26px', background: 'linear-gradient(120deg,#7c3aed,#5b21b6)', color: '#fff', display: 'flex', alignItems: 'center', gap: 20, flexWrap: 'wrap', position: 'relative', overflow: 'hidden' }}>
-              <div style={{ position: 'absolute', right: -10, top: '50%', transform: 'translateY(-50%)', fontSize: 110, opacity: 0.15 }}>🎓</div>
-              <div style={{ width: 56, height: 56, borderRadius: 14, background: 'rgba(255,255,255,0.18)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 30, flexShrink: 0 }}>🎓</div>
-              <div style={{ flex: 1, minWidth: 200, position: 'relative' }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 4 }}>
-                  <h3 style={{ fontWeight: 900, fontSize: 19 }}>IELTS бэлтгэл</h3>
-                  <span style={{ background: '#fcd34d', color: '#5b21b6', borderRadius: 6, padding: '2px 8px', fontSize: 10, fontWeight: 900 }}>ШИНЭ</span>
-                </div>
-                <p style={{ fontSize: 13.5, opacity: 0.9, lineHeight: 1.5 }}>Listening · Reading · Writing · Speaking — дөрвөн ур чадвараар бэлтгэ. Зөвлөгөө, асуултын төрөл, дасгал, академик үгсийн сан.</p>
-              </div>
-              <span style={{ background: '#fff', color: 'var(--purple)', borderRadius: 12, padding: '11px 22px', fontWeight: 800, fontSize: 14, flexShrink: 0, position: 'relative' }}>Бэлтгэж эхлэх →</span>
-            </div>
-          </Link>
 
           {/* Grammar section */}
           <div className="card" style={{ border: '1.5px solid var(--purple-mid)', background: 'linear-gradient(135deg, var(--purple-soft), #fff)', marginBottom: 24 }}>
@@ -213,13 +207,17 @@ export default function LessonsPage() {
           <div className="card">
             <h3 style={{ fontWeight: 900, fontSize: 14, color: 'var(--text)', marginBottom: 12 }}>Хамгийн их ашиглагддаг</h3>
             <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
-              {LESSONS.slice(0, 6).map(l => (
+              {LESSONS.filter(l => l.href).slice(0, 6).map(l => (
                 <Link key={l.id} href={l.href} className="tag tag-purple" style={{ textDecoration: 'none' }}>{l.title}</Link>
               ))}
             </div>
           </div>
         </div>
       </div>
+
+      {toast && (
+        <div style={{ position: 'fixed', bottom: 24, left: '50%', transform: 'translateX(-50%)', background: 'var(--text)', color: '#fff', padding: '10px 20px', borderRadius: 100, fontWeight: 700, fontSize: 13, zIndex: 100 }}>{toast}</div>
+      )}
     </div>
   );
 }

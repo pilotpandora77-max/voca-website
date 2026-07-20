@@ -105,7 +105,8 @@ export default function MemoryPage() {
               onMouseLeave={e => { if (selId !== m.id) { e.currentTarget.style.borderColor = 'var(--border)'; e.currentTarget.style.transform = ''; e.currentTarget.style.boxShadow = ''; } }}>
                 <div style={{ fontSize: 40, marginBottom: 12 }}>{m.icon}</div>
                 <div style={{ fontWeight: 800, fontSize: 14, color: 'var(--text)', marginBottom: 5, lineHeight: 1.3 }}>{m.title}</div>
-                <div style={{ fontSize: 11.5, color: 'var(--muted)', fontWeight: 600 }}>{m.category}</div>
+                <div style={{ fontSize: 11.5, color: 'var(--muted)', fontWeight: 600, marginBottom: 8 }}>{m.category}</div>
+                <p style={{ fontSize: 11.5, color: 'var(--text-sub)', lineHeight: 1.5, marginBottom: 28, overflow: 'hidden', display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical' }}>{m.summary}</p>
                 <button onClick={e => { e.stopPropagation(); toggleBookmark(m.id); }} style={{
                   position: 'absolute', bottom: 12, right: 12, background: 'none', border: 'none', cursor: 'pointer',
                   fontSize: 16, color: bookmarks.includes(m.id) ? 'var(--purple)' : 'var(--muted)',
@@ -132,7 +133,10 @@ export default function MemoryPage() {
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 24, marginBottom: 22 }}>
               <Diagram model={sel} />
               <div>
-                <h2 style={{ fontWeight: 900, fontSize: 24, color: 'var(--text)', marginBottom: 8 }}>{sel.title}</h2>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 8 }}>
+                  <ResearcherAvatar model={sel} />
+                  <h2 style={{ fontWeight: 900, fontSize: 24, color: 'var(--text)' }}>{sel.title}</h2>
+                </div>
                 <span className="tag tag-purple" style={{ marginBottom: 14, display: 'inline-block' }}>{sel.category}</span>
                 <p style={{ color: 'var(--text-sub)', fontSize: 14, lineHeight: 1.6, marginBottom: 18 }}>{sel.summary}</p>
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
@@ -258,6 +262,26 @@ function ListBlock({ items, color, mark }) {
         </div>
       ))}
     </div>
+  );
+}
+
+/* ── Судлаачийн avatar: PD зураг байвал бодит зураг, үгүй бол эхний
+   судлаачийнхаа нэрийн эхний үсгээр өнгөт дугуй (default avatar-тай ижил хэв маяг) ── */
+function ResearcherAvatar({ model }) {
+  if (model.photo?.src) {
+    return (
+      <div style={{ width: 44, height: 44, borderRadius: '50%', overflow: 'hidden', flexShrink: 0, border: '2px solid var(--purple-mid)' }}>
+        <img src={model.photo.src} alt={model.authors} title={model.photo.credit} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+      </div>
+    );
+  }
+  const initial = (model.authors || model.title || '?').trim()[0]?.toUpperCase() || '?';
+  return (
+    <div style={{
+      width: 44, height: 44, borderRadius: '50%', flexShrink: 0, background: 'var(--purple-light)',
+      border: '2px solid var(--purple-mid)', display: 'flex', alignItems: 'center', justifyContent: 'center',
+      fontSize: 17, fontWeight: 900, color: 'var(--purple)',
+    }}>{initial}</div>
   );
 }
 
