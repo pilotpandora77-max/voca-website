@@ -4,6 +4,7 @@ import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { useAuth } from '@/lib/auth';
 import api, { uploadUrl } from '@/lib/api';
+import GoalSettingsModal from '@/components/GoalSettingsModal';
 
 const EMOJIS = ['🐼','🦊','🐨','🦁','🐯','🐸','🦄','🐙','🦋','🐬','🦅','🐺'];
 const COLORS = [
@@ -37,6 +38,7 @@ export default function ProfilePage() {
   const [photoPreview, setPhotoPreview] = useState(null); // data URI хэрэглэгч шинээр сонгосон бол
   const [idCopied, setIdCopied] = useState(false);
   const [exams, setExams] = useState([]);
+  const [goalEditing, setGoalEditing] = useState(false);
 
   function copyId() {
     navigator.clipboard?.writeText(user.id);
@@ -109,9 +111,29 @@ export default function ProfilePage() {
   const bestScores = exams.map(e => e.bestScorePct).filter(v => v != null);
   const bestScore = bestScores.length ? Math.max(...bestScores) : null;
   const latestAttempt = exams.map(e => e.lastAttempt).filter(Boolean).sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt))[0];
-  const knownCount = stats?.knownCount ?? Math.round(wordCount * 0.4);
-  const dueCount = stats?.dueCount ?? stats?.reviewCount ?? 0;
-  const daysLearned = stats?.daysLearned ?? stats?.streak ?? 0;
+  const knownCount = stats?.masteryDone ?? 0;
+  const dueCount = stats?.dueCount ?? 0;
+  const daysLearned = stats?.studyDays ?? stats?.streak ?? 0;
+  const goal = stats?.goal || { targetWords: 500, dailyWordTarget: 20, dailyReviewTarget: 20, dailyExerciseTarget: 3, dailyMinutes: 20, hasCustomGoal: false };
+  const today = stats?.today || { wordsAdded: 0, reviewsDone: 0, exercisesDone: 0, minutesStudied: 0 };
+  const weekTrend = stats?.weekTrend || { xpDeltaPct: 0, wordsDeltaPct: 0 };
+  const goalPct = Math.min((wordCount / goal.targetWords) * 100, 100);
+  const roadmapCheckpoints = [0.2, 0.4, 0.6, 0.8, 1.0].map(f => Math.round(goal.targetWords * f));
+  const roadmapCurrentIdx = roadmapCheckpoints.findIndex(c => wordCount < c);
+  const STREAK_REWARDS = [
+    { d: 7,   icon: '🔥', name: 'Streak эхлүүлэгч', c: '#F59E0B' },
+    { d: 14,  icon: '🔥', name: 'Галын сонирхогч', c: '#F97316' },
+    { d: 30,  icon: '✴️', name: 'Тогтмол суралцагч', c: '#EF4444' },
+    { d: 60,  icon: '❄️', name: 'Хичээл мастер', c: '#8B5CF6' },
+    { d: 100, icon: '🏆', name: 'Легенд суралцагч', c: '#FACC15' },
+  ];
+  const nextReward = STREAK_REWARDS.find(r => r.d > (stats?.streak || 0));
+  const cumulativeWords = (() => {
+    const wa = stats?.weekActivity || [];
+    const startTotal = wordCount - wa.reduce((s, d) => s + (d.wordsAdded || 0), 0);
+    let running = startTotal;
+    return wa.map(d => (running += (d.wordsAdded || 0)));
+  })();
   const topPct = lb.length ? Math.max(1, Math.round(((lb.findIndex(e => e.id === user.id) + 1 || lb.length) / Math.max(lb.length, 1)) * 100)) : 12;
 
   const skills = [
@@ -242,59 +264,182 @@ export default function ProfilePage() {
         </div>
       </div>
 
-      {/* Row: goal + games + friends */}
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 16 }}>
-        <div className="card">
-          <h3 style={{ fontWeight: 900, fontSize: 15, color: 'var(--text)', marginBottom: 14 }}>Хэл сурах зорилго</h3>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 14, marginBottom: 14 }}>
-            <div style={{ fontSize: 40 }}>🎯</div>
-            <div><div style={{ fontWeight: 800, color: 'var(--text)', fontSize: 15 }}>Би HSK {Math.min(6, lvl.level)} түвшний</div><div style={{ color: 'var(--muted)', fontSize: 13 }}>1000 үг цээжлэх болно!</div></div>
-          </div>
-          <div style={{ height: 10, background: 'var(--bg-alt)', borderRadius: 8, overflow: 'hidden', marginBottom: 6 }}>
-            <div style={{ height: '100%', width: `${Math.min((wordCount / 1000) * 100, 100)}%`, background: 'linear-gradient(90deg,#a855f7,#7c3aed)', borderRadius: 8 }} />
-          </div>
-          <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 12, color: 'var(--muted)', fontWeight: 700 }}><span>{wordCount} / 1000 үг</span><span>{Math.round((wordCount / 1000) * 100)}%</span></div>
-          <Link href="/learn" className="btn btn-light" style={{ width: '100%', marginTop: 14, textDecoration: 'none', justifyContent: 'center' }}>Үргэлжлүүлэх</Link>
-        </div>
-
-        <div className="card">
-          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 14 }}>
-            <h3 style={{ fontWeight: 900, fontSize: 15, color: 'var(--text)' }}>Шалгалтын амжилт</h3>
-            <Link href="/exams" style={{ fontSize: 12, color: 'var(--purple)', fontWeight: 700, textDecoration: 'none' }}>Бүгдийг харах</Link>
-          </div>
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
-            {[
-              ['🎓', 'Хадгалсан', `${examCount}`, '#a855f7'],
-              ['✅', 'Нийт өгсөн', `${attemptCount}`, '#38bdf8'],
-              ['🏆', 'Шилдэг оноо', bestScore != null ? `${bestScore}%` : '—', '#22c55e'],
-              ['🎯', 'Сүүлийн оноо', latestAttempt ? `${latestAttempt.scorePct}%` : '—', '#ef4444'],
-            ].map(([ic, n, v, c], i) => (
-              <Link key={i} href="/exams" style={{ textDecoration: 'none', background: `${c}12`, border: `1.5px solid ${c}28`, borderRadius: 12, padding: '12px', textAlign: 'center' }}>
-                <div style={{ fontSize: 20 }}>{ic}</div>
-                <div style={{ fontSize: 15, fontWeight: 900, color: 'var(--text)', marginTop: 4 }}>{v}</div>
-                <div style={{ fontSize: 11, fontWeight: 700, color: 'var(--muted)', marginTop: 1 }}>{n}</div>
-              </Link>
-            ))}
-          </div>
-        </div>
-
-        <div className="card">
-          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 14 }}>
-            <h3 style={{ fontWeight: 900, fontSize: 15, color: 'var(--text)' }}>Найзууд</h3>
-            <Link href="/leaderboard" style={{ fontSize: 12, color: 'var(--purple)', fontWeight: 700, textDecoration: 'none' }}>Бүгдийг харах</Link>
-          </div>
-          {lb.length === 0 ? <p style={{ fontSize: 13, color: 'var(--muted)', textAlign: 'center', padding: '10px 0' }}>Өгөгдөл байхгүй</p>
-          : lb.map((e, i) => {
-            const isMe = e.id === user.id;
-            return (
-              <div key={e.id || i} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '8px', borderRadius: 10, marginBottom: 3, background: isMe ? 'var(--purple-light)' : 'transparent' }}>
-                <span style={{ width: 18, fontWeight: 800, color: 'var(--muted)', fontSize: 13 }}>{i + 1}</span>
-                <div style={{ width: 30, height: 30, borderRadius: '50%', background: 'var(--purple-light)', border: '1.5px solid var(--purple-mid)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 15 }}>{e.avatarEmoji || e.username?.[0]?.toUpperCase()}</div>
-                <span style={{ flex: 1, fontWeight: 700, fontSize: 13, color: isMe ? 'var(--purple)' : 'var(--text)' }}>{e.username}{isMe ? ' (та)' : ''}</span>
-                <span style={{ fontWeight: 800, fontSize: 12.5, color: 'var(--purple)' }}>{(e.xp || 0).toLocaleString()} XP</span>
+      {/* Row: Mission (goal+checklist+progress+streak+roadmap) + exams/friends sidebar */}
+      <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr', gap: 16 }}>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
+            {/* Goal card */}
+            <div className="card">
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 14 }}>
+                <h3 style={{ fontWeight: 900, fontSize: 15, color: 'var(--text)' }}>🎯 Хэл сурах зорилго</h3>
+                <button onClick={() => setGoalEditing(true)} style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: 12, color: 'var(--purple)', fontWeight: 700, fontFamily: 'inherit' }}>
+                  {goal.hasCustomGoal ? '✏️ Засах' : 'Тохируулах'}
+                </button>
               </div>
-            );
-          })}
+              <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
+                <svg width={88} height={88}>
+                  <defs><linearGradient id="goalGrad" x1="0" y1="0" x2="1" y2="1"><stop offset="0%" stopColor="#a855f7" /><stop offset="100%" stopColor="#7c3aed" /></linearGradient></defs>
+                  <circle cx={44} cy={44} r={36} stroke="var(--border)" strokeWidth={9} fill="none" />
+                  <circle cx={44} cy={44} r={36} stroke="url(#goalGrad)" strokeWidth={9} fill="none" strokeLinecap="round"
+                    strokeDasharray={2 * Math.PI * 36} strokeDashoffset={2 * Math.PI * 36 * (1 - goalPct / 100)}
+                    transform="rotate(-90 44 44)" style={{ transition: 'stroke-dashoffset 0.6s ease' }} />
+                  <text x={44} y={49} textAnchor="middle" fontSize={17} fontWeight={900} fill="var(--text)">{Math.round(goalPct)}%</text>
+                </svg>
+                <div>
+                  <div style={{ fontWeight: 800, color: 'var(--text)', fontSize: 14.5 }}>{goal.title || 'Зорилгоо тохируулаарай'}</div>
+                  <div style={{ color: 'var(--muted)', fontSize: 12.5, marginTop: 2 }}>{wordCount} / {goal.targetWords} үг</div>
+                </div>
+              </div>
+            </div>
+
+            {/* Daily checklist */}
+            <div className="card">
+              <h3 style={{ fontWeight: 900, fontSize: 15, color: 'var(--text)', marginBottom: 12 }}>Өдөр бүрийн зорилго</h3>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 9 }}>
+                {[
+                  ['📖', 'Үг сурах', today.wordsAdded, goal.dailyWordTarget, 'үг'],
+                  ['🔄', 'Давтах', today.reviewsDone, goal.dailyReviewTarget, 'үг'],
+                  ['🎯', 'Дасгал хийх', today.exercisesDone, goal.dailyExerciseTarget, 'дасгал'],
+                  ['⏱️', 'Суралцах хугацаа', today.minutesStudied, goal.dailyMinutes, 'мин'],
+                ].map(([icon, label, val, target, unit], i) => {
+                  const done = val >= target;
+                  const p = Math.min((val / target) * 100, 100);
+                  return (
+                    <div key={i}>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 11.5, marginBottom: 4 }}>
+                        <span style={{ fontWeight: 700, color: 'var(--text-sub)' }}>{icon} {label}</span>
+                        <span style={{ fontWeight: 800, color: done ? 'var(--green)' : 'var(--muted)' }}>{done ? '✓' : `${val}/${target} ${unit}`}</span>
+                      </div>
+                      <div style={{ height: 6, background: 'var(--bg-alt)', borderRadius: 6, overflow: 'hidden' }}>
+                        <div style={{ height: '100%', width: `${p}%`, background: done ? 'var(--green)' : 'var(--purple)', borderRadius: 6 }} />
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+
+            {/* Ахицын тойм */}
+            <div className="card">
+              <h3 style={{ fontWeight: 900, fontSize: 15, color: 'var(--text)', marginBottom: 8 }}>Ахицын тойм</h3>
+              <LineChart data={cumulativeWords} />
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10, marginTop: 8 }}>
+                <div style={{ background: 'var(--bg-alt)', borderRadius: 12, padding: '10px 12px' }}>
+                  <div style={{ fontSize: 11, color: 'var(--muted)', fontWeight: 700 }}>Нийт XP</div>
+                  <div style={{ fontSize: 17, fontWeight: 900, color: 'var(--text)' }}>{xp}</div>
+                  <div style={{ fontSize: 11, color: weekTrend.xpDeltaPct >= 0 ? 'var(--green)' : 'var(--red)', fontWeight: 700 }}>{weekTrend.xpDeltaPct >= 0 ? '+' : ''}{weekTrend.xpDeltaPct}% {weekTrend.xpDeltaPct >= 0 ? '↑' : '↓'}</div>
+                </div>
+                <div style={{ background: 'var(--bg-alt)', borderRadius: 12, padding: '10px 12px' }}>
+                  <div style={{ fontSize: 11, color: 'var(--muted)', fontWeight: 700 }}>Үгийн сан</div>
+                  <div style={{ fontSize: 17, fontWeight: 900, color: 'var(--text)' }}>{wordCount}</div>
+                  <div style={{ fontSize: 11, color: weekTrend.wordsDeltaPct >= 0 ? 'var(--green)' : 'var(--red)', fontWeight: 700 }}>{weekTrend.wordsDeltaPct >= 0 ? '+' : ''}{weekTrend.wordsDeltaPct}% {weekTrend.wordsDeltaPct >= 0 ? '↑' : '↓'}</div>
+                </div>
+              </div>
+            </div>
+
+            {/* Streak-save card */}
+            <div className="card" style={{ textAlign: 'center' }}>
+              <h3 style={{ fontWeight: 900, fontSize: 15, color: 'var(--text)', marginBottom: 10 }}>Сахилга батаа хадгал!</h3>
+              <svg width={88} height={88}>
+                <defs><linearGradient id="fireGrad2" x1="0" y1="0" x2="1" y2="1"><stop offset="0%" stopColor="#FCD34D" /><stop offset="100%" stopColor="#EF4444" /></linearGradient></defs>
+                <circle cx={44} cy={44} r={36} stroke="var(--border)" strokeWidth={9} fill="none" />
+                <circle cx={44} cy={44} r={36} stroke="url(#fireGrad2)" strokeWidth={9} fill="none" strokeLinecap="round"
+                  strokeDasharray={2 * Math.PI * 36} strokeDashoffset={2 * Math.PI * 36 * (1 - Math.min((stats?.streak || 0) / (nextReward?.d || 1), 1))}
+                  transform="rotate(-90 44 44)" />
+                <text x={44} y={41} textAnchor="middle" fontSize={20}>🔥</text>
+                <text x={44} y={59} textAnchor="middle" fontSize={13} fontWeight={800} fill="var(--text)">{stats?.streak || 0} өдөр</text>
+              </svg>
+              {nextReward ? (
+                <div style={{ fontSize: 11.5, color: 'var(--muted)', fontWeight: 700, marginTop: 6 }}>Дараагийн шагнал: {nextReward.d - (stats?.streak || 0)} өдөр</div>
+              ) : (
+                <div style={{ fontSize: 11.5, color: 'var(--muted)', fontWeight: 700, marginTop: 6 }}>Бүх шагнал авсан 🏆</div>
+              )}
+              <Link href="/vocab" className="btn btn-purple" style={{ width: '100%', marginTop: 12, textDecoration: 'none', justifyContent: 'center', fontSize: 13 }}>Суралцах</Link>
+            </div>
+          </div>
+
+          {/* Зорилтот түвшин roadmap */}
+          <div className="card">
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 20 }}>
+              <h3 style={{ fontWeight: 900, fontSize: 15, color: 'var(--text)' }}>Зорилтот түвшин</h3>
+              <button onClick={() => setGoalEditing(true)} style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: 12, color: 'var(--purple)', fontWeight: 700, fontFamily: 'inherit' }}>Зорилго өөрчлөх</button>
+            </div>
+            <div style={{ display: 'flex', alignItems: 'flex-start', marginBottom: 22 }}>
+              {roadmapCheckpoints.map((c, i) => {
+                const done = wordCount >= c;
+                const current = !done && i === roadmapCurrentIdx;
+                return (
+                  <div key={i} style={{ display: 'flex', alignItems: 'center', flex: i < roadmapCheckpoints.length - 1 ? 1 : '0 0 auto' }}>
+                    <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 6, flexShrink: 0 }}>
+                      <div style={{
+                        width: 38, height: 38, borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 15, fontWeight: 900,
+                        background: done ? 'var(--green-bg)' : current ? 'var(--purple-light)' : 'var(--bg-alt)',
+                        border: `2px solid ${done ? 'var(--green)' : current ? 'var(--purple)' : 'var(--border)'}`,
+                        color: done ? 'var(--green-dark)' : current ? 'var(--purple)' : 'var(--muted)',
+                      }}>{done ? '✓' : current ? '💠' : '🔒'}</div>
+                      <div style={{ fontSize: 10.5, fontWeight: 700, color: 'var(--muted)', whiteSpace: 'nowrap' }}>{c} үг</div>
+                    </div>
+                    {i < roadmapCheckpoints.length - 1 && <div style={{ flex: 1, height: 2, background: done ? 'var(--green)' : 'var(--border)', marginLeft: 6, marginRight: 6, marginTop: -18 }} />}
+                  </div>
+                );
+              })}
+            </div>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 10 }}>
+              {[
+                [goal.targetWords, 'Нийт зорилтот үгс'],
+                [stats?.masteryLearning || 0, 'Суралцаж буй үгс'],
+                [knownCount, 'Мэддэг болсон'],
+                [dueCount, 'Давтах шаардлагатай'],
+              ].map(([v, l], i) => (
+                <div key={i} style={{ background: 'var(--bg-alt)', borderRadius: 12, padding: '10px 12px', textAlign: 'center' }}>
+                  <div style={{ fontSize: 18, fontWeight: 900, color: 'var(--text)' }}>{v}</div>
+                  <div style={{ fontSize: 10.5, color: 'var(--muted)', fontWeight: 700, marginTop: 2 }}>{l}</div>
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+          <div className="card">
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 14 }}>
+              <h3 style={{ fontWeight: 900, fontSize: 15, color: 'var(--text)' }}>Шалгалтын амжилт</h3>
+              <Link href="/exams" style={{ fontSize: 12, color: 'var(--purple)', fontWeight: 700, textDecoration: 'none' }}>Бүгдийг харах</Link>
+            </div>
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
+              {[
+                ['🎓', 'Хадгалсан', `${examCount}`, '#a855f7'],
+                ['✅', 'Нийт өгсөн', `${attemptCount}`, '#38bdf8'],
+                ['🏆', 'Шилдэг оноо', bestScore != null ? `${bestScore}%` : '—', '#22c55e'],
+                ['🎯', 'Сүүлийн оноо', latestAttempt ? `${latestAttempt.scorePct}%` : '—', '#ef4444'],
+              ].map(([ic, n, v, c], i) => (
+                <Link key={i} href="/exams" style={{ textDecoration: 'none', background: `${c}12`, border: `1.5px solid ${c}28`, borderRadius: 12, padding: '12px', textAlign: 'center' }}>
+                  <div style={{ fontSize: 20 }}>{ic}</div>
+                  <div style={{ fontSize: 15, fontWeight: 900, color: 'var(--text)', marginTop: 4 }}>{v}</div>
+                  <div style={{ fontSize: 11, fontWeight: 700, color: 'var(--muted)', marginTop: 1 }}>{n}</div>
+                </Link>
+              ))}
+            </div>
+          </div>
+
+          <div className="card">
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 14 }}>
+              <h3 style={{ fontWeight: 900, fontSize: 15, color: 'var(--text)' }}>Найзууд</h3>
+              <Link href="/leaderboard" style={{ fontSize: 12, color: 'var(--purple)', fontWeight: 700, textDecoration: 'none' }}>Бүгдийг харах</Link>
+            </div>
+            {lb.length === 0 ? <p style={{ fontSize: 13, color: 'var(--muted)', textAlign: 'center', padding: '10px 0' }}>Өгөгдөл байхгүй</p>
+            : lb.map((e, i) => {
+              const isMe = e.id === user.id;
+              return (
+                <div key={e.id || i} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '8px', borderRadius: 10, marginBottom: 3, background: isMe ? 'var(--purple-light)' : 'transparent' }}>
+                  <span style={{ width: 18, fontWeight: 800, color: 'var(--muted)', fontSize: 13 }}>{i + 1}</span>
+                  <div style={{ width: 30, height: 30, borderRadius: '50%', background: 'var(--purple-light)', border: '1.5px solid var(--purple-mid)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 15 }}>{e.avatarEmoji || e.username?.[0]?.toUpperCase()}</div>
+                  <span style={{ flex: 1, fontWeight: 700, fontSize: 13, color: isMe ? 'var(--purple)' : 'var(--text)' }}>{e.username}{isMe ? ' (та)' : ''}</span>
+                  <span style={{ fontWeight: 800, fontSize: 12.5, color: 'var(--purple)' }}>{(e.xp || 0).toLocaleString()} XP</span>
+                </div>
+              );
+            })}
+          </div>
         </div>
       </div>
 
@@ -351,11 +496,20 @@ export default function ProfilePage() {
           </div>
         </div>
       )}
+
+      {goalEditing && (
+        <GoalSettingsModal
+          initial={goal}
+          onSaved={() => { setGoalEditing(false); load(); }}
+          onCancel={() => setGoalEditing(false)}
+        />
+      )}
     </div>
   );
 }
 
 function LineChart({ data }) {
+  if (!data || data.length < 2) return null;
   const w = 320, h = 130, pad = 24;
   const max = Math.max(...data, 1), min = Math.min(...data, 0);
   const range = Math.max(max - min, 1);

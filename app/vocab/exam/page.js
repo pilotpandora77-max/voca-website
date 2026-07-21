@@ -3,6 +3,7 @@ import { useState, useEffect, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/lib/auth';
 import api from '@/lib/api';
+import useStudyPing from '@/lib/useStudyPing';
 import { shuffle, FlashQ, ChoiceQ, TypeQ, MatchQ } from '@/components/exercises/WordQuestions';
 
 const DEFAULT_GROUP = 'Ерөнхий';
@@ -63,6 +64,8 @@ export default function VocabExamPage() {
   const [examXp, setExamXp]     = useState(null);
   const startRef = useRef(0);
   const timerRef = useRef(null);
+
+  useStudyPing(started && !done);
 
   useEffect(() => {
     if (!authLoad && !user) router.push('/login');

@@ -4,6 +4,7 @@ import { useRouter, useParams } from 'next/navigation';
 import { useAuth } from '@/lib/auth';
 import { useLang } from '@/lib/LangContext';
 import api from '@/lib/api';
+import useStudyPing from '@/lib/useStudyPing';
 import { shuffle, FlashQ, ChoiceQ, TypeQ, FillBlankQ, PronounceQ } from '@/components/exercises/WordQuestions';
 import { examTypeMeta } from '@/lib/examTypes';
 
@@ -52,6 +53,8 @@ export default function ExamTakePage() {
   const [result, setResult]     = useState(null);
   const [examXp, setExamXp]     = useState(null);
   const startRef = useRef(0);
+
+  useStudyPing(phase === 'running');
 
   useEffect(() => {
     if (!authLoad && !user) router.push('/login');

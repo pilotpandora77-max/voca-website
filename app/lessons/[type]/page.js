@@ -5,6 +5,7 @@ import Link from 'next/link';
 import { useAuth } from '@/lib/auth';
 import { useLang } from '@/lib/LangContext';
 import api from '@/lib/api';
+import useStudyPing from '@/lib/useStudyPing';
 import { shuffle, FlashQ, ChoiceQ, TypeQ } from '@/components/exercises/WordQuestions';
 import FillBlankGame from '@/components/exercises/FillBlankGame';
 import PronounceGame from '@/components/exercises/PronounceGame';
@@ -45,6 +46,8 @@ function LessonPracticeInner() {
   const [wrong, setWrong]       = useState(0);
   const [done, setDone]         = useState(false);
   const [examXp, setExamXp]     = useState(null);
+
+  useStudyPing(!authLoad && !loading && !!user && !done);
 
   useEffect(() => {
     if (!authLoad && !user) router.push('/login');
