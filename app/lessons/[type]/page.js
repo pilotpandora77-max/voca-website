@@ -1,6 +1,6 @@
 'use client';
-import { useState, useEffect } from 'react';
-import { useRouter, useParams } from 'next/navigation';
+import { useState, useEffect, Suspense } from 'react';
+import { useRouter, useParams, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import { useAuth } from '@/lib/auth';
 import { useLang } from '@/lib/LangContext';
@@ -24,12 +24,15 @@ function norm(w) {
   return { ...w, front: w.word, back: w.meaning, hint: w.reading };
 }
 
-export default function LessonPracticePage() {
+function LessonPracticeInner() {
   const { user, loading: authLoad } = useAuth();
   const { lang } = useLang();
   const router = useRouter();
   const { type } = useParams();
+  const searchParams = useSearchParams();
+  const group = searchParams.get('group'); // фолдэрийн нэр — заавал биш, байвал зөвхөн тэр фолдэрийн үгээр шалгана
   const meta = TYPE_META[type];
+  const exitHref = group ? '/vocab' : '/lessons';
 
   const [allWords, setAllWords] = useState([]);
   const [loading, setLoading]   = useState(true);
@@ -51,12 +54,13 @@ export default function LessonPracticePage() {
       // дасгал хийх боломжгүй болно (жишээ нь: zh курс сонгоотой атлаа зөвхөн
       // en үг нэмсэн бол хоосон харагдана).
       api.get('/api/words').then(({ data }) => {
-        const words = Array.isArray(data) ? data : [];
+        const all = Array.isArray(data) ? data : [];
+        const words = group ? all.filter(w => (w.group || 'Ерөнхий') === group) : all;
         setAllWords(words);
         setPool(shuffle(words).slice(0, SESSION_SIZE));
       }).catch(() => {}).finally(() => setLoading(false));
     }
-  }, [authLoad, user, lang]);
+  }, [authLoad, user, lang, group]);
 
   useEffect(() => {
     if (!done) return;
@@ -84,8 +88,8 @@ export default function LessonPracticePage() {
     return (
       <div style={{ maxWidth: 480, margin: '80px auto', padding: '0 24px', textAlign: 'center' }}>
         <div style={{ fontSize: 48, marginBottom: 14 }}>📝</div>
-        <h2 style={{ fontWeight: 900, fontSize: 18, color: 'var(--text)', marginBottom: 8 }}>Эхлээд үг нэмээрэй</h2>
-        <p style={{ color: 'var(--muted)', fontSize: 13.5, marginBottom: 20 }}>Дасгал хийхийн тулд хамгийн багадаа 5 үг "Үгс" хуудсанд нэмсэн байх шаардлагатай.</p>
+        <h2 style={{ fontWeight: 900, fontSize: 18, color: 'var(--text)', marginBottom: 8 }}>{group ? `"${group}" фолдэрт үг цөөн байна` : 'Эхлээд үг нэмээрэй'}</h2>
+        <p style={{ color: 'var(--muted)', fontSize: 13.5, marginBottom: 20 }}>Дасгал хийхийн тулд {group ? 'энэ фолдэрт' : '"Үгс" хуудсанд'} хамгийн багадаа 5 үг нэмсэн байх шаардлагатай.</p>
         <Link href="/vocab" className="btn btn-purple" style={{ textDecoration: 'none' }}>Үгс хуудас руу →</Link>
       </div>
     );
@@ -95,7 +99,7 @@ export default function LessonPracticePage() {
     const total = known + wrong || pool.length;
     return (
       <div style={{ maxWidth: 480, margin: '0 auto', padding: '28px 24px 48px' }}>
-        <Result score={known} total={total} onExit={() => router.push('/lessons')} onRetry={retry} exitLabel="← Буцах" />
+        <Result score={known} total={total} onExit={() => router.push(exitHref)} onRetry={retry} exitLabel="← Буцах" />
         {!!examXp?.xp && (
           <div style={{ textAlign: 'center', marginTop: 14 }}>
             <span style={{ background: 'var(--purple-light)', color: 'var(--purple-dark)', borderRadius: 100, padding: '9px 16px', fontWeight: 800, fontSize: 13.5, display: 'inline-block' }}>
@@ -113,10 +117,10 @@ export default function LessonPracticePage() {
     const speechLang = lang === 'en' ? 'en-US' : 'zh-CN';
     return (
       <div style={{ maxWidth: 560, margin: '0 auto', padding: '20px 24px 40px' }}>
-        <Header meta={meta} onExit={() => router.push('/lessons')} />
+        <Header meta={meta} group={group} onExit={() => router.push(exitHref)} />
         {type === 'fill'
-          ? <FillBlankGame words={normPool} onExit={() => router.push('/lessons')} exitLabel="← Буцах" />
-          : <PronounceGame words={normPool} onExit={() => router.push('/lessons')} speechLang={speechLang} exitLabel="← Буцах" />}
+          ? <FillBlankGame words={normPool} onExit={() => router.push(exitHref)} exitLabel="← Буцах" />
+          : <PronounceGame words={normPool} onExit={() => router.push(exitHref)} speechLang={speechLang} exitLabel="← Буцах" />}
       </div>
     );
   }
@@ -125,7 +129,7 @@ export default function LessonPracticePage() {
   const cur = pool[idx];
   return (
     <div style={{ maxWidth: 560, margin: '0 auto', padding: '20px 24px 40px' }}>
-      <Header meta={meta} onExit={() => router.push('/lessons')} idx={idx} total={pool.length} />
+      <Header meta={meta} group={group} onExit={() => router.push(exitHref)} idx={idx} total={pool.length} />
       {type === 'flashcard' && <FlashQ word={cur} revealed={revealed} onReveal={() => setRevealed(true)} onAnswer={answer} />}
       {type === 'choice'    && <ChoiceQ word={cur} all={allWords} field="meaning" prompt="Энэ үгийн утга юу вэ?" picked={picked} setPicked={setPicked} onNext={answer} />}
       {type === 'listen'    && <ChoiceQ word={cur} all={allWords} field="word" prompt="Дуу сонсоод зөв хариултыг сонгоно уу." listen picked={picked} setPicked={setPicked} onNext={answer} />}
@@ -134,12 +138,20 @@ export default function LessonPracticePage() {
   );
 }
 
-function Header({ meta, onExit, idx, total }) {
+export default function LessonPracticePage() {
+  return (
+    <Suspense fallback={null}>
+      <LessonPracticeInner />
+    </Suspense>
+  );
+}
+
+function Header({ meta, group, onExit, idx, total }) {
   return (
     <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 16 }}>
       <button onClick={onExit} style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: 22, color: 'var(--text)', fontFamily: 'inherit' }}>✕</button>
       <div style={{ textAlign: 'center' }}>
-        <div style={{ fontWeight: 900, fontSize: 15, color: 'var(--text)' }}>{meta.icon} {meta.title}</div>
+        <div style={{ fontWeight: 900, fontSize: 15, color: 'var(--text)' }}>{meta.icon} {meta.title}{group && <span style={{ color: 'var(--muted)', fontWeight: 700 }}> · {group}</span>}</div>
         {total != null && <div style={{ fontSize: 12, color: 'var(--muted)', fontWeight: 700 }}>{idx + 1} / {total}</div>}
       </div>
       <div style={{ width: 22 }} />
