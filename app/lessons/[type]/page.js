@@ -57,7 +57,10 @@ function LessonPracticeInner() {
         const all = Array.isArray(data) ? data : [];
         const words = group ? all.filter(w => (w.group || 'Ерөнхий') === group) : all;
         setAllWords(words);
-        setPool(shuffle(words).slice(0, SESSION_SIZE));
+        // Фолдэрөөр шалгах үед тухайн фолдэрийн БҮХ үгээр шалгана (хэрэглэгч
+        // өөрөө сонгосон, хязгаарлагдмал багц тул 15-д тасалдаггүй) — харин
+        // ерөнхий (бүх сан) дасгал бол SESSION_SIZE-аар хязгаарлагдсан хэвээр.
+        setPool(group ? shuffle(words) : shuffle(words).slice(0, SESSION_SIZE));
       }).catch(() => {}).finally(() => setLoading(false));
     }
   }, [authLoad, user, lang, group]);
@@ -69,7 +72,7 @@ function LessonPracticeInner() {
   }, [done]);
 
   function retry() {
-    setPool(shuffle(allWords).slice(0, SESSION_SIZE));
+    setPool(group ? shuffle(allWords) : shuffle(allWords).slice(0, SESSION_SIZE));
     setIdx(0); setKnown(0); setWrong(0); setDone(false); setExamXp(null);
     setRevealed(false); setPicked(null); setTyped('');
   }
