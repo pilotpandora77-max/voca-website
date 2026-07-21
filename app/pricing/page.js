@@ -7,22 +7,27 @@ import PageHeader from '@/components/PageHeader';
 
 // Үнэ/нэр backend-ээс (GET /api/billing/status-ийн plans[]) амьдаар ирнэ — эдгээр нь
 // зөвхөн admin-аас засварлагдахгүй, UI-д зориулсан статик мэдээлэл.
+// wordLimit мөрийг энд хатуу бичихгүй — admin-аас засварласан амьд утгаас
+// (status.plans[].wordLimit) тооцоод доор нь features жагсаалтын эхэнд нэмнэ.
 const PLAN_META = [
   {
     id: 'free', period: '',
-    features: ['1,000 үг хүртэл хадгалах', 'Толь бичиг', 'Суралцах үндсэн статистик'],
+    features: ['Толь бичиг', 'Суралцах үндсэн статистик'],
   },
   {
     id: 'standard', period: '/сар',
-    features: ['1,000 үг хадгалах', 'Бүх хичээл, тоглоом', 'Толь бичиг', 'Нийтлэл харах'],
+    features: ['Бүх хичээл, тоглоом', 'Толь бичиг', 'Нийтлэл харах'],
   },
   {
     id: 'premium', period: '/сар', best: true,
-    features: ['♾️ Хязгааргүй үг хадгалах', '✍️ Пост нийтлэх', '💬 Группийн чат үүсгэх',
+    features: ['✍️ Пост нийтлэх', '💬 Группийн чат үүсгэх',
                '🤝 Найзуудтай болох', '💎 Premium badge', 'Рекламгүй орчин'],
   },
 ];
 function formatPrice(n) { return n === 0 ? '0₮' : `${n.toLocaleString('en-US')}₮`; }
+function wordLimitFeature(wordLimit) {
+  return wordLimit == null ? '♾️ Хязгааргүй үг хадгалах' : `${wordLimit.toLocaleString('en-US')} үг хүртэл хадгалах`;
+}
 
 const WHY = [
   { icon: '🔄', title: 'Уян хатан', desc: '30 хоног тутам шинэчлэгдэнэ, хүссэн үедээ цуцлах боломжтой.' },
@@ -81,7 +86,12 @@ export default function PricingPage() {
   const currentPlan = status?.plan || 'free';
   const plans = PLAN_META.map(meta => {
     const live = status?.plans?.find(p => p.id === meta.id);
-    return { ...meta, name: live?.name || meta.id, price: live ? formatPrice(live.price) : '···' };
+    return {
+      ...meta,
+      name: live?.name || meta.id,
+      price: live ? formatPrice(live.price) : '···',
+      features: [live ? wordLimitFeature(live.wordLimit) : 'Үг хадгалах', ...meta.features],
+    };
   });
 
   function closeModal() { setPayPlan(null); setInvoice(null); }

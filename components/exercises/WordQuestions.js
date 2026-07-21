@@ -1,5 +1,5 @@
 'use client';
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useMemo, useRef } from 'react';
 
 export function shuffle(a) { a = [...a]; for (let i = a.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [a[i], a[j]] = [a[j], a[i]]; } return a; }
 
@@ -116,6 +116,151 @@ export function TypeQ({ word, typed, setTyped, revealed, onCheck, onNext }) {
       ) : (
         <button className="btn btn-purple" onClick={() => onNext(correct)} style={{ width: '100%', padding: '15px', marginTop: 18 }}>Дараагийн асуулт</button>
       )}
+    </div>
+  );
+}
+
+// Дан-асуултын хувилбар (FillBlankGame.js-ийн цөмтэй адил, "Шалгалт" системийн
+// navigator-grid чөлөөт шилжилтэд зориулав). Эцэг нь `key={word.id}`-ээр
+// remount хийж асуулт солигдох бүрт дотоод төлөвийг цэвэрлэнэ.
+export function FillBlankQ({ word, onNext }) {
+  const [q] = useState(() => {
+    const chars = [...word.front];
+    const n = chars.length;
+    const maskCount = n <= 1 ? 1 : Math.min(n - 1, Math.max(1, Math.round(n * 0.35)));
+    const masked = new Set(shuffle(chars.map((_, i) => i)).slice(0, maskCount));
+    return { ...word, chars, masked };
+  });
+  const [vals, setVals] = useState(() => q.chars.map((c, i) => (q.masked.has(i) ? '' : c)));
+  const [conf, setConf] = useState(false);
+  const inputRefs = useRef([]);
+
+  useEffect(() => {
+    const firstMasked = q.chars.findIndex((_, i) => q.masked.has(i));
+    setTimeout(() => inputRefs.current[firstMasked]?.focus(), 50);
+  }, []);
+
+  function onChar(i, v) {
+    if (conf) return;
+    const c = v.slice(-1);
+    setVals(vs => vs.map((x, j) => (j === i ? c : x)));
+    if (c) {
+      const maskedIdxs = q.chars.map((_, j) => j).filter(j => q.masked.has(j));
+      const nextIdx = maskedIdxs[maskedIdxs.indexOf(i) + 1];
+      if (nextIdx !== undefined) inputRefs.current[nextIdx]?.focus();
+    }
+  }
+  const correct = vals.join('').toLowerCase() === q.front.toLowerCase();
+  const allFilled = vals.length > 0 && vals.every(v => v);
+
+  return (
+    <div>
+      <div style={{ textAlign: 'center', padding: '24px 16px 20px' }}>
+        <div style={{ fontSize: 22, fontWeight: 800, color: 'var(--text)' }}>{q.back}</div>
+        {q.hint && <div style={{ color: 'var(--purple)', fontWeight: 700, fontSize: 15, marginTop: 4 }}>{q.hint}</div>}
+        <div style={{ fontSize: 13, color: 'var(--muted)', fontWeight: 700, marginTop: 10 }}>Дутуу үлдсэн үсгийг бичиж гүйцээ</div>
+      </div>
+      <div style={{ display: 'flex', justifyContent: 'center', gap: 8, flexWrap: 'wrap', marginBottom: 18 }}>
+        {q.chars.map((c, i) => q.masked.has(i) ? (
+          <input key={i} ref={el => inputRefs.current[i] = el} value={vals[i] || ''} disabled={conf}
+            onChange={e => onChar(i, e.target.value)} maxLength={1}
+            style={{
+              width: 44, height: 52, textAlign: 'center', fontSize: 22, fontWeight: 900, borderRadius: 10,
+              border: `2px solid ${conf ? (correct ? 'var(--green)' : 'var(--red)') : 'var(--purple-mid)'}`,
+              background: conf ? (correct ? 'var(--green-bg)' : 'var(--red-light)') : 'var(--bg-alt)',
+              color: 'var(--text)',
+            }} />
+        ) : (
+          <div key={i} style={{ width: 44, height: 52, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 22, fontWeight: 900, color: 'var(--text)' }}>{c}</div>
+        ))}
+      </div>
+      {conf && !correct && (
+        <div style={{ textAlign: 'center', fontWeight: 800, color: 'var(--red)', marginBottom: 12 }}>Зөв хариулт: {q.front}</div>
+      )}
+      <button onClick={conf ? () => onNext(correct) : () => setConf(true)} disabled={!allFilled} className="btn btn-purple" style={{ width: '100%' }}>
+        {conf ? 'Дараах →' : 'Шалгах'}
+      </button>
+    </div>
+  );
+}
+
+function normalizeSpeech(s) {
+  return (s || '').trim().toLowerCase().replace(/[.,!?;:'"()]/g, '').replace(/\s+/g, ' ');
+}
+
+// Дан-асуултын хувилбар (PronounceGame.js-ийн цөмтэй адил). Тайлбар FillBlankQ-той
+// ижил — эцэг `key={word.id}`-ээр remount хийнэ. Алгасах товч энд байхгүй —
+// take-хуудасны ерөнхий "Алгасах" товч үүнийг хамарна.
+export function PronounceQ({ word, speechLang, onNext }) {
+  const [status, setStatus] = useState('idle'); // idle | listening | correct | wrong | error
+  const [heard, setHeard]   = useState('');
+  const [supported] = useState(() => typeof window !== 'undefined' && !!(window.SpeechRecognition || window.webkitSpeechRecognition));
+
+  function listen() {
+    if (status === 'listening') return;
+    const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+    const rec = new SR();
+    rec.lang = speechLang; rec.continuous = false; rec.interimResults = false;
+    rec.onstart = () => setStatus('listening');
+    rec.onresult = (e) => {
+      const transcript = e.results[0][0].transcript;
+      setHeard(transcript);
+      setStatus(normalizeSpeech(transcript) === normalizeSpeech(word.front) ? 'correct' : 'wrong');
+    };
+    rec.onerror = () => setStatus('error');
+    setHeard('');
+    rec.start();
+  }
+
+  if (!supported) return (
+    <div style={{ textAlign: 'center', padding: '48px 24px' }}>
+      <div style={{ fontSize: 48, marginBottom: 14 }}>🎤</div>
+      <h3 style={{ fontWeight: 800, color: 'var(--text)', marginBottom: 8 }}>Энэ дасгал Chrome/Edge хөтчид л ажилладаг</h3>
+      <p style={{ color: 'var(--muted)', fontSize: 13 }}>Таны хөтөч дуу хүлээн авах (Speech Recognition) технологи дэмждэггүй байна.</p>
+    </div>
+  );
+
+  return (
+    <div>
+      <div style={{ textAlign: 'center', padding: '30px 16px 24px' }}>
+        <div style={{ fontSize: 64, fontWeight: 900, color: 'var(--text)', lineHeight: 1 }}>{word.front}</div>
+        {word.hint && <div style={{ color: 'var(--purple)', fontWeight: 700, fontSize: 18, marginTop: 8 }}>{word.hint}</div>}
+        <div style={{ fontSize: 13, color: 'var(--muted)', fontWeight: 700, marginTop: 14 }}>Энэ үгийг чангаар дуудаарай</div>
+      </div>
+      <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 14 }}>
+        <button onClick={listen} disabled={status === 'listening'} style={{
+          width: 96, height: 96, borderRadius: '50%', border: 'none', cursor: status === 'listening' ? 'default' : 'pointer',
+          background: status === 'listening' ? 'linear-gradient(145deg,#EF4444,#DC2626)' : 'linear-gradient(145deg,#7C3AED,#6D28D9)',
+          color: '#fff', fontSize: 40, boxShadow: '0 8px 24px rgba(124,58,237,0.4)',
+        }}>🎤</button>
+        <div style={{ fontSize: 13, fontWeight: 700, color: 'var(--muted)' }}>
+          {status === 'idle' && 'Дарж дуудаарай'}
+          {status === 'listening' && 'Сонсож байна...'}
+        </div>
+        {(status === 'correct' || status === 'wrong') && (
+          <div style={{
+            width: '100%', padding: '14px 16px', borderRadius: 12, fontWeight: 800, textAlign: 'center',
+            background: status === 'correct' ? 'var(--green-bg)' : 'var(--red-light)',
+            border: `2px solid ${status === 'correct' ? 'var(--green)' : 'var(--red)'}`,
+            color: status === 'correct' ? 'var(--green-dark)' : 'var(--red)',
+          }}>
+            {status === 'correct' ? '🎉 Зөв дуудлаа!' : <>Сонссон нь: "{heard}" — дахин оролдоно уу</>}
+          </div>
+        )}
+        {status === 'error' && (
+          <div style={{ width: '100%', padding: '14px 16px', borderRadius: 12, fontWeight: 700, textAlign: 'center', background: 'var(--bg-alt)', color: 'var(--muted)' }}>
+            Сонсож чадсангүй — дахин дарж оролдоно уу
+          </div>
+        )}
+        <div style={{ display: 'flex', gap: 10, width: '100%' }}>
+          {(status === 'error' || status === 'wrong') && (
+            <button onClick={listen} className="btn btn-ghost" style={{ flex: 1 }}>🔄 Дахин оролдох</button>
+          )}
+          {(status === 'correct' || status === 'wrong') && (
+            <button onClick={() => onNext(status === 'correct')} className="btn btn-purple" style={{ flex: 1 }}>Дараах →</button>
+          )}
+        </div>
+      </div>
     </div>
   );
 }
