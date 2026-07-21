@@ -145,8 +145,8 @@ export default function ProfilePage() {
               <span style={{ color: 'var(--text-sub)', fontSize: 13 }}>🇲🇳 Монгол улс</span>
             </div>
             <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 10 }}>
-              <span style={{ color: 'var(--muted)', fontSize: 11.5, fontFamily: 'monospace' }}>ID: {user.id}</span>
-              <button onClick={copyId} title="ID хуулах" style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: 11.5, color: 'var(--purple)', fontWeight: 700, fontFamily: 'inherit', padding: 0 }}>
+              <span title={user.id} style={{ color: 'var(--muted)', fontSize: 11.5, fontFamily: 'monospace' }}>ID: {(user.id || '').slice(0, 8)}</span>
+              <button onClick={copyId} title="Бүтэн ID хуулах" style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: 11.5, color: 'var(--purple)', fontWeight: 700, fontFamily: 'inherit', padding: 0 }}>
                 {idCopied ? 'Хуулагдлаа ✓' : '📋 Хуулах'}
               </button>
             </div>
