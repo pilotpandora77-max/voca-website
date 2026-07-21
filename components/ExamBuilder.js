@@ -6,12 +6,12 @@ import { EXAM_TYPES, TIME_LIMIT_OPTIONS, QUESTION_COUNT_OPTIONS } from '@/lib/ex
 const DEFAULT_GROUP = 'Ерөнхий';
 
 // Шинэ шалгалт үүсгэх / засах хэлбэржүүлэгч (create болон edit хоёуланд хуваалцана).
-export default function ExamBuilder({ mode, initialExam, onSaved, onCancel }) {
+export default function ExamBuilder({ mode, initialExam, initialFolder, onSaved, onCancel }) {
   const [allWords, setAllWords] = useState([]);
   const [wordsLoading, setWordsLoading] = useState(true);
-  const [title, setTitle] = useState(initialExam?.title || '');
+  const [title, setTitle] = useState(initialExam?.title || (initialFolder ? `${initialFolder} шалгалт` : ''));
   const [selectedIds, setSelectedIds] = useState(() => new Set(initialExam?.wordIds || []));
-  const [folderFilter, setFolderFilter] = useState(null);
+  const [folderFilter, setFolderFilter] = useState(initialFolder || null);
   const [search, setSearch] = useState('');
   const [types, setTypes] = useState(() => new Set(initialExam?.questionTypes?.length ? initialExam.questionTypes : EXAM_TYPES.map(t => t.key)));
   const [questionCount, setQuestionCount] = useState(initialExam?.questionCount || 10);
@@ -20,9 +20,18 @@ export default function ExamBuilder({ mode, initialExam, onSaved, onCancel }) {
   const [error, setError] = useState('');
 
   useEffect(() => {
-    api.get('/api/words').then(({ data }) => setAllWords(Array.isArray(data) ? data : []))
+    api.get('/api/words').then(({ data }) => {
+      const words = Array.isArray(data) ? data : [];
+      setAllWords(words);
+      // Фолдэрөөс шууд орж ирсэн бол тухайн фолдэрийн БҮХ үгийг урьдчилан сонгоно
+      // (хэрэглэгч цааш нь хүссэнээрээ нэмж/хасаж болно).
+      if (initialFolder && !initialExam) {
+        setSelectedIds(new Set(words.filter(w => (w.group || DEFAULT_GROUP) === initialFolder).map(w => w.id)));
+      }
+    })
       .catch(() => setError('Үгсийн жагсаалт татахад алдаа гарлаа'))
       .finally(() => setWordsLoading(false));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const folders = useMemo(() => {

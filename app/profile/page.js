@@ -35,6 +35,13 @@ export default function ProfilePage() {
   const [emailV, setEmailV] = useState('');
   const [saving, setSaving] = useState(false);
   const [photoPreview, setPhotoPreview] = useState(null); // data URI хэрэглэгч шинээр сонгосон бол
+  const [idCopied, setIdCopied] = useState(false);
+
+  function copyId() {
+    navigator.clipboard?.writeText(user.id);
+    setIdCopied(true);
+    setTimeout(() => setIdCopied(false), 1500);
+  }
 
   // Профайл нэвтрэлт бүрд нэг удаа ачаалдаг user context-ыг л ашигладаг тул
   // мобайл апп дээр солисон зураг гэх мэт өөрчлөлт хуудсыг дахин ачаалахгүйгээр
@@ -133,9 +140,15 @@ export default function ProfilePage() {
               <span style={{ fontSize: 28, fontWeight: 900, color: 'var(--text)' }}>{user.username}</span>
               <span style={{ background: 'linear-gradient(135deg,#a855f7,#7c3aed)', color: '#fff', borderRadius: 8, padding: '3px 10px', fontSize: 12, fontWeight: 900 }}>Pro</span>
             </div>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 14, marginBottom: 10 }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 14, marginBottom: 6, flexWrap: 'wrap' }}>
               <span style={{ color: 'var(--purple)', fontWeight: 700, fontSize: 14 }}>@{(user.username || '').toLowerCase().replace(/\s+/g, '.')}</span>
               <span style={{ color: 'var(--text-sub)', fontSize: 13 }}>🇲🇳 Монгол улс</span>
+            </div>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 10 }}>
+              <span style={{ color: 'var(--muted)', fontSize: 11.5, fontFamily: 'monospace' }}>ID: {user.id}</span>
+              <button onClick={copyId} title="ID хуулах" style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: 11.5, color: 'var(--purple)', fontWeight: 700, fontFamily: 'inherit', padding: 0 }}>
+                {idCopied ? 'Хуулагдлаа ✓' : '📋 Хуулах'}
+              </button>
             </div>
             <div style={{ display: 'flex', alignItems: 'center', gap: 12, maxWidth: 420, marginBottom: 4 }}>
               <span style={{ background: 'var(--purple)', color: '#fff', borderRadius: 8, padding: '4px 12px', fontWeight: 800, fontSize: 13, whiteSpace: 'nowrap' }}>Level {lvl.level}</span>

@@ -1,6 +1,6 @@
 'use client';
-import { useState, useEffect } from 'react';
-import { useRouter } from 'next/navigation';
+import { useState, useEffect, Suspense } from 'react';
+import { useRouter, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import { useAuth } from '@/lib/auth';
 import api from '@/lib/api';
@@ -8,12 +8,14 @@ import PageHeader from '@/components/PageHeader';
 import ExamBuilder from '@/components/ExamBuilder';
 import { examTypeMeta } from '@/lib/examTypes';
 
-export default function ExamsPage() {
+function ExamsPageInner() {
   const { user, loading: authLoad } = useAuth();
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const folder = searchParams.get('folder'); // фолдэрийн нэр — байвал шууд тэр фолдэрөөр эхэлсэн бүтээгч нээнэ
   const [exams, setExams]   = useState([]);
   const [loading, setLoading] = useState(true);
-  const [mode, setMode]     = useState('list'); // list | builder
+  const [mode, setMode]     = useState(folder ? 'builder' : 'list'); // list | builder
   const [streak, setStreak] = useState(0);
 
   function load() {
@@ -33,9 +35,9 @@ export default function ExamsPage() {
   if (mode === 'builder') {
     return (
       <div style={{ paddingBottom: 40 }}>
-        <PageHeader title="🎓 Шинэ шалгалт" subtitle="Өөрийн үгсээр нэртэй шалгалт үүсгэ." streak={streak} />
+        <PageHeader title="🎓 Шинэ шалгалт" subtitle={folder ? `"${folder}" фолдэрийн үгсээр шалгалт үүсгэ.` : 'Өөрийн үгсээр нэртэй шалгалт үүсгэ.'} streak={streak} />
         <div style={{ padding: '0 28px' }}>
-          <ExamBuilder mode="create" onSaved={exam => router.push(`/exams/${exam.id}`)} onCancel={() => setMode('list')} />
+          <ExamBuilder mode="create" initialFolder={folder} onSaved={exam => router.push(`/exams/${exam.id}`)} onCancel={() => (folder ? router.push('/exams') : setMode('list'))} />
         </div>
       </div>
     );
@@ -76,5 +78,13 @@ export default function ExamsPage() {
         )}
       </div>
     </div>
+  );
+}
+
+export default function ExamsPage() {
+  return (
+    <Suspense fallback={null}>
+      <ExamsPageInner />
+    </Suspense>
   );
 }

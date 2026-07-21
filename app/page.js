@@ -18,8 +18,8 @@ const DAILY_GOALS = [
 
 const QUICK_ACTIONS = [
   { icon: '🃏', label: 'Давтах', sub: 'Карт давтах', href: '/vocab/practice', color: '#7C3AED', bg: '#EDE9FF' },
-  { icon: '🎮', label: 'Тоглоом', sub: 'Суралцаж тоглоё', href: '/games', color: '#10B981', bg: '#ECFDF5' },
-  { icon: '🎓', label: 'Хичээл', sub: 'Сэдвээр суралцах', href: '/lessons', color: '#3B82F6', bg: '#EFF6FF' },
+  { icon: '🎓', label: 'Шалгалт', sub: 'Нэртэй шалгалт өгөх', href: '/exams', color: '#10B981', bg: '#ECFDF5' },
+  { icon: '🎯', label: 'Дасгал', sub: 'Үгээрээ дасгал хий', href: '/lessons', color: '#3B82F6', bg: '#EFF6FF' },
   { icon: '📖', label: 'Толь', sub: 'Хайх & олох', href: '/dictionary', color: '#F59E0B', bg: '#FEF3C7' },
 ];
 
@@ -405,36 +405,6 @@ export default function HomePage() {
               })}
             </div>
           </div>
-        </div>
-
-        {/* ── Bottom banner ── */}
-        <div style={{
-          marginTop: 16, borderRadius: 20, padding: '24px 32px',
-          background: 'linear-gradient(135deg, #EDE9FF 0%, #F5F0FF 100%)',
-          border: '1.5px solid var(--purple-mid)',
-          display: 'flex', alignItems: 'center', gap: 24, position: 'relative', overflow: 'hidden',
-        }}>
-          {/* Decorative illustrations */}
-          <div style={{ fontSize: 64, flexShrink: 0, filter: 'drop-shadow(0 4px 8px rgba(124,58,237,0.2))' }}>📚</div>
-          <div style={{ fontSize: 48, flexShrink: 0, filter: 'drop-shadow(0 4px 8px rgba(124,58,237,0.15))' }}>🚀</div>
-          <div style={{ flex: 1 }}>
-            <div style={{ fontWeight: 900, fontSize: 18, color: 'var(--purple)', marginBottom: 4 }}>
-              Өөрийгөө хөгжүүлэх аялалдаа
-            </div>
-            <div style={{ fontSize: 13, color: 'var(--text-sub)', fontWeight: 500, marginBottom: 12 }}>
-              Voca-тай хамт өдөр бүр бага багаар ахиц гарга!
-            </div>
-            <div style={{ display: 'flex', gap: 16 }}>
-              {[['⚡', 'Тогтмол бай'], ['⭐', 'Өдөр бүр сур'], ['🎯', 'Зорилгодоо хүр']].map(([icon, text]) => (
-                <div key={text} style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 12, fontWeight: 700, color: 'var(--text-sub)' }}>
-                  <span>{icon}</span> {text}
-                </div>
-              ))}
-            </div>
-          </div>
-          <button className="btn btn-purple" onClick={() => router.push('/vocab/practice')} style={{ flexShrink: 0, padding: '12px 24px', fontSize: 14 }}>
-            Эхлэх →
-          </button>
         </div>
 
       </div>

@@ -27,14 +27,6 @@ const SORT_OPTIONS = ['А-Я', 'Я-А', 'Шинэ нэмэгдсэн', 'Хууч
 const LEVEL_OPTIONS = ['Бүгд', 'HSK 1', 'HSK 2', 'HSK 3', 'HSK 4', 'HSK 5', 'HSK 6'];
 const GROUP_COLORS = ['#7C3AED', '#EC4899', '#10B981', '#F59E0B', '#3B82F6', '#EF4444', '#14B8A6', '#8B5CF6'];
 const DEFAULT_GROUP = 'Ерөнхий';
-const EXAM_TYPES = [
-  { type: 'flashcard', icon: '🃏', title: 'Флаш карт' },
-  { type: 'choice',    icon: '✅', title: 'Сонголттой тест' },
-  { type: 'fill',      icon: '🅰️', title: 'Дутуу үг нөхөх' },
-  { type: 'pronounce', icon: '🎙️', title: 'Дуудлага дасгал' },
-  { type: 'listen',    icon: '🎧', title: 'Сонсох дасгал' },
-  { type: 'writing',   icon: '✏️', title: 'Бичих дасгал' },
-];
 
 function hashColor(name) {
   let h = 0; for (const c of name) h = (h * 31 + c.charCodeAt(0)) >>> 0;
@@ -95,7 +87,6 @@ export default function VocabPage() {
   const [groupMeta, setGroupMeta] = useState({});      // { [name]: { color, public } }
   const [legacyGroups, setLegacyGroups] = useState(null); // хуучин wordIds-based өгөгдөл — нэг удаагийн шилжилтэд
   const [activeGroup, setActiveGr]= useState(null);    // фолдэрийн нэр (string) | null
-  const [examMenuOpen, setExamMenuOpen] = useState(false);
   const [showGroupModal, setShowGroupModal] = useState(false);
   const [editingGroupName, setEditingGroupName] = useState(null); // null = creating, else editing this name
   const [newGroupName, setNewGroupName] = useState('');
@@ -525,31 +516,7 @@ export default function VocabPage() {
                 </div>
                 <button onClick={() => { setAtgSearch(''); setAddToGroupName(g.name); }} className="btn btn-purple" style={{ padding: '8px 16px', fontSize: 12.5 }}>➕ Үг нэмэх</button>
                 {g.words.length >= 4 && (
-                  <div style={{ position: 'relative' }}>
-                    <button onClick={() => setExamMenuOpen(v => !v)} className="btn btn-ghost" style={{ padding: '8px 16px', fontSize: 12.5 }}>🎓 Шалгалт</button>
-                    {examMenuOpen && (
-                      <>
-                        <div onClick={() => setExamMenuOpen(false)} style={{ position: 'fixed', inset: 0, zIndex: 40 }} />
-                        <div style={{
-                          position: 'absolute', top: '100%', left: 0, marginTop: 6, zIndex: 41, minWidth: 190,
-                          background: '#fff', border: '1.5px solid var(--border)', borderRadius: 12,
-                          boxShadow: '0 8px 24px rgba(0,0,0,0.12)', padding: 6,
-                        }}>
-                          {EXAM_TYPES.map(e => (
-                            <button key={e.type} onClick={() => { setExamMenuOpen(false); router.push(`/lessons/${e.type}?group=${encodeURIComponent(g.name)}`); }} style={{
-                              display: 'flex', alignItems: 'center', gap: 8, width: '100%', padding: '9px 10px', borderRadius: 8,
-                              border: 'none', background: 'none', cursor: 'pointer', fontFamily: 'inherit', fontSize: 13, fontWeight: 700,
-                              color: 'var(--text)', textAlign: 'left',
-                            }}
-                            onMouseEnter={e2 => { e2.currentTarget.style.background = 'var(--bg-alt)'; }}
-                            onMouseLeave={e2 => { e2.currentTarget.style.background = 'none'; }}>
-                              <span>{e.icon}</span> {e.title}
-                            </button>
-                          ))}
-                        </div>
-                      </>
-                    )}
-                  </div>
+                  <button onClick={() => router.push(`/exams?folder=${encodeURIComponent(g.name)}`)} className="btn btn-ghost" style={{ padding: '8px 16px', fontSize: 12.5 }}>🎓 Шалгалт</button>
                 )}
                 {g.words.length > 0 && (
                   <a href={`/vocab/print?group=${encodeURIComponent(g.name)}`} target="_blank" rel="noopener noreferrer"
