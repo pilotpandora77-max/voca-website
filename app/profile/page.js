@@ -36,6 +36,7 @@ export default function ProfilePage() {
   const [saving, setSaving] = useState(false);
   const [photoPreview, setPhotoPreview] = useState(null); // data URI хэрэглэгч шинээр сонгосон бол
   const [idCopied, setIdCopied] = useState(false);
+  const [exams, setExams] = useState([]);
 
   function copyId() {
     navigator.clipboard?.writeText(user.id);
@@ -60,13 +61,15 @@ export default function ProfilePage() {
   async function load() {
     setLoad(true);
     try {
-      const [st, str, leader] = await Promise.all([
+      const [st, str, leader, ex] = await Promise.all([
         api.get('/api/stats').catch(() => ({ data: {} })),
         api.get('/api/streak').catch(() => ({ data: {} })),
         api.get('/api/stats/leaderboard').catch(() => ({ data: [] })),
+        api.get('/api/exams').catch(() => ({ data: [] })),
       ]);
       setStats({ ...st.data, streak: str.data.streak || 0 });
       setLb((leader.data || []).slice(0, 5));
+      setExams(Array.isArray(ex.data) ? ex.data : []);
     } catch {}
     setLoad(false);
   }
@@ -101,6 +104,11 @@ export default function ProfilePage() {
   const lvl = getLevel(xp);
   const pct = Math.min((lvl.current / lvl.needed) * 100, 100);
   const wordCount = stats?.wordCount || 0;
+  const examCount = exams.length;
+  const attemptCount = exams.reduce((s, e) => s + (e.attemptCount || 0), 0);
+  const bestScores = exams.map(e => e.bestScorePct).filter(v => v != null);
+  const bestScore = bestScores.length ? Math.max(...bestScores) : null;
+  const latestAttempt = exams.map(e => e.lastAttempt).filter(Boolean).sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt))[0];
   const knownCount = stats?.knownCount ?? Math.round(wordCount * 0.4);
   const dueCount = stats?.dueCount ?? stats?.reviewCount ?? 0;
   const daysLearned = stats?.daysLearned ?? stats?.streak ?? 0;
@@ -251,14 +259,20 @@ export default function ProfilePage() {
 
         <div className="card">
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 14 }}>
-            <h3 style={{ fontWeight: 900, fontSize: 15, color: 'var(--text)' }}>Тоглоомын амжилт</h3>
-            <Link href="/games" style={{ fontSize: 12, color: 'var(--purple)', fontWeight: 700, textDecoration: 'none' }}>Бүгдийг харах</Link>
+            <h3 style={{ fontWeight: 900, fontSize: 15, color: 'var(--text)' }}>Шалгалтын амжилт</h3>
+            <Link href="/exams" style={{ fontSize: 12, color: 'var(--purple)', fontWeight: 700, textDecoration: 'none' }}>Бүгдийг харах</Link>
           </div>
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
-            {[['🎯', 'Үг таах', '#a855f7'], ['⚡', 'Хурдтай хариулт', '#38bdf8'], ['🔗', 'Холбож сурах', '#22c55e'], ['🧠', 'Санамж', '#ef4444']].map(([ic, n, c], i) => (
-              <Link key={i} href="/games" style={{ textDecoration: 'none', background: `${c}12`, border: `1.5px solid ${c}28`, borderRadius: 12, padding: '12px', textAlign: 'center' }}>
+            {[
+              ['🎓', 'Хадгалсан', `${examCount}`, '#a855f7'],
+              ['✅', 'Нийт өгсөн', `${attemptCount}`, '#38bdf8'],
+              ['🏆', 'Шилдэг оноо', bestScore != null ? `${bestScore}%` : '—', '#22c55e'],
+              ['🎯', 'Сүүлийн оноо', latestAttempt ? `${latestAttempt.scorePct}%` : '—', '#ef4444'],
+            ].map(([ic, n, v, c], i) => (
+              <Link key={i} href="/exams" style={{ textDecoration: 'none', background: `${c}12`, border: `1.5px solid ${c}28`, borderRadius: 12, padding: '12px', textAlign: 'center' }}>
                 <div style={{ fontSize: 20 }}>{ic}</div>
-                <div style={{ fontSize: 11.5, fontWeight: 700, color: 'var(--text)', marginTop: 4 }}>{n}</div>
+                <div style={{ fontSize: 15, fontWeight: 900, color: 'var(--text)', marginTop: 4 }}>{v}</div>
+                <div style={{ fontSize: 11, fontWeight: 700, color: 'var(--muted)', marginTop: 1 }}>{n}</div>
               </Link>
             ))}
           </div>
