@@ -2,25 +2,21 @@
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/lib/auth';
-import api from '@/lib/api';
+import api, { uploadUrl } from '@/lib/api';
 import PageHeader from '@/components/PageHeader';
-import { getCourses } from '@/lib/courses';
 import { loadUserData } from '@/lib/userdata';
 import { useLang } from '@/lib/LangContext';
 
-// Хятад үг → {pinyin, mn} локал толь (курсын өгөгдлөөс)
-const ZH_LOOKUP = (() => {
-  const m = {};
-  try { getCourses('zh').flatMap(c => c.words).forEach(w => { if (w.target) m[w.target] = { reading: w.reading, mn: w.mn }; }); } catch {}
-  return m;
-})();
-
-// Англи үг → {ipa, mn} локал толь (курсын өгөгдлөөс)
-const EN_LOOKUP = (() => {
-  const m = {};
-  try { getCourses('en').flatMap(c => c.words).forEach(w => { if (w.target) m[w.target.toLowerCase()] = { reading: w.reading, mn: w.mn }; }); } catch {}
-  return m;
-})();
+const AI_LANGS = [
+  { code: 'en', flag: '🇬🇧', label: 'EN', wordLabel: 'Англи үг',     placeholder: 'ж: benevolent',  readingLabel: 'IPA дуудлага' },
+  { code: 'zh', flag: '🇨🇳', label: 'ZH', wordLabel: 'Хятад үг',     placeholder: 'ж: 你好',         readingLabel: 'Pinyin' },
+  { code: 'ja', flag: '🇯🇵', label: 'JA', wordLabel: 'Япон үг',      placeholder: 'ж: ありがとう',    readingLabel: 'Romaji' },
+  { code: 'ko', flag: '🇰🇷', label: 'KO', wordLabel: 'Солонгос үг', placeholder: 'ж: 안녕하세요',    readingLabel: 'Romanization' },
+];
+const EMPTY_NEW_WORD = {
+  front: '', back: '', hint: '', pos: '',
+  example: '', exampleMeaning: '', synonyms: [], antonyms: [], level: '', tags: [], audioUrl: null,
+};
 
 const TABS = ['Бүгд', 'Шинэ', 'Сурч байгаа', 'Давтах', 'Мэддэг болсон', 'Сагсархаг үг'];
 const SORT_OPTIONS = ['А-Я', 'Я-А', 'Шинэ нэмэгдсэн', 'Хуучин нэмэгдсэн'];
@@ -75,7 +71,9 @@ export default function VocabPage() {
   const [stats, setStats]         = useState({ total: 0, learned: 0, review: 0, known: 0 });
   const [streak, setStreak]       = useState(0);
   const [showAdd, setShowAdd]     = useState(false);
-  const [newWord, setNewWord]     = useState({ front: '', back: '', hint: '', pos: '' });
+  const [newWord, setNewWord]     = useState(EMPTY_NEW_WORD);
+  const [aiLang, setAiLang]       = useState(lang === 'zh' ? 'zh' : 'en');
+  const [aiFillBusy, setAiFillBusy] = useState(false);
   const [addLoading, setAddLoad]  = useState(false);
   const [expandedId, setExp]      = useState(null);
   const [calDays, setCalDays]     = useState([]);
@@ -269,52 +267,76 @@ export default function VocabPage() {
     setLoading(false);
   }
 
-  const isEn = lang === 'en';
-  const [lookupBusy, setLookupBusy] = useState(false);
-  async function lookupWord() {
+  function selectAiLang(code) {
+    setAiLang(code);
+    setNewWord(EMPTY_NEW_WORD);
+  }
+
+  async function aiFillWord() {
     const q = (newWord.front || '').trim();
-    if (!q) { alert(isEn ? 'Эхлээд Англи үг бичнэ үү.' : 'Эхлээд Хятад үг бичнэ үү.'); return; }
-    setLookupBusy(true);
-    let reading = '', mn = '', pos = '';
-    if (isEn) {
-      const local = EN_LOOKUP[q.toLowerCase()];
-      if (local) { reading = local.reading || ''; mn = local.mn || ''; }
-      if (!reading || !mn) {
-        try {
-          const { data } = await api.get(`/api/english/${encodeURIComponent(q.toLowerCase())}`);
-          if (data) { reading = reading || data.ipa || ''; mn = mn || data.mn || ''; pos = data.posMn || ''; }
-        } catch {}
-      }
-    } else {
-      const local = ZH_LOOKUP[q];
-      if (local) { reading = local.reading || ''; mn = local.mn || ''; }
-      if (!reading || !mn) {
-        try {
-          const { data } = await api.get(`/api/dictionary?q=${encodeURIComponent(q)}`);
-          const d = Array.isArray(data) ? data[0] : data;
-          if (d) {
-            reading = reading || d.pinyin || d.reading || '';
-            mn = mn || d.mn || d.meaning || (Array.isArray(d.definitions) ? d.definitions.join('; ') : (d.english || ''));
-            pos = d.pos || ''; // таамагласан (CC-CEDICT-д аймгийн тэмдэглэгээ байдаггүй)
-          }
-        } catch {}
-      }
+    if (!q) { alert('Эхлээд үгээ бичнэ үү.'); return; }
+    setAiFillBusy(true);
+    try {
+      const { data } = await api.post('/api/ai/word-fill', { word: q, lang: aiLang });
+      setNewWord(n => ({
+        ...n,
+        front: data.word || n.front,
+        back: data.meaning || n.back,
+        hint: data.reading || n.hint,
+        pos: data.pos || n.pos,
+        example: data.example || '',
+        exampleMeaning: data.exampleMeaning || '',
+        synonyms: data.synonyms || [],
+        antonyms: data.antonyms || [],
+        level: data.level || '',
+        tags: data.tags || [],
+        audioUrl: data.audioUrl || null,
+      }));
+      if (data.notFound) alert('AI энэ үгийг мэдэхгүй байна — мэдээллийг өөрөө шалгаж засаарай.');
+    } catch (e) {
+      const msg = e.response?.status === 503
+        ? 'AI одоогоор ажиллахгүй байна — гараар бөглөнө үү.'
+        : e.response?.status === 429
+        ? 'Өдрийн AI хязгаарт хүрлээ. Дараа дахин оролдоно уу.'
+        : (e.response?.data?.error || 'AI-аар бөглөхөд алдаа гарлаа.');
+      alert(msg);
     }
-    setLookupBusy(false);
-    if (!reading && !mn) { alert('Толь бичгээс олдсонгүй. Гараар бөглөнө үү.'); return; }
-    setNewWord(n => ({ ...n, hint: reading || n.hint, back: mn || n.back, pos: pos || n.pos }));
+    setAiFillBusy(false);
+  }
+
+  async function regenerateAudio() {
+    const text = (newWord.example || newWord.front || '').trim();
+    if (!text) return;
+    try {
+      const { data } = await api.post('/api/ai/word-audio', { text, lang: aiLang });
+      setNewWord(n => ({ ...n, audioUrl: data.audioUrl || null }));
+    } catch { alert('Дуу үүсгэхэд алдаа гарлаа.'); }
+  }
+
+  function playPreviewAudio() {
+    if (!newWord.audioUrl) return;
+    const a = new Audio(uploadUrl(newWord.audioUrl));
+    a.play().catch(() => {});
+  }
+
+  function removeChip(field, value) {
+    setNewWord(n => ({ ...n, [field]: n[field].filter(x => x !== value) }));
   }
 
   async function addWord() {
     const front = (newWord.front || '').trim();
     const back = (newWord.back || '').trim();
-    if (!front || !back) { alert('Хятад үг болон Монгол утгыг бөглөнө үү.'); return; }
+    if (!front || !back) { alert('Үг болон Монгол утгыг бөглөнө үү.'); return; }
     setAddLoad(true);
     // Идэвхтэй бүлгийн нэрийг backend дээрх үгийн `group` талбарт шууд бичнэ → апп дээр тэр бүлэгт харагдана
     const payload = {
       front: newWord.front, back: newWord.back, hint: newWord.hint,
-      word: newWord.front, meaning: newWord.back, reading: newWord.hint, lang, pos: newWord.pos,
+      word: newWord.front, meaning: newWord.back, reading: newWord.hint, lang: aiLang, pos: newWord.pos,
       group: activeGroup || DEFAULT_GROUP,
+      example: newWord.example, exampleMeaning: newWord.exampleMeaning,
+      synonyms: newWord.synonyms, antonyms: newWord.antonyms,
+      level: newWord.level, tags: newWord.tags, audioUrl: newWord.audioUrl,
+      aiGenerated: !!(newWord.example || newWord.level || newWord.tags.length),
     };
     // 1) Optimistic — шууд харагдана, localStorage-д хадгална (backend амжаагүй ч)
     const localId = 'local-' + Date.now();
@@ -325,7 +347,7 @@ export default function VocabPage() {
       const local = JSON.parse(localStorage.getItem('voca_local_words') || '[]');
       localStorage.setItem('voca_local_words', JSON.stringify([added, ...local]));
     } catch {}
-    setNewWord({ front: '', back: '', hint: '', pos: '' });
+    setNewWord(EMPTY_NEW_WORD);
     setShowAdd(false);
     setAddLoad(false);
     // 2) Backend рүү хадгалах оролдлого (амжвал локал хувийг арилгаж, бодит id-р солино)
@@ -716,20 +738,40 @@ export default function VocabPage() {
           position: 'fixed', inset: 0, background: 'rgba(15,10,30,0.4)', display: 'flex',
           alignItems: 'center', justifyContent: 'center', zIndex: 500, backdropFilter: 'blur(4px)',
         }} onClick={e => { if (e.target === e.currentTarget) setShowAdd(false); }}>
-          <div className="card" style={{ width: 400, padding: 28, maxWidth: '90vw' }}>
-            <h2 style={{ fontWeight: 900, fontSize: 18, marginBottom: 20 }}>Шинэ үг нэмэх</h2>
+          <div className="card" style={{ width: (newWord.example || newWord.tags.length > 0) ? 560 : 400, padding: 28, maxWidth: '90vw', maxHeight: '86vh', overflowY: 'auto' }}>
+            <h2 style={{ fontWeight: 900, fontSize: 18, marginBottom: 16 }}>Шинэ үг нэмэх</h2>
+
+            {/* Хэлний сонголт */}
+            <div style={{ display: 'flex', gap: 8, marginBottom: 18 }}>
+              {AI_LANGS.map(l => (
+                <button key={l.code} type="button" onClick={() => selectAiLang(l.code)} style={{
+                  flex: 1, padding: '8px 0', borderRadius: 10, fontWeight: 800, fontSize: 12.5, cursor: 'pointer',
+                  border: `1.5px solid ${aiLang === l.code ? 'var(--purple)' : 'var(--border)'}`,
+                  background: aiLang === l.code ? 'var(--purple-light)' : 'var(--bg-alt)',
+                  color: aiLang === l.code ? 'var(--purple)' : 'var(--text-sub)',
+                }}>
+                  {l.flag} {l.label}
+                </button>
+              ))}
+            </div>
+
             <div style={{ display: 'flex', flexDirection: 'column', gap: 12, marginBottom: 20 }}>
               <div>
-                <label style={{ fontWeight: 700, fontSize: 13, color: 'var(--text-sub)', display: 'block', marginBottom: 6 }}>{isEn ? 'Англи үг' : 'Хятад үг'}</label>
+                <label style={{ fontWeight: 700, fontSize: 13, color: 'var(--text-sub)', display: 'block', marginBottom: 6 }}>
+                  {AI_LANGS.find(l => l.code === aiLang).wordLabel}
+                </label>
                 <div style={{ display: 'flex', gap: 8 }}>
-                  <input type="text" value={newWord.front} onChange={e => setNewWord(n => ({ ...n, front: e.target.value, pos: '' }))} onBlur={lookupWord} placeholder={isEn ? 'ж: hello' : 'ж: 你好'} style={{ flex: 1 }} />
-                  <button type="button" onClick={lookupWord} disabled={lookupBusy} className="btn btn-light" style={{ padding: '0 14px', fontSize: 13, whiteSpace: 'nowrap', flexShrink: 0 }}>{lookupBusy ? '...' : '🔍 Толиос олох'}</button>
+                  <input type="text" value={newWord.front} onChange={e => setNewWord(n => ({ ...n, front: e.target.value }))}
+                    onKeyDown={e => { if (e.key === 'Enter') aiFillWord(); }}
+                    placeholder={AI_LANGS.find(l => l.code === aiLang).placeholder} style={{ flex: 1 }} />
+                  <button type="button" onClick={aiFillWord} disabled={aiFillBusy} className="btn btn-purple" style={{ padding: '0 14px', fontSize: 13, whiteSpace: 'nowrap', flexShrink: 0 }}>
+                    {aiFillBusy ? 'AI бодож байна…' : '✨ AI-аар бөглөх'}
+                  </button>
                 </div>
-                <div style={{ fontSize: 11, color: 'var(--muted)', marginTop: 4 }}>{isEn ? 'Англи үгээ бичээд товч дарвал орчуулга, дуудлага автоматаар олдоно.' : 'Хятад үгээ бичээд товч дарвал орчуулга, pinyin автоматаар олдоно.'}</div>
+                <div style={{ fontSize: 11, color: 'var(--muted)', marginTop: 4 }}>1 үг бичээд товч дарвал утга, дуудлага, жишээ өгүүлбэр гэх мэтийг AI автоматаар бөглөнө.</div>
                 {newWord.pos && (
                   <div style={{ display: 'inline-flex', alignItems: 'center', gap: 5, background: 'var(--purple-light)', borderRadius: 100, padding: '4px 11px', marginTop: 8 }}>
                     <span style={{ color: 'var(--purple)', fontSize: 12, fontWeight: 800 }}>{newWord.pos}</span>
-                    {!isEn && <span style={{ color: 'var(--purple)', fontSize: 10.5, opacity: 0.7 }}>(таамаг)</span>}
                   </div>
                 )}
               </div>
@@ -738,14 +780,92 @@ export default function VocabPage() {
                 <input type="text" value={newWord.back} onChange={e => setNewWord(n => ({ ...n, back: e.target.value }))} placeholder="ж: Сайн уу" />
               </div>
               <div>
-                <label style={{ fontWeight: 700, fontSize: 13, color: 'var(--text-sub)', display: 'block', marginBottom: 6 }}>{isEn ? 'IPA дуудлага (заавал биш)' : 'Pinyin (заавал биш)'}</label>
-                <input type="text" value={newWord.hint} onChange={e => setNewWord(n => ({ ...n, hint: e.target.value }))} placeholder={isEn ? 'ж: /həˈloʊ/' : 'ж: nǐ hǎo'} />
+                <label style={{ fontWeight: 700, fontSize: 13, color: 'var(--text-sub)', display: 'block', marginBottom: 6 }}>
+                  {AI_LANGS.find(l => l.code === aiLang).readingLabel} (заавал биш)
+                </label>
+                <input type="text" value={newWord.hint} onChange={e => setNewWord(n => ({ ...n, hint: e.target.value }))} />
               </div>
+
+              {(newWord.example || newWord.level || newWord.tags.length > 0 || newWord.synonyms.length > 0) && (
+                <>
+                  {newWord.example && (
+                    <div>
+                      <label style={{ fontWeight: 700, fontSize: 13, color: 'var(--text-sub)', display: 'block', marginBottom: 6 }}>Жишээ өгүүлбэр</label>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '10px 12px', background: 'var(--bg-alt)', borderRadius: 12, border: '1.5px solid var(--border)' }}>
+                        <button type="button" onClick={newWord.audioUrl ? playPreviewAudio : regenerateAudio} style={{
+                          width: 32, height: 32, borderRadius: '50%', background: 'var(--purple-light)', border: '1.5px solid var(--purple-mid)',
+                          display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 13, color: 'var(--purple)', cursor: 'pointer', flexShrink: 0,
+                        }}>
+                          {newWord.audioUrl ? '▶' : '🔁'}
+                        </button>
+                        <div style={{ flex: 1 }}>
+                          <input value={newWord.example} onChange={e => setNewWord(n => ({ ...n, example: e.target.value }))}
+                            style={{ width: '100%', border: 'none', background: 'transparent', padding: 0, fontWeight: 700, fontSize: 14 }} />
+                          <input value={newWord.exampleMeaning} onChange={e => setNewWord(n => ({ ...n, exampleMeaning: e.target.value }))}
+                            placeholder="Орчуулга" style={{ width: '100%', border: 'none', background: 'transparent', padding: 0, fontSize: 12, color: 'var(--muted)', marginTop: 2 }} />
+                        </div>
+                      </div>
+                    </div>
+                  )}
+
+                  {newWord.level && (
+                    <div>
+                      <label style={{ fontWeight: 700, fontSize: 13, color: 'var(--text-sub)', display: 'block', marginBottom: 6 }}>Түвшин</label>
+                      <span className="tag tag-purple">{newWord.level}</span>
+                    </div>
+                  )}
+
+                  {(newWord.synonyms.length > 0 || newWord.antonyms.length > 0) && (
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                      {newWord.synonyms.length > 0 && (
+                        <div>
+                          <label style={{ fontWeight: 700, fontSize: 13, color: 'var(--text-sub)', display: 'block', marginBottom: 6 }}>Ижил утгатай</label>
+                          <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
+                            {newWord.synonyms.map(s => (
+                              <span key={s} style={{ display: 'inline-flex', alignItems: 'center', gap: 5, background: 'var(--bg-alt)', border: '1.5px solid var(--border)', borderRadius: 100, padding: '4px 6px 4px 11px', fontSize: 12.5, fontWeight: 600 }}>
+                                {s}
+                                <button type="button" onClick={() => removeChip('synonyms', s)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--muted)', fontSize: 13, padding: '0 3px' }}>×</button>
+                              </span>
+                            ))}
+                          </div>
+                        </div>
+                      )}
+                      {newWord.antonyms.length > 0 && (
+                        <div>
+                          <label style={{ fontWeight: 700, fontSize: 13, color: 'var(--text-sub)', display: 'block', marginBottom: 6 }}>Эсрэг утгатай</label>
+                          <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
+                            {newWord.antonyms.map(s => (
+                              <span key={s} style={{ display: 'inline-flex', alignItems: 'center', gap: 5, background: 'var(--bg-alt)', border: '1.5px solid var(--border)', borderRadius: 100, padding: '4px 6px 4px 11px', fontSize: 12.5, fontWeight: 600 }}>
+                                {s}
+                                <button type="button" onClick={() => removeChip('antonyms', s)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--muted)', fontSize: 13, padding: '0 3px' }}>×</button>
+                              </span>
+                            ))}
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  )}
+
+                  {newWord.tags.length > 0 && (
+                    <div>
+                      <label style={{ fontWeight: 700, fontSize: 13, color: 'var(--text-sub)', display: 'block', marginBottom: 6 }}>Шошго</label>
+                      <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
+                        {newWord.tags.map(t => (
+                          <span key={t} style={{ display: 'inline-flex', alignItems: 'center', gap: 5, background: 'var(--purple-light)', borderRadius: 100, padding: '4px 6px 4px 11px', fontSize: 12.5, fontWeight: 700, color: 'var(--purple)' }}>
+                            {t}
+                            <button type="button" onClick={() => removeChip('tags', t)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--purple)', fontSize: 13, padding: '0 3px' }}>×</button>
+                          </span>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                </>
+              )}
             </div>
             {activeGroup === DEFAULT_GROUP && <div style={{ fontSize: 12, color: 'var(--muted)', fontWeight: 700, marginBottom: 12 }}>📂 "{DEFAULT_GROUP}" бүлэгт нэмэгдэнэ</div>}
             {activeGroup && activeGroup !== DEFAULT_GROUP && (() => { const g = derivedGroups.find(x => x.name === activeGroup); return g ? <div style={{ fontSize: 12, color: g.color, fontWeight: 700, marginBottom: 12 }}>📁 "{g.name}" бүлэгт нэмэгдэнэ</div> : null; })()}
             <div style={{ display: 'flex', gap: 10 }}>
-              <button className="btn btn-ghost" onClick={() => setShowAdd(false)} style={{ flex: 1 }}>Болих</button>
+              <button className="btn btn-ghost" onClick={() => { setShowAdd(false); setNewWord(EMPTY_NEW_WORD); }} style={{ flex: 1 }}>Болих</button>
               <button className="btn btn-purple" onClick={addWord} disabled={addLoading} style={{ flex: 1 }}>
                 {addLoading ? 'Нэмж байна...' : 'Нэмэх'}
               </button>
