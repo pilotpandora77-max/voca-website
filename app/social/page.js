@@ -95,6 +95,7 @@ export default function SocialPage() {
   const [chInput, setChInput]     = useState('');
   const [newGroups, setNewGroups] = useState([]);
   const [notifs, setNotifs]       = useState({ items: [], unread: 0 });
+  const [announcements, setAnnouncements] = useState([]);
   const [showNotifs, setShowNotifs] = useState(false);
   const [profileCard, setProfileCard] = useState(null);
   const [searchQ, setSearchQ]     = useState('');
@@ -116,6 +117,7 @@ export default function SocialPage() {
       api.get('/api/stats/leaderboard/weekly').then(r => setActive((r.data?.rankings || []).slice(0, 3))).catch(() => {});
       api.get('/api/groups/public').then(r => setNewGroups((r.data || []).slice(0, 3))).catch(() => {});
       api.get('/api/social/notifications').then(r => setNotifs(r.data || { items: [], unread: 0 })).catch(() => {});
+      api.get('/api/news').then(r => setAnnouncements((r.data || []).slice(0, 3))).catch(() => {});
       loadMyFolders();
     }
     try { setSaved(JSON.parse(localStorage.getItem('voca_social_saved') || '{}')); } catch {}
@@ -355,6 +357,25 @@ export default function SocialPage() {
             )}
           </div>
         } />
+
+      {/* Админ мэдэгдэл */}
+      {announcements.length > 0 && (
+        <div style={{ margin: '0 28px 20px' }}>
+          <h3 style={{ fontSize: 14, fontWeight: 900, color: 'var(--text)', marginBottom: 10 }}>📢 Админ мэдэгдэл</h3>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+            {announcements.map(n => (
+              <div key={n.id} className="card" style={{ display: 'flex', gap: 12, alignItems: 'flex-start', borderLeft: `4px solid ${n.color || '#1CB0F6'}` }}>
+                <span style={{ fontSize: 22 }}>{n.emoji || '📢'}</span>
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  <div style={{ fontWeight: 900, fontSize: 14, color: 'var(--text)', marginBottom: 2 }}>{n.title}</div>
+                  <div style={{ fontSize: 13, color: 'var(--text-sub)', lineHeight: 1.5 }}>{n.body}</div>
+                  <div style={{ fontSize: 11, color: 'var(--muted)', marginTop: 4 }}>{relTime(n.createdAt)}</div>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
 
       {/* Banner */}
       <div style={{ margin: '0 28px 20px', borderRadius: 22, padding: '30px 32px', position: 'relative', overflow: 'hidden',
