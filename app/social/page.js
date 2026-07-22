@@ -117,7 +117,7 @@ export default function SocialPage() {
       api.get('/api/stats/leaderboard/weekly').then(r => setActive((r.data?.rankings || []).slice(0, 3))).catch(() => {});
       api.get('/api/groups/public').then(r => setNewGroups((r.data || []).slice(0, 3))).catch(() => {});
       api.get('/api/social/notifications').then(r => setNotifs(r.data || { items: [], unread: 0 })).catch(() => {});
-      api.get('/api/news').then(r => setAnnouncements((r.data || []).slice(0, 3))).catch(() => {});
+      api.get('/api/news').then(r => setAnnouncements(r.data || [])).catch(() => {});
       loadMyFolders();
     }
     try { setSaved(JSON.parse(localStorage.getItem('voca_social_saved') || '{}')); } catch {}
@@ -358,24 +358,33 @@ export default function SocialPage() {
           </div>
         } />
 
-      {/* Админ мэдэгдэл */}
-      {announcements.length > 0 && (
-        <div style={{ margin: '0 28px 20px' }}>
-          <h3 style={{ fontSize: 14, fontWeight: 900, color: 'var(--text)', marginBottom: 10 }}>📢 Админ мэдэгдэл</h3>
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-            {announcements.map(n => (
-              <div key={n.id} className="card" style={{ display: 'flex', gap: 12, alignItems: 'flex-start', borderLeft: `4px solid ${n.color || '#1CB0F6'}` }}>
-                <span style={{ fontSize: 22 }}>{n.emoji || '📢'}</span>
-                <div style={{ flex: 1, minWidth: 0 }}>
-                  <div style={{ fontWeight: 900, fontSize: 14, color: 'var(--text)', marginBottom: 2 }}>{n.title}</div>
-                  <div style={{ fontSize: 13, color: 'var(--text-sub)', lineHeight: 1.5 }}>{n.body}</div>
-                  <div style={{ fontSize: 11, color: 'var(--muted)', marginTop: 4 }}>{relTime(n.createdAt)}</div>
+      {/* Админ мэдэгдэл — сүүлийн 1 хоногийнх л энд харагдана, хуучин нь /social/announcements хуудсанд */}
+      {announcements.length > 0 && (() => {
+        const recent = announcements.filter(n => Date.now() - new Date(n.createdAt).getTime() < 24 * 60 * 60 * 1000);
+        return (
+          <div style={{ margin: '0 28px 20px' }}>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 10 }}>
+              <h3 style={{ fontSize: 14, fontWeight: 900, color: 'var(--text)' }}>📢 Админ мэдэгдэл</h3>
+              <button onClick={() => router.push('/social/announcements')} style={{ background: 'none', border: 'none', color: 'var(--purple)', fontWeight: 800, fontSize: 12.5, cursor: 'pointer' }}>
+                Бүх мэдэгдэл →
+              </button>
+            </div>
+            {recent.length === 0 && <div style={{ fontSize: 12.5, color: 'var(--muted)' }}>Сүүлийн 1 хоногт шинэ мэдэгдэл алга.</div>}
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+              {recent.map(n => (
+                <div key={n.id} className="card" style={{ display: 'flex', gap: 12, alignItems: 'flex-start', borderLeft: `4px solid ${n.color || '#1CB0F6'}` }}>
+                  <span style={{ fontSize: 22 }}>{n.emoji || '📢'}</span>
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    <div style={{ fontWeight: 900, fontSize: 14, color: 'var(--text)', marginBottom: 2 }}>{n.title}</div>
+                    <div style={{ fontSize: 13, color: 'var(--text-sub)', lineHeight: 1.5 }}>{n.body}</div>
+                    <div style={{ fontSize: 11, color: 'var(--muted)', marginTop: 4 }}>{relTime(n.createdAt)}</div>
+                  </div>
                 </div>
-              </div>
-            ))}
+              ))}
+            </div>
           </div>
-        </div>
-      )}
+        );
+      })()}
 
       {/* Banner */}
       <div style={{ margin: '0 28px 20px', borderRadius: 22, padding: '30px 32px', position: 'relative', overflow: 'hidden',
