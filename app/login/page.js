@@ -163,7 +163,7 @@ function LoginInner() {
   );
 
   return (
-    <div style={{ position:'fixed', inset:0, background:'#07041a', display:'flex', alignItems:'center', justifyContent:'center', overflow:'hidden', fontFamily:"'Nunito',sans-serif" }}>
+    <div className="login-root" style={{ position:'fixed', inset:0, background:'#07041a', display:'flex', alignItems:'center', justifyContent:'center', overflow:'hidden', fontFamily:"'Nunito',sans-serif" }}>
 
       <style>{`
         @import url('https://fonts.googleapis.com/css2?family=Nunito:wght@400;500;600;700;800;900&display=swap');
@@ -230,10 +230,18 @@ function LoginInner() {
 
         @keyframes spin { to { transform:rotate(360deg); } }
         .spinner { width:18px; height:18px; border:2.5px solid rgba(255,255,255,0.35); border-top-color:#fff; border-radius:50%; animation:spin 0.7s linear infinite; }
+
+        /* Утсан дэлгэц дээр 1672×941 stage-ийг жижигрүүлж хиймэл "PC горим" болгохын оронд
+           энгийн, дэлгэц дүүрэн, доош урсдаг байдлаар харуулна. */
+        @media (max-width: 768px) {
+          .login-root { position:static !important; overflow-y:auto !important; min-height:100vh; height:auto !important; padding:24px 18px !important; }
+          .login-stage { transform:none !important; width:100% !important; height:auto !important; background-image:none !important; }
+          .login-card { position:relative !important; left:auto !important; top:auto !important; width:100% !important; max-width:440px !important; min-height:auto !important; margin:0 auto !important; padding:28px 22px !important; }
+        }
       `}</style>
 
       {/* ── Stage 1672×941 ── */}
-      <div ref={stageRef} style={{
+      <div ref={stageRef} className="login-stage" style={{
         position:'relative', width:STAGE_W, height:STAGE_H, flexShrink:0,
         transformOrigin:'center center',
         backgroundImage:'url(/login-bg3.png)',
@@ -241,7 +249,7 @@ function LoginInner() {
       }}>
 
         {/* ── Dark auth card — covers artwork card at left:985 top:90 w:648 h:770 ── */}
-        <div style={{
+        <div className="login-card" style={{
           position:'absolute', left:985, top:88, width:650, minHeight:772,
           background:'linear-gradient(160deg,rgba(34,22,64,0.86),rgba(20,12,42,0.9))',
           backdropFilter:'blur(30px)', WebkitBackdropFilter:'blur(30px)',
