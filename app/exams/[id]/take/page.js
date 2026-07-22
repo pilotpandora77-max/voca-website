@@ -95,17 +95,21 @@ export default function ExamTakePage() {
 
   function recordAnswer(correct) {
     const qId = session[idx].qId;
-    setAnswers(a => ({ ...a, [qId]: correct ? 'correct' : 'wrong' }));
-    advance();
+    const nextAnswers = { ...answers, [qId]: correct ? 'correct' : 'wrong' };
+    setAnswers(nextAnswers);
+    if (idx === session.length - 1) finish(nextAnswers);
+    else advance();
   }
   function skip() {
     const qId = session[idx].qId;
-    setAnswers(a => ({ ...a, [qId]: 'skipped' }));
-    advance();
+    const nextAnswers = { ...answers, [qId]: 'skipped' };
+    setAnswers(nextAnswers);
+    if (idx === session.length - 1) finish(nextAnswers);
+    else advance();
   }
 
-  function finish() {
-    const finalAnswers = { ...answers };
+  function finish(answersOverride) {
+    const finalAnswers = { ...(answersOverride || answers) };
     session.forEach(q => { if (!finalAnswers[q.qId]) finalAnswers[q.qId] = 'skipped'; });
 
     const correctCount = session.filter(q => finalAnswers[q.qId] === 'correct').length;
