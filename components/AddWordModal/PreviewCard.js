@@ -30,7 +30,11 @@ export default function PreviewCard({ newWord, onPlayAudio, onToggleStar }) {
             </button>
           </div>
           {newWord.hint && <div style={{ fontSize: 13, color: 'var(--purple)', fontWeight: 700, marginBottom: 8 }}>{newWord.hint}</div>}
-          {newWord.pos && <span className="tag tag-purple" style={{ marginBottom: 10, display: 'inline-block' }}>{POS_ABBR_MN[newWord.pos] || newWord.pos}</span>}
+          {newWord.pos.length > 0 && (
+            <div style={{ display: 'flex', flexWrap: 'wrap', gap: 5, marginBottom: 10 }}>
+              {newWord.pos.map(p => <span key={p} className="tag tag-purple">{POS_ABBR_MN[p] || p}</span>)}
+            </div>
+          )}
 
           {newWord.back && (
             <div style={{ marginTop: 10 }}>

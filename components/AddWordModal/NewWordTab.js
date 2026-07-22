@@ -19,7 +19,12 @@ export default function NewWordTab({ aiLang, setAiLang, targetGroup, onSaved, on
   const [lastFilledKey, setLastFilledKey] = useState('');
   const [addLoading, setAddLoading] = useState(false);
   const [audioUploadBusy, setAudioUploadBusy] = useState(false);
+  const [posMenuOpen, setPosMenuOpen] = useState(false);
   const audioFileRef = useRef(null);
+
+  function togglePos(p) {
+    setNewWord(n => ({ ...n, pos: n.pos.includes(p) ? n.pos.filter(x => x !== p) : [...n.pos, p] }));
+  }
 
   function selectAiLang(code) {
     setAiLang(code);
@@ -41,7 +46,7 @@ export default function NewWordTab({ aiLang, setAiLang, targetGroup, onSaved, on
         front: data.word || n.front,
         back: data.meaning || n.back,
         hint: data.reading || n.hint,
-        pos: data.pos || n.pos,
+        pos: data.pos ? [data.pos] : n.pos,
         example: data.example || '',
         exampleMeaning: data.exampleMeaning || '',
         synonyms: data.synonyms || [],
@@ -108,7 +113,7 @@ export default function NewWordTab({ aiLang, setAiLang, targetGroup, onSaved, on
     setAddLoading(true);
     const payload = {
       front, back, hint: newWord.hint,
-      word: front, meaning: back, reading: newWord.hint, lang: aiLang, pos: newWord.pos,
+      word: front, meaning: back, reading: newWord.hint, lang: aiLang, pos: newWord.pos.join(', '),
       group: targetGroup,
       example: newWord.example, exampleMeaning: newWord.exampleMeaning,
       synonyms: newWord.synonyms, antonyms: newWord.antonyms,
@@ -170,13 +175,40 @@ export default function NewWordTab({ aiLang, setAiLang, targetGroup, onSaved, on
 
           <div>
             <label style={{ fontWeight: 700, fontSize: 13, color: 'var(--text-sub)', display: 'block', marginBottom: 6 }}>Үгсийн ангилал (Part of speech)</label>
-            <div style={{ display: 'flex', gap: 8 }}>
-              <select value={POS_OPTIONS.includes(newWord.pos) ? newWord.pos : ''} onChange={e => setNewWord(n => ({ ...n, pos: e.target.value }))} style={{ flex: 1, padding: '10px 12px', borderRadius: 12, border: '1.5px solid var(--border)', fontFamily: 'inherit', fontSize: 13.5 }}>
-                <option value="">Сонгох</option>
-                {POS_OPTIONS.map(p => <option key={p} value={p}>{p}</option>)}
-              </select>
-              {newWord.pos && <span className="tag tag-purple" style={{ alignSelf: 'center', flexShrink: 0 }}>{POS_ABBR_MN[newWord.pos] || newWord.pos}</span>}
+            <div style={{ position: 'relative' }}>
+              <button type="button" onClick={() => setPosMenuOpen(o => !o)} style={{
+                width: '100%', textAlign: 'left', padding: '10px 12px', borderRadius: 12, border: '1.5px solid var(--border)',
+                fontFamily: 'inherit', fontSize: 13.5, background: '#fff', cursor: 'pointer', color: newWord.pos.length ? 'var(--text)' : 'var(--muted)',
+                display: 'flex', justifyContent: 'space-between', alignItems: 'center',
+              }}>
+                {newWord.pos.length ? `${newWord.pos.length} сонгосон` : 'Сонгох (олноор сонгож болно)'}
+                <span style={{ color: 'var(--muted)' }}>⌄</span>
+              </button>
+              {posMenuOpen && (
+                <div style={{
+                  position: 'absolute', top: '100%', left: 0, right: 0, marginTop: 4, background: '#fff',
+                  border: '1.5px solid var(--border)', borderRadius: 12, boxShadow: '0 8px 24px rgba(0,0,0,0.14)',
+                  zIndex: 20, maxHeight: 240, overflowY: 'auto', padding: '6px 0',
+                }}>
+                  {POS_OPTIONS.map(p => (
+                    <label key={p} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '8px 14px', cursor: 'pointer', fontSize: 13.5, fontFamily: 'inherit' }}>
+                      <input type="checkbox" checked={newWord.pos.includes(p)} onChange={() => togglePos(p)} style={{ width: 15, height: 15 }} />
+                      {p}
+                    </label>
+                  ))}
+                </div>
+              )}
             </div>
+            {newWord.pos.length > 0 && (
+              <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginTop: 8 }}>
+                {newWord.pos.map(p => (
+                  <span key={p} className="tag tag-purple" style={{ display: 'inline-flex', alignItems: 'center', gap: 5 }}>
+                    {POS_ABBR_MN[p] || p}
+                    <button type="button" onClick={() => togglePos(p)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'inherit', fontSize: 12, padding: 0 }}>×</button>
+                  </span>
+                ))}
+              </div>
+            )}
           </div>
 
           <div>

@@ -7,7 +7,7 @@ export const AI_LANGS = [
 ];
 
 export const EMPTY_NEW_WORD = {
-  front: '', back: '', hint: '', pos: '',
+  front: '', back: '', hint: '', pos: [],
   example: '', exampleMeaning: '', synonyms: [], antonyms: [], level: '', tags: [], audioUrl: null,
   starred: false,
 };
