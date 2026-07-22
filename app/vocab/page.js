@@ -267,17 +267,25 @@ export default function VocabPage() {
     setLoading(false);
   }
 
+  const [lastFilledKey, setLastFilledKey] = useState('');
+
   function selectAiLang(code) {
     setAiLang(code);
     setNewWord(EMPTY_NEW_WORD);
+    setLastFilledKey('');
   }
 
+  // Хэрэглэгч үг бичээд Enter дарах эсвэл өөр талбар руу шилжихэд (blur) шууд,
+  // товч дарах шаардлагагүйгээр автоматаар ажиллана. Ижил үгэнд давхар дуудахгүй.
   async function aiFillWord() {
     const q = (newWord.front || '').trim();
-    if (!q) { alert('Эхлээд үгээ бичнэ үү.'); return; }
+    if (!q) return;
+    const key = `${aiLang}:${q.toLowerCase()}`;
+    if (key === lastFilledKey || aiFillBusy) return;
     setAiFillBusy(true);
     try {
       const { data } = await api.post('/api/ai/word-fill', { word: q, lang: aiLang });
+      setLastFilledKey(key);
       setNewWord(n => ({
         ...n,
         front: data.word || n.front,
@@ -348,6 +356,7 @@ export default function VocabPage() {
       localStorage.setItem('voca_local_words', JSON.stringify([added, ...local]));
     } catch {}
     setNewWord(EMPTY_NEW_WORD);
+    setLastFilledKey('');
     setShowAdd(false);
     setAddLoad(false);
     // 2) Backend рүү хадгалах оролдлого (амжвал локал хувийг арилгаж, бодит id-р солино)
@@ -760,15 +769,18 @@ export default function VocabPage() {
                 <label style={{ fontWeight: 700, fontSize: 13, color: 'var(--text-sub)', display: 'block', marginBottom: 6 }}>
                   {AI_LANGS.find(l => l.code === aiLang).wordLabel}
                 </label>
-                <div style={{ display: 'flex', gap: 8 }}>
-                  <input type="text" value={newWord.front} onChange={e => setNewWord(n => ({ ...n, front: e.target.value }))}
-                    onKeyDown={e => { if (e.key === 'Enter') aiFillWord(); }}
-                    placeholder={AI_LANGS.find(l => l.code === aiLang).placeholder} style={{ flex: 1 }} />
-                  <button type="button" onClick={aiFillWord} disabled={aiFillBusy} className="btn btn-purple" style={{ padding: '0 14px', fontSize: 13, whiteSpace: 'nowrap', flexShrink: 0 }}>
-                    {aiFillBusy ? 'AI бодож байна…' : '✨ AI-аар бөглөх'}
-                  </button>
+                <div style={{ position: 'relative' }}>
+                  <input type="text" autoFocus value={newWord.front} onChange={e => setNewWord(n => ({ ...n, front: e.target.value }))}
+                    onBlur={aiFillWord}
+                    onKeyDown={e => { if (e.key === 'Enter') { e.preventDefault(); aiFillWord(); } }}
+                    placeholder={AI_LANGS.find(l => l.code === aiLang).placeholder} style={{ width: '100%', paddingRight: aiFillBusy ? 110 : undefined }} />
+                  {aiFillBusy && (
+                    <span style={{ position: 'absolute', right: 12, top: '50%', transform: 'translateY(-50%)', fontSize: 12, fontWeight: 700, color: 'var(--purple)' }}>
+                      ✨ бодож байна…
+                    </span>
+                  )}
                 </div>
-                <div style={{ fontSize: 11, color: 'var(--muted)', marginTop: 4 }}>1 үг бичээд товч дарвал утга, дуудлага, жишээ өгүүлбэр гэх мэтийг AI автоматаар бөглөнө.</div>
+                <div style={{ fontSize: 11, color: 'var(--muted)', marginTop: 4 }}>Үгээ бичээд Enter дарах юм уу өөр талбар руу шилжихэд AI автоматаар утга, дуудлага, жишээ өгүүлбэр гэх мэтийг бөглөнө.</div>
                 {newWord.pos && (
                   <div style={{ display: 'inline-flex', alignItems: 'center', gap: 5, background: 'var(--purple-light)', borderRadius: 100, padding: '4px 11px', marginTop: 8 }}>
                     <span style={{ color: 'var(--purple)', fontSize: 12, fontWeight: 800 }}>{newWord.pos}</span>
@@ -865,7 +877,7 @@ export default function VocabPage() {
             {activeGroup === DEFAULT_GROUP && <div style={{ fontSize: 12, color: 'var(--muted)', fontWeight: 700, marginBottom: 12 }}>📂 "{DEFAULT_GROUP}" бүлэгт нэмэгдэнэ</div>}
             {activeGroup && activeGroup !== DEFAULT_GROUP && (() => { const g = derivedGroups.find(x => x.name === activeGroup); return g ? <div style={{ fontSize: 12, color: g.color, fontWeight: 700, marginBottom: 12 }}>📁 "{g.name}" бүлэгт нэмэгдэнэ</div> : null; })()}
             <div style={{ display: 'flex', gap: 10 }}>
-              <button className="btn btn-ghost" onClick={() => { setShowAdd(false); setNewWord(EMPTY_NEW_WORD); }} style={{ flex: 1 }}>Болих</button>
+              <button className="btn btn-ghost" onClick={() => { setShowAdd(false); setNewWord(EMPTY_NEW_WORD); setLastFilledKey(''); }} style={{ flex: 1 }}>Болих</button>
               <button className="btn btn-purple" onClick={addWord} disabled={addLoading} style={{ flex: 1 }}>
                 {addLoading ? 'Нэмж байна...' : 'Нэмэх'}
               </button>
