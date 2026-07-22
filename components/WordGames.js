@@ -115,7 +115,7 @@ function ChoiceGame({ words, mode, speak, onExit }) {
         )}
         <div style={{ fontSize: 13, color: 'var(--muted)', fontWeight: 700, marginTop: 12 }}>Зөв орчуулгыг сонго</div>
       </div>
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
+      <div className="responsive-cards" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
         {q.opts.map((o, i) => {
           let bg = 'var(--bg-alt)', bd = 'var(--border)', cl = 'var(--text)';
           if (conf) { if (i === q.answer) { bg = 'var(--green-bg)'; bd = 'var(--green)'; cl = 'var(--green-dark)'; } else if (i === sel) { bg = 'var(--red-light)'; bd = 'var(--red)'; cl = 'var(--red)'; } }
@@ -144,7 +144,7 @@ function MatchGame({ words, onExit }) {
   return (
     <div className="card">
       <div style={{ textAlign: 'center', marginBottom: 16, color: 'var(--muted)', fontWeight: 700, fontSize: 13 }}>Үгийг утгатай нь холбо · {matched.size}/{pool.length}</div>
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+      <div className="responsive-cards" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
         <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
           {leftCol.map(w => <div key={w.front} onClick={() => !matched.has(w.front) && setSelL(w.front)} style={cell(selL === w.front, matched.has(w.front), false)}>{w.front}</div>)}
         </div>
@@ -203,7 +203,7 @@ function MemoryGame({ words, onExit }) {
   return (
     <div className="card">
       <div style={{ textAlign: 'center', marginBottom: 16, color: 'var(--muted)', fontWeight: 700, fontSize: 13 }}>Картуудыг эргүүлж хослуул · {matched.size}/{PAIRS} · {moves} алхам</div>
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 10 }}>
+      <div className="responsive-cards" style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 10 }}>
         {cards.map(c => {
           const isUp = flipped.find(f => f.id === c.id) || matched.has(c.pair);
           return (

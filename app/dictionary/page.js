@@ -303,7 +303,7 @@ export default function DictionaryPage() {
         streak={streak}
       />
 
-      <div style={{ padding: '0 28px', display: 'grid', gridTemplateColumns: '1fr 280px', gap: 18 }}>
+      <div className="responsive-sidebar" style={{ padding: '0 28px', display: 'grid', gridTemplateColumns: '1fr 280px', gap: 18 }}>
 
         {/* Main column */}
         <div>
@@ -322,7 +322,7 @@ export default function DictionaryPage() {
           <div style={{ display: 'flex', gap: 8, marginBottom: 14, flexWrap: 'wrap' }}>
             {/* Language selector — Хятад олон бичгийн систем илрүүлэхэд л хэрэгтэй тул Англи горимд нуугдана */}
             {!isEn && (
-              <div style={{ display: 'flex', background: '#fff', border: '1.5px solid var(--border)', borderRadius: 12, overflow: 'hidden', flexShrink: 0 }}>
+              <div style={{ display: 'flex', background: '#fff', border: '1.5px solid var(--border)', borderRadius: 12, overflowX: 'auto', WebkitOverflowScrolling: 'touch', maxWidth: '100%' }}>
                 {LANG_MODES.map(m => (
                   <button key={m.key} onClick={() => setLang(m.key)} style={{
                     padding: '7px 12px', fontSize: 12, fontWeight: 700, cursor: 'pointer', border: 'none',
@@ -476,7 +476,7 @@ export default function DictionaryPage() {
                 </div>
 
                 {/* Meta row */}
-                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 12, marginTop: 14, paddingTop: 14, borderTop: '1.5px solid var(--border)' }}>
+                <div className="responsive-cards" style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 12, marginTop: 14, paddingTop: 14, borderTop: '1.5px solid var(--border)' }}>
                   <div>
                     <div style={{ fontSize: 11, fontWeight: 700, color: 'var(--muted)', marginBottom: 4 }}>Хэлний төрөл</div>
                     <div style={{ fontWeight: 600, color: 'var(--text-sub)', fontSize: 13 }}>{isEn ? 'Англи' : 'Хятад (Мандарин)'}</div>

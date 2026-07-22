@@ -188,7 +188,7 @@ export default function ProfilePage() {
               <span style={{ fontSize: 12, color: 'var(--muted)', fontWeight: 700, whiteSpace: 'nowrap' }}>{lvl.current} / {lvl.needed} XP</span>
             </div>
           </div>
-          <div style={{ display: 'flex', gap: 12, flexShrink: 0 }}>
+          <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap' }}>
             {[['🔥', stats?.streak || 0, 'өдрийн цуваа'], ['⭐', xp, 'нийт XP'], ['🏆', `Top ${topPct}%`, 'дундаас']].map((s, i) => (
               <div key={i} className="card" style={{ textAlign: 'center', padding: '14px 18px', minWidth: 92 }}>
                 <div style={{ fontSize: 20 }}>{s[0]}</div>
@@ -220,7 +220,7 @@ export default function ProfilePage() {
       </div>
 
       {/* Row: timeline + radar + achievements */}
-      <div style={{ display: 'grid', gridTemplateColumns: '1.2fr 1fr 1fr', gap: 16, marginBottom: 16 }}>
+      <div className="responsive-cards" style={{ display: 'grid', gridTemplateColumns: '1.2fr 1fr 1fr', gap: 16, marginBottom: 16 }}>
         {/* Lesson timeline */}
         <div className="card">
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 }}>
@@ -228,7 +228,7 @@ export default function ProfilePage() {
             <span style={{ fontSize: 12, color: 'var(--muted)', fontWeight: 700, border: '1.5px solid var(--border)', borderRadius: 8, padding: '4px 10px' }}>7 хоног ▾</span>
           </div>
           <LineChart data={timeline} />
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 10, marginTop: 14 }}>
+          <div className="responsive-cards" style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 10, marginTop: 14 }}>
             {[['Нийт XP', xp, '+18%'], ['Суралцах хугацаа', `${Math.round(daysLearned * 0.4)}h`, '+2h'], ['Шинэ үг', wordCount, `+${Math.min(wordCount, 12)}`]].map(([l, v, d], i) => (
               <div key={i} style={{ background: 'var(--bg-alt)', borderRadius: 12, padding: '10px 12px' }}>
                 <div style={{ fontSize: 11, color: 'var(--muted)', fontWeight: 700 }}>{l}</div>
@@ -248,7 +248,7 @@ export default function ProfilePage() {
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 14 }}>
             <h3 style={{ fontWeight: 900, fontSize: 16, color: 'var(--text)' }}>Сүүлд авсан шагналууд</h3>
           </div>
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+          <div className="responsive-cards" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
             {[
               { icon: '📅', name: '7 өдрийн цуваа', got: (stats?.streak || 0) >= 7, c: '#f59e0b' },
               { icon: '🎯', name: '100 үг нэмсэн', got: wordCount >= 100, c: '#ef4444' },
@@ -265,9 +265,9 @@ export default function ProfilePage() {
       </div>
 
       {/* Row: Mission (goal+checklist+progress+streak+roadmap) + exams/friends sidebar */}
-      <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr', gap: 16 }}>
+      <div className="responsive-sidebar" style={{ display: 'grid', gridTemplateColumns: '2fr 1fr', gap: 16 }}>
         <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
+          <div className="responsive-sidebar" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
             {/* Goal card */}
             <div className="card">
               <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 14 }}>
@@ -323,7 +323,7 @@ export default function ProfilePage() {
             <div className="card">
               <h3 style={{ fontWeight: 900, fontSize: 15, color: 'var(--text)', marginBottom: 8 }}>Ахицын тойм</h3>
               <LineChart data={cumulativeWords} />
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10, marginTop: 8 }}>
+              <div className="responsive-cards" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10, marginTop: 8 }}>
                 <div style={{ background: 'var(--bg-alt)', borderRadius: 12, padding: '10px 12px' }}>
                   <div style={{ fontSize: 11, color: 'var(--muted)', fontWeight: 700 }}>Нийт XP</div>
                   <div style={{ fontSize: 17, fontWeight: 900, color: 'var(--text)' }}>{xp}</div>
@@ -384,7 +384,7 @@ export default function ProfilePage() {
                 );
               })}
             </div>
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 10 }}>
+            <div className="responsive-cards" style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 10 }}>
               {[
                 [goal.targetWords, 'Нийт зорилтот үгс'],
                 [stats?.masteryLearning || 0, 'Суралцаж буй үгс'],
@@ -406,7 +406,7 @@ export default function ProfilePage() {
               <h3 style={{ fontWeight: 900, fontSize: 15, color: 'var(--text)' }}>Шалгалтын амжилт</h3>
               <Link href="/exams" style={{ fontSize: 12, color: 'var(--purple)', fontWeight: 700, textDecoration: 'none' }}>Бүгдийг харах</Link>
             </div>
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
+            <div className="responsive-cards" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
               {[
                 ['🎓', 'Хадгалсан', `${examCount}`, '#a855f7'],
                 ['✅', 'Нийт өгсөн', `${attemptCount}`, '#38bdf8'],

@@ -115,7 +115,7 @@ export default function StreakPage() {
 
       <div style={{ padding: '0 28px' }}>
         {/* ── Row 1 ── */}
-        <div style={{ display: 'grid', gridTemplateColumns: '1.3fr 1fr 1fr', gap: 16, marginBottom: 16 }}>
+        <div className="responsive-cards" style={{ display: 'grid', gridTemplateColumns: '1.3fr 1fr 1fr', gap: 16, marginBottom: 16 }}>
           {/* Hero */}
           <div className="card" style={{ padding: '26px', display: 'flex', alignItems: 'center', gap: 24 }}>
             <div style={{ position: 'relative', width: 130, height: 130, flexShrink: 0 }}>
@@ -178,17 +178,17 @@ export default function StreakPage() {
         </div>
 
         {/* ── Row 2 ── */}
-        <div style={{ display: 'grid', gridTemplateColumns: '1.3fr 1fr 1fr', gap: 16, marginBottom: 16 }}>
+        <div className="responsive-cards" style={{ display: 'grid', gridTemplateColumns: '1.3fr 1fr 1fr', gap: 16, marginBottom: 16 }}>
           {/* Calendar */}
           <div className="card" style={{ padding: '22px 24px' }}>
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 16 }}>
               <h3 style={{ fontWeight: 900, fontSize: 15, color: 'var(--text)' }}>Streak календарь</h3>
               <span style={{ fontSize: 13, color: 'var(--muted)', fontWeight: 700 }}>{year} оны {month + 1}-р сар</span>
             </div>
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7,1fr)', gap: 6, marginBottom: 6 }}>
+            <div className="responsive-week" style={{ display: 'grid', gridTemplateColumns: 'repeat(7,1fr)', gap: 6, marginBottom: 6 }}>
               {DAYS.map(d => <div key={d} style={{ textAlign: 'center', fontSize: 11, color: 'var(--muted)', fontWeight: 700 }}>{d}</div>)}
             </div>
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7,1fr)', gap: 6 }}>
+            <div className="responsive-week" style={{ display: 'grid', gridTemplateColumns: 'repeat(7,1fr)', gap: 6 }}>
               {cells.map((d, i) => {
                 const fire = isFire(d), isToday = d === today;
                 return (
@@ -250,7 +250,7 @@ export default function StreakPage() {
               <div style={{ fontSize: 12, fontWeight: 700, color: '#ddd6fe', marginBottom: 4 }}>⭐ VOCA Learning Score</div>
               <div style={{ fontSize: 56, fontWeight: 900, lineHeight: 1 }}>{learningScore}<span style={{ fontSize: 22, color: '#c4b5fd' }}>/100</span></div>
             </div>
-            <div style={{ flex: 1, minWidth: 280, display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 14 }}>
+            <div className="responsive-cards" style={{ flex: 1, minWidth: 280, display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 14 }}>
               {[
                 ['🔥 Тогтмол байдал', consistency, '#FCD34D'],
                 ['🧠 Санах чадвар', retention, '#86EFAC'],
@@ -272,10 +272,10 @@ export default function StreakPage() {
         </div>
 
         {/* ── Row 4 ── */}
-        <div style={{ display: 'grid', gridTemplateColumns: '1.3fr 1fr 1fr', gap: 16 }}>
+        <div className="responsive-cards" style={{ display: 'grid', gridTemplateColumns: '1.3fr 1fr 1fr', gap: 16 }}>
           <div className="card" style={{ padding: '22px 24px' }}>
             <h3 style={{ fontWeight: 900, fontSize: 15, color: 'var(--text)', marginBottom: 16 }}>Streak-аа хэрхэн хадгалах вэ?</h3>
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
+            <div className="responsive-cards" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
               {TIPS.map(t => (
                 <div key={t.text} style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
                   <div style={{ width: 40, height: 40, borderRadius: 12, background: 'var(--purple-light)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 20 }}>{t.icon}</div>

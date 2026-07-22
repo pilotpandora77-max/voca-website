@@ -114,7 +114,7 @@ export default function PricingPage() {
     <div style={{ paddingBottom: 48 }}>
       <PageHeader title="Төлбөрийн багцууд 👑" subtitle="Суралцах аяллаа дээд түвшинд хүргэе. Илүү их боломж, илүү их амжилт!" streak={streak} />
 
-      <div style={{ padding: '0 28px', display: 'grid', gridTemplateColumns: 'minmax(0,1fr) 300px', gap: 18, alignItems: 'start' }}>
+      <div className="responsive-sidebar" style={{ padding: '0 28px', display: 'grid', gridTemplateColumns: 'minmax(0,1fr) 300px', gap: 18, alignItems: 'start' }}>
         {/* ── Main ── */}
         <div>
           {/* Banner */}
@@ -126,7 +126,7 @@ export default function PricingPage() {
             <div style={{ position: 'relative', zIndex: 1, maxWidth: '72%' }}>
               <div style={{ fontSize: 13, fontWeight: 700, opacity: 0.85, marginBottom: 4 }}>Premium болсноор</div>
               <h2 style={{ fontSize: 28, fontWeight: 900, marginBottom: 18, lineHeight: 1.15 }}>хязгааргүй боломж нээгдэнэ!</h2>
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px 20px' }}>
+              <div className="responsive-cards" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px 20px' }}>
                 {['Хязгааргүй үг нэмэх', 'Пост нийтлэх', 'Группийн чат', 'Найзуудтай болох', 'Premium badge', 'Рекламгүй орчин'].map(f => (
                   <div key={f} style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 13.5, fontWeight: 600 }}>
                     <span style={{ color: '#fcd34d' }}>✓</span> {f}
@@ -144,7 +144,7 @@ export default function PricingPage() {
           )}
 
           {/* Pricing cards */}
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 16 }}>
+          <div className="responsive-sidebar" style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 16 }}>
             {plans.map(p => {
               const isCurrent = p.id === currentPlan;
               return (

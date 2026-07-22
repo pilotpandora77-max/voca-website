@@ -267,6 +267,20 @@ input:focus, textarea:focus, select:focus {
   .main-content { margin-left: 0 !important; padding-bottom: 72px !important; }
   .bottom-nav   { display: flex !important; }
   .hide-mobile  { display: none !important; }
+
+  /* main+sidebar 2-багана grid → нэг багана */
+  .responsive-sidebar { grid-template-columns: 1fr !important; }
+  /* тэнцүү багана бүхий stat/карт мөр → шаардлагатайгаараа мөр хуваана */
+  .responsive-cards { grid-template-columns: repeat(auto-fit, minmax(120px, 1fr)) !important; }
+  /* 7 өдрийн хуанли grid — 7 багана хэвээр, зөвхөн жижигрэнэ */
+  .responsive-week { grid-template-columns: repeat(7, minmax(0, 1fr)) !important; }
+  /* Эрэмбийн хүснэгтийн мөр — хоёрдогч баганануудыг нуугаад rank+нэр+XP-г үлдээнэ */
+  .responsive-table-row { grid-template-columns: 44px 1fr 70px !important; }
+  /* Нүүр хуудасны hero+stat grid — хүүхдүүд нь тус тусдаа gridColumn/gridRow
+     байрлалтай тул эцэг container-ийг ганц баганад унагаад, хүүхэд бүрийн
+     тогтмол байрлалыг мөн цуцалж энгийн дараалалд оруулна. */
+  .hero-stats-grid { grid-template-columns: 1fr !important; grid-template-rows: auto !important; }
+  .hero-stats-grid > * { grid-column: auto !important; grid-row: auto !important; }
 }
 @media (min-width: 769px) {
   .bottom-nav { display: none !important; }

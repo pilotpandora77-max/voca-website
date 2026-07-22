@@ -85,7 +85,7 @@ export default function LessonDetail() {
         <span style={{ color: 'var(--text)', fontWeight: 700 }}>{lesson.title}</span>
       </div>
 
-      <div style={{ display: 'grid', gridTemplateColumns: 'minmax(0,1fr) 300px', gap: 22, alignItems: 'start' }}>
+      <div className="responsive-sidebar" style={{ display: 'grid', gridTemplateColumns: 'minmax(0,1fr) 300px', gap: 22, alignItems: 'start' }}>
         {/* ── Main ── */}
         <div className="card" style={{ padding: 0, overflow: 'hidden' }}>
           {/* Header */}
@@ -301,7 +301,7 @@ function QuizTab({ lesson, onDone }) {
     <div>
       <div style={{ fontSize: 12, fontWeight: 800, color: 'var(--muted)', marginBottom: 12 }}>Тест {i + 1}/{lesson.quiz.length}</div>
       <div style={{ fontSize: 17, fontWeight: 800, color: 'var(--text)', marginBottom: 18, textAlign: 'center', padding: '16px', background: 'var(--bg-alt)', borderRadius: 12 }}>{Q.q}</div>
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
+      <div className="responsive-cards" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
         {Q.options.map((o, k) => {
           let bg = 'var(--bg-alt)', bd = 'var(--border)', cl = 'var(--text)';
           if (conf) { if (k === Q.answer) { bg = 'var(--green-bg)'; bd = 'var(--green)'; cl = 'var(--green-dark)'; } else if (k === sel) { bg = 'var(--red-light)'; bd = 'var(--red)'; cl = 'var(--red)'; } }

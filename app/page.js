@@ -126,7 +126,7 @@ export default function HomePage() {
       <div style={{ padding: '0 28px' }}>
 
         {/* ── Row 1: Hero level card (left) + 3 stat cards (right) ── */}
-        <div style={{ display: 'grid', gridTemplateColumns: '1.5fr 1fr 1fr', gridTemplateRows: 'auto auto', gap: 16, marginBottom: 16 }}>
+        <div className="hero-stats-grid" style={{ display: 'grid', gridTemplateColumns: '1.5fr 1fr 1fr', gridTemplateRows: 'auto auto', gap: 16, marginBottom: 16 }}>
 
           {/* ── Hero Level card ── */}
           <div style={{
@@ -214,7 +214,7 @@ export default function HomePage() {
         </div>
 
         {/* ── Quick Actions ── */}
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 12, marginBottom: 16 }}>
+        <div className="responsive-cards" style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 12, marginBottom: 16 }}>
           {QUICK_ACTIONS.map(a => (
             <Link key={a.href} href={a.href} style={{
               textDecoration: 'none', background: '#fff', border: '1.5px solid var(--border)',
@@ -245,7 +245,7 @@ export default function HomePage() {
                 Бүгд харах →
               </Link>
             </div>
-            <div style={{ display: 'grid', gridTemplateColumns: `repeat(${Math.min(folders.length, 3)}, 1fr)`, gap: 12 }}>
+            <div className="responsive-cards" style={{ display: 'grid', gridTemplateColumns: `repeat(${Math.min(folders.length, 3)}, 1fr)`, gap: 12 }}>
               {folders.map(f => {
                 const open = openHomeFolder === f.id;
                 return (
@@ -282,7 +282,7 @@ export default function HomePage() {
         )}
 
         {/* ── Row 3: Daily Goals + Right Panel ── */}
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 380px', gap: 16 }}>
+        <div className="responsive-sidebar" style={{ display: 'grid', gridTemplateColumns: '1fr 380px', gap: 16 }}>
 
           {/* Daily Goals */}
           <div className="card">

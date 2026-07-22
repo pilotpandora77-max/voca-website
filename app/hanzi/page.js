@@ -222,7 +222,7 @@ export default function HanziPage() {
       />
 
       {/* Stats row */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 12, padding: '0 28px', marginBottom: 18 }}>
+      <div className="responsive-cards" style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 12, padding: '0 28px', marginBottom: 18 }}>
         {[
           { label: 'Нийт тэмдэгт',  value: HANZI_LIST.length, icon: '汉', color: 'var(--purple)', bg: 'var(--purple-light)' },
           { label: 'Дасгалласан',    value: practiced.size,    icon: '✏️',  color: '#10B981',       bg: '#ECFDF5' },
@@ -239,7 +239,7 @@ export default function HanziPage() {
         ))}
       </div>
 
-      <div style={{ padding: '0 28px', display: 'grid', gridTemplateColumns: '220px 1fr 248px', gap: 16 }}>
+      <div className="responsive-sidebar" style={{ padding: '0 28px', display: 'grid', gridTemplateColumns: '220px 1fr 248px', gap: 16 }}>
 
         {/* Left: Character list */}
         <div className="card" style={{ padding: 0, overflow: 'hidden', height: 'fit-content', maxHeight: 700 }}>
@@ -439,7 +439,7 @@ export default function HanziPage() {
           {/* 7-day calendar */}
           <div className="card">
             <div style={{ fontWeight: 900, fontSize: 14, marginBottom: 12 }}>7 хоногийн идэвх</div>
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', gap: 4, marginBottom: 8 }}>
+            <div className="responsive-week" style={{ display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', gap: 4, marginBottom: 8 }}>
               {calDays.map((d, i) => (
                 <div key={i} style={{ textAlign: 'center' }}>
                   <div style={{ fontSize: 9, color: 'var(--muted)', fontWeight: 700, marginBottom: 4 }}>{d.label}</div>

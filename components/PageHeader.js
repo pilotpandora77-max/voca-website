@@ -16,7 +16,7 @@ export default function PageHeader({ title, subtitle, streak = 0, actions, dark 
 
   return (
     <div style={{
-      display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between',
+      display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', flexWrap: 'wrap', gap: 12,
       padding: '24px 28px 0', marginBottom: 22,
     }}>
       <div>
@@ -28,7 +28,7 @@ export default function PageHeader({ title, subtitle, streak = 0, actions, dark 
         )}
       </div>
 
-      <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexShrink: 0, paddingTop: 2 }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap', paddingTop: 2 }}>
         {actions}
 
         {/* Course / language selector */}

@@ -370,7 +370,7 @@ export default function SocialPage() {
         </div>
       </div>
 
-      <div style={{ padding: '0 28px', display: 'grid', gridTemplateColumns: '250px minmax(0,1fr) 320px', gap: 20, alignItems: 'start' }}>
+      <div className="responsive-sidebar" style={{ padding: '0 28px', display: 'grid', gridTemplateColumns: '250px minmax(0,1fr) 320px', gap: 20, alignItems: 'start' }}>
         {/* ── Left sidebar ── */}
         <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
           <div className="card">
@@ -777,7 +777,7 @@ export default function SocialPage() {
               <div style={{ fontWeight: 900, fontSize: 17, color: 'var(--text)' }}>{profileCard.username} {profileCard.isPremium && '👑'}</div>
               <div style={{ fontSize: 12.5, color: 'var(--muted)', marginTop: 2 }}>Level {levelFromXp(profileCard.xp)} · Нийт #{profileCard.rank}-р байр</div>
             </div>
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 8, marginBottom: 14 }}>
+            <div className="responsive-cards" style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 8, marginBottom: 14 }}>
               {[['⚡', profileCard.xp, 'XP'], ['🔥', profileCard.streak, 'Цуваа'], ['📖', profileCard.wordCount, 'Үг'], ['📝', profileCard.postCount, 'Пост']].map(([e, v, l]) => (
                 <div key={l} style={{ textAlign: 'center', background: 'var(--bg-alt)', borderRadius: 12, padding: '10px 4px' }}>
                   <div style={{ fontSize: 16 }}>{e}</div>

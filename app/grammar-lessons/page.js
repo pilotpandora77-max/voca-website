@@ -44,7 +44,7 @@ export default function GrammarLessonsPage() {
 
       <div style={{ padding: '0 28px', maxWidth: 1000, margin: '0 auto' }}>
         {/* Status */}
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 14, marginBottom: 24 }}>
+        <div className="responsive-cards" style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 14, marginBottom: 24 }}>
           {[['Эзэмшсэн дүрэм', `${learned} / ${LESSONS.length}`, '#7C3AED', '📚'], ['Дундаж нарийвчлал', `${avgAcc}%`, '#22C55E', '🎯'], ['Одоогийн түвшин', `${CEFR[0]?.level}–${CEFR[CEFR.length - 1]?.level}`, '#38BDF8', '📈']].map(([l, v, c, ic]) => (
             <div key={l} className="card" style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
               <div style={{ width: 46, height: 46, borderRadius: 12, background: `${c}18`, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 22 }}>{ic}</div>

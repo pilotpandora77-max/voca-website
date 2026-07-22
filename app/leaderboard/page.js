@@ -117,7 +117,7 @@ export default function LeaderboardPage() {
       `}</style>
       <PageHeader title="🏆 Эрэмбэ" subtitle="Хамгийн идэвхтэй, шилдэг суралцагчидтай өрсөлд!" streak={streak} />
 
-      <div style={{ padding: '0 28px', display: 'grid', gridTemplateColumns: 'minmax(0,1fr) 300px', gap: 18, alignItems: 'start' }}>
+      <div className="responsive-sidebar" style={{ padding: '0 28px', display: 'grid', gridTemplateColumns: 'minmax(0,1fr) 300px', gap: 18, alignItems: 'start' }}>
         {/* ── Main column ── */}
         <div>
           {/* Tabs */}
@@ -169,14 +169,14 @@ export default function LeaderboardPage() {
 
           {/* Table */}
           <div className="card" style={{ padding: 0, overflow: 'hidden' }}>
-            <div style={{ display: 'grid', gridTemplateColumns: '44px 1fr 90px 90px 90px 84px', gap: 8, padding: '12px 18px', borderBottom: '1.5px solid var(--border)', fontSize: 11, fontWeight: 800, color: 'var(--muted)', letterSpacing: 0.5 }}>
-              <span>#</span><span>ХЭРЭГЛЭГЧ</span><span>LEVEL</span><span>XP ОНОО</span><span>ЦУВАА</span><span>АХИЦ</span>
+            <div className="responsive-table-row" style={{ display: 'grid', gridTemplateColumns: '44px 1fr 90px 90px 90px 84px', gap: 8, padding: '12px 18px', borderBottom: '1.5px solid var(--border)', fontSize: 11, fontWeight: 800, color: 'var(--muted)', letterSpacing: 0.5 }}>
+              <span>#</span><span>ХЭРЭГЛЭГЧ</span><span className="hide-mobile">LEVEL</span><span>XP ОНОО</span><span className="hide-mobile">ЦУВАА</span><span className="hide-mobile">АХИЦ</span>
             </div>
             {rest.map((r, i) => {
               const rank = i + 4;
               const isMe = r.id === user.id;
               return (
-                <div key={r.id} className="lb-row" style={{
+                <div key={r.id} className="lb-row responsive-table-row" style={{
                   display: 'grid', gridTemplateColumns: '44px 1fr 90px 90px 90px 84px', gap: 8, padding: '12px 18px',
                   alignItems: 'center', borderBottom: '1px solid var(--border)',
                   background: isMe ? 'var(--purple-light)' : 'transparent',
@@ -189,10 +189,10 @@ export default function LeaderboardPage() {
                       <div style={{ fontWeight: 800, fontSize: 14, color: isMe ? 'var(--purple)' : 'var(--text)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{r.username}{isMe ? ' (та)' : ''}</div>
                     </div>
                   </div>
-                  <span><span style={{ background: 'var(--purple-light)', color: 'var(--purple)', borderRadius: 8, padding: '3px 9px', fontSize: 12, fontWeight: 800 }}>Lv.{levelOf(r.xp)}</span></span>
+                  <span className="hide-mobile"><span style={{ background: 'var(--purple-light)', color: 'var(--purple)', borderRadius: 8, padding: '3px 9px', fontSize: 12, fontWeight: 800 }}>Lv.{levelOf(r.xp)}</span></span>
                   <span style={{ fontWeight: 900, color: 'var(--text)', fontSize: 14 }}>{(r.xp || 0).toLocaleString()}</span>
-                  <span style={{ fontWeight: 800, color: 'var(--gold-dark)', fontSize: 13 }}>{r.streak ?? 0} 🔥</span>
-                  <Sparkline seed={rank} />
+                  <span className="hide-mobile" style={{ fontWeight: 800, color: 'var(--gold-dark)', fontSize: 13 }}>{r.streak ?? 0} 🔥</span>
+                  <span className="hide-mobile"><Sparkline seed={rank} /></span>
                 </div>
               );
             })}

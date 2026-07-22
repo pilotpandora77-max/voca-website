@@ -9,6 +9,11 @@ export const metadata = {
   description: 'Хятад хэлийг хялбархан, хурдан сурах платформ',
 };
 
+export const viewport = {
+  width: 'device-width',
+  initialScale: 1,
+};
+
 const GOOGLE_CLIENT_ID = '963221731155-sfi0kc8kccit4mgbr3kok3piduufo2be.apps.googleusercontent.com';
 
 export default function RootLayout({ children }) {

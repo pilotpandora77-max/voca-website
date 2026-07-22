@@ -79,7 +79,7 @@ export default function MemoryPage() {
         subtitle="Ой тогтоолтыг судлах, сайжруулахад ашигладаг үндсэн онол, загварууд." streak={streak} />
 
       {!sel && (
-      <div style={{ padding: '0 28px', display: 'grid', gridTemplateColumns: '230px minmax(0,1fr)', gap: 18, alignItems: 'start' }}>
+      <div className="responsive-sidebar" style={{ padding: '0 28px', display: 'grid', gridTemplateColumns: '230px minmax(0,1fr)', gap: 18, alignItems: 'start' }}>
         {/* ── Categories ── */}
         <div className="card" style={{ padding: 14 }}>
           <h3 style={{ fontWeight: 900, fontSize: 14, color: 'var(--text)', padding: '4px 8px 10px' }}>Ангилалууд</h3>
@@ -160,7 +160,7 @@ export default function MemoryPage() {
             </div>
 
             {/* diagram + info */}
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 24, marginBottom: 22 }}>
+            <div className="responsive-cards" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 24, marginBottom: 22 }}>
               <Diagram model={sel} />
               <div>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 8 }}>

@@ -66,7 +66,7 @@ export default function CategoryPage() {
   const filtered = category.words.filter(w => !q || w.word.toLowerCase().includes(q.toLowerCase()) || w.mn.includes(q));
 
   return (
-    <div style={{ padding: '24px 28px 48px', display: 'grid', gridTemplateColumns: 'minmax(0,1fr) 280px', gap: 20, alignItems: 'start' }}>
+    <div className="responsive-sidebar" style={{ padding: '24px 28px 48px', display: 'grid', gridTemplateColumns: 'minmax(0,1fr) 280px', gap: 20, alignItems: 'start' }}>
       <div>
         {/* Back */}
         <Link href="/learn" style={{ display: 'inline-flex', alignItems: 'center', gap: 6, color: 'var(--text-sub)', textDecoration: 'none', fontWeight: 700, fontSize: 14, marginBottom: 18 }}>← Буцах</Link>
@@ -220,7 +220,7 @@ function QuizTab({ category }) {
         <div style={{ color: 'var(--muted)', fontSize: 13 }}>[{Q.word.ipa}]</div>
         <div style={{ fontSize: 12, color: 'var(--muted)', fontWeight: 700, marginTop: 10 }}>Зөв орчуулгыг сонго</div>
       </div>
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
+      <div className="responsive-cards" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
         {Q.opts.map((o, k) => {
           let bg = 'var(--bg-alt)', bd = 'var(--border)', cl = 'var(--text)';
           if (conf) { if (k === Q.answer) { bg = 'var(--green-bg)'; bd = 'var(--green)'; cl = 'var(--green-dark)'; } else if (k === sel) { bg = 'var(--red-light)'; bd = 'var(--red)'; cl = 'var(--red)'; } }

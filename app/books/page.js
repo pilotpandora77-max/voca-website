@@ -32,7 +32,7 @@ export default function BooksPage() {
 
       <div style={{ padding: '0 28px' }}>
         {/* Category banners */}
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 16, marginBottom: 28 }}>
+        <div className="responsive-cards" style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 16, marginBottom: 28 }}>
           {BOOK_CATEGORIES.map(c => (
             <a key={c.id} href={`#${c.id}`} style={{ textDecoration: 'none', display: 'flex', alignItems: 'center', gap: 14, padding: '18px 20px', borderRadius: 16, background: `${c.color}0E`, border: `1.5px solid ${c.color}28` }}>
               <div style={{ width: 46, height: 46, borderRadius: 12, background: `${c.color}22`, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 24 }}>{c.icon}</div>
@@ -81,7 +81,7 @@ export default function BooksPage() {
           <div style={{ fontSize: 52 }}>📖</div>
           <div style={{ flex: 1 }}>
             <h3 style={{ fontWeight: 900, fontSize: 16, color: 'var(--purple-dark)', marginBottom: 10 }}>Ном уншихын ашиг</h3>
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '6px 18px' }}>
+            <div className="responsive-cards" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '6px 18px' }}>
               {READING_BENEFITS.map(b => <div key={b} style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 13, color: 'var(--text-sub)', fontWeight: 600 }}><span style={{ color: 'var(--green)' }}>✓</span> {b}</div>)}
             </div>
           </div>
@@ -93,7 +93,7 @@ export default function BooksPage() {
 
         {/* Tips */}
         <h3 style={{ fontWeight: 900, fontSize: 15, color: 'var(--text)', marginBottom: 12 }}>Унших зөвлөмж</h3>
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 14 }}>
+        <div className="responsive-cards" style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 14 }}>
           {READING_TIPS.map(t => (
             <div key={t.title} className="card" style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
               <div style={{ width: 42, height: 42, borderRadius: 12, background: 'var(--purple-light)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 20 }}>{t.icon}</div>

@@ -114,7 +114,7 @@ export default function WordPage() {
         <button onClick={() => next && router.push(`/learn/${cat}/${next.id}`)} disabled={!next} className="btn btn-ghost" style={{ padding: '9px 16px', opacity: next ? 1 : 0.4 }}>Дараах үг →</button>
       </div>
 
-      <div style={{ display: 'grid', gridTemplateColumns: 'minmax(0,1fr) 260px', gap: 20, alignItems: 'start' }}>
+      <div className="responsive-sidebar" style={{ display: 'grid', gridTemplateColumns: 'minmax(0,1fr) 260px', gap: 20, alignItems: 'start' }}>
         {/* ── Main ── */}
         <div>
           {/* Word card */}
@@ -156,7 +156,7 @@ export default function WordPage() {
 
           {/* Memory + image */}
           {(word.mnemonic || word.emoji) && (
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16, marginBottom: 16 }}>
+            <div className="responsive-cards" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16, marginBottom: 16 }}>
               <div className="card">
                 <h3 style={{ fontWeight: 900, fontSize: 14, color: 'var(--text)', marginBottom: 12 }}>Санах аргууд</h3>
                 <div style={{ padding: '14px 16px', background: 'var(--purple-light)', borderRadius: 12 }}>

@@ -60,7 +60,7 @@ export default function CourseBooksPage() {
     <div style={{ paddingBottom: 40 }}>
       <PageHeader title="Дасгалын номын сан 📚" subtitle="Өөрт тохирох дасгалын номоо сонгон, дадлагаа ахиулаарай." streak={streak} />
 
-      <div style={{ padding: '0 28px', display: 'grid', gridTemplateColumns: 'minmax(0,1fr) 280px', gap: 20, alignItems: 'start' }}>
+      <div className="responsive-sidebar" style={{ padding: '0 28px', display: 'grid', gridTemplateColumns: 'minmax(0,1fr) 280px', gap: 20, alignItems: 'start' }}>
         <div>
           {/* Tabs */}
           <div style={{ display: 'flex', gap: 22, borderBottom: '1.5px solid var(--border)', marginBottom: 20, overflowX: 'auto' }}>

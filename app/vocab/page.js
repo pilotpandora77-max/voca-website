@@ -401,7 +401,7 @@ export default function VocabPage() {
       />
 
       {/* Stats row */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 12, padding: '0 28px', marginBottom: 18 }}>
+      <div className="responsive-cards" style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 12, padding: '0 28px', marginBottom: 18 }}>
         {[
           { label: 'Нийт үг',       value: stats.total,   icon: '📚', color: 'var(--purple)', bg: 'var(--purple-light)' },
           { label: 'Суралцсан',     value: stats.learned, icon: '📈', color: '#3B82F6',        bg: '#EFF6FF' },
@@ -418,7 +418,7 @@ export default function VocabPage() {
         ))}
       </div>
 
-      <div style={{ padding: '0 28px', display: 'grid', gridTemplateColumns: '1fr 268px', gap: 18 }}>
+      <div className="responsive-sidebar" style={{ padding: '0 28px', display: 'grid', gridTemplateColumns: '1fr 268px', gap: 18 }}>
         {/* Main */}
         <div>
           {/* Нэгдсэн шалгалт — бүх бүлгийн үгсийг холин, бүх төрлийн тестээр шалгана */}
@@ -621,7 +621,7 @@ export default function VocabPage() {
 
                     {open && (
                       <div style={{ borderTop: '1.5px solid var(--border)', padding: '14px 16px', background: 'var(--bg-alt)' }}>
-                        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10, marginBottom: 14 }}>
+                        <div className="responsive-cards" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10, marginBottom: 14 }}>
                           <div>
                             <div style={{ fontSize: 11, fontWeight: 700, color: 'var(--muted)', marginBottom: 4 }}>ХЯТАД</div>
                             <div style={{ fontWeight: 800, fontSize: 18, color: 'var(--text)' }}>{front}</div>
@@ -690,7 +690,7 @@ export default function VocabPage() {
           {/* 7-day calendar */}
           <div className="card">
             <div style={{ fontWeight: 900, fontSize: 14, marginBottom: 12 }}>7 хоногийн идэвх</div>
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', gap: 4, marginBottom: 8 }}>
+            <div className="responsive-week" style={{ display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', gap: 4, marginBottom: 8 }}>
               {calDays.map((d, i) => (
                 <div key={i} style={{ textAlign: 'center' }}>
                   <div style={{ fontSize: 9, color: 'var(--muted)', fontWeight: 700, marginBottom: 4 }}>{d.label}</div>

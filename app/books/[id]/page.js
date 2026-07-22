@@ -69,7 +69,7 @@ export default function BookDetail() {
         </div>
       </div>
 
-      <div style={{ display: 'grid', gridTemplateColumns: 'minmax(0,1fr) 300px', gap: 22, alignItems: 'start' }}>
+      <div className="responsive-sidebar" style={{ display: 'grid', gridTemplateColumns: 'minmax(0,1fr) 300px', gap: 22, alignItems: 'start' }}>
         {/* ── Main ── */}
         <div>
           {/* Tabs */}
@@ -86,7 +86,7 @@ export default function BookDetail() {
               <h3 style={{ fontWeight: 900, fontSize: 17, color: 'var(--text)', marginBottom: 12 }}>Номын тухай</h3>
               <p style={{ color: 'var(--text-sub)', fontSize: 14.5, lineHeight: 1.7, marginBottom: 20 }}>{book.summary}</p>
 
-              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 1, background: 'var(--border)', borderRadius: 12, overflow: 'hidden', marginBottom: 22 }}>
+              <div className="responsive-cards" style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 1, background: 'var(--border)', borderRadius: 12, overflow: 'hidden', marginBottom: 22 }}>
                 {[['👤 Зохиолч', book.author], ['📅 Хэвлэгдсэн он', book.year], ['🌐 Хэл', book.lang], ['📄 Хуудасны тоо', book.pages], ['🏷️ Төрөл', book.type], ['🔖 ISBN', book.isbn]].map(([l, v]) => (
                   <div key={l} style={{ background: '#fff', padding: '14px 16px' }}>
                     <div style={{ fontSize: 11.5, fontWeight: 700, color: 'var(--muted)', marginBottom: 4 }}>{l}</div>

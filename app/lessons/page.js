@@ -76,7 +76,7 @@ export default function LessonsPage() {
     <div style={{ paddingBottom: 40 }}>
       <PageHeader title="Хичээлүүдийн төрөл" subtitle="Өөрт тохирох хичээлийн төрлөө сонгон, үр дүнтэйгээр суралцаарай." streak={streak} />
 
-      <div style={{ padding: '0 28px', display: 'grid', gridTemplateColumns: 'minmax(0,1fr) 300px', gap: 20, alignItems: 'start' }}>
+      <div className="responsive-sidebar" style={{ padding: '0 28px', display: 'grid', gridTemplateColumns: 'minmax(0,1fr) 300px', gap: 20, alignItems: 'start' }}>
         <div>
           {/* Tabs */}
           <div style={{ display: 'flex', gap: 24, borderBottom: '1.5px solid var(--border)', marginBottom: 20, overflowX: 'auto' }}>
