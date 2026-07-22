@@ -90,8 +90,6 @@ export default function VocabPage() {
   const [newGroupName, setNewGroupName] = useState('');
   const [newGroupColor, setNewGroupColor] = useState('#7C3AED');
   const [newGroupPublic, setNewGroupPublic] = useState(false);
-  const [addToGroupName, setAddToGroupName] = useState(null); // group name for "add words" modal
-  const [addToGroupSearch, setAtgSearch] = useState('');
 
   useEffect(() => {
     if (!authLoad && !user) router.push('/login');
@@ -545,7 +543,7 @@ export default function VocabPage() {
                   <div style={{ fontWeight: 900, fontSize: 15, color: 'var(--text)' }}>{g.name}</div>
                   <div style={{ fontSize: 12, color: 'var(--muted)', fontWeight: 600 }}>{g.words.length} үг</div>
                 </div>
-                <button onClick={() => { setAtgSearch(''); setAddToGroupName(g.name); }} className="btn btn-purple" style={{ padding: '8px 16px', fontSize: 12.5 }}>➕ Үг нэмэх</button>
+                <button onClick={() => { setActiveGr(g.name); setShowAdd(true); }} className="btn btn-purple" style={{ padding: '8px 16px', fontSize: 12.5 }}>➕ Үг нэмэх</button>
                 {g.words.length >= 4 && (
                   <button onClick={() => router.push(`/exams?folder=${encodeURIComponent(g.name)}`)} className="btn btn-ghost" style={{ padding: '8px 16px', fontSize: 12.5 }}>🎓 Шалгалт</button>
                 )}
@@ -928,47 +926,6 @@ export default function VocabPage() {
         </div>
       )}
 
-      {/* Add words to group modal */}
-      {addToGroupName && (() => {
-        const g = derivedGroups.find(x => x.name === addToGroupName); if (!g) return null;
-        const q = addToGroupSearch.toLowerCase();
-        const list = words.filter(w => {
-          const f = (w.front || w.word || ''), b = (w.back || w.meaning || '');
-          return !q || f.toLowerCase().includes(q) || b.toLowerCase().includes(q);
-        });
-        return (
-          <div style={{ position: 'fixed', inset: 0, background: 'rgba(15,10,30,0.4)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 500, backdropFilter: 'blur(4px)' }}
-            onClick={e => { if (e.target === e.currentTarget) setAddToGroupName(null); }}>
-            <div className="card" style={{ width: 480, maxWidth: '92vw', padding: 24, maxHeight: '80vh', display: 'flex', flexDirection: 'column' }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 6 }}>
-                <span style={{ width: 12, height: 12, borderRadius: '50%', background: g.color }} />
-                <h2 style={{ fontWeight: 900, fontSize: 17 }}>"{g.name}" бүлэгт үг нэмэх</h2>
-              </div>
-              <p style={{ fontSize: 12.5, color: 'var(--muted)', marginBottom: 14 }}>Үгсээ сонгож тэмдэглэнэ үү (нэг үг зэрэг зөвхөн нэг бүлэгт байх тул өөр бүлэгт байсан бол шилжинэ). Эсвэл "Шинэ үг нэмэх"-ээр шинээр нэмж болно.</p>
-              <input type="text" value={addToGroupSearch} onChange={e => setAtgSearch(e.target.value)} placeholder="Үг хайх..." style={{ marginBottom: 12 }} />
-              <div style={{ flex: 1, overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: 6 }}>
-                {list.length === 0 && <p style={{ color: 'var(--muted)', textAlign: 'center', padding: 20, fontSize: 13 }}>Үг алга. Эхлээд үг нэмнэ үү.</p>}
-                {list.map(w => {
-                  const wid = w._id || w.id;
-                  const inG = (w.group || DEFAULT_GROUP) === g.name;
-                  const f = w.front || w.word || '', b = w.back || w.meaning || '';
-                  return (
-                    <div key={wid} onClick={() => setWordGroup(w, inG ? DEFAULT_GROUP : g.name)} style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '10px 12px', borderRadius: 10, cursor: 'pointer', border: `1.5px solid ${inG ? g.color : 'var(--border)'}`, background: inG ? `${g.color}12` : '#fff' }}>
-                      <span style={{ width: 20, height: 20, borderRadius: 6, border: `2px solid ${inG ? g.color : 'var(--border)'}`, background: inG ? g.color : '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#fff', fontSize: 12, fontWeight: 900, flexShrink: 0 }}>{inG ? '✓' : ''}</span>
-                      <span style={{ fontWeight: 800, fontSize: 15, color: 'var(--text)' }}>{f}</span>
-                      <span style={{ fontSize: 13, color: 'var(--text-sub)' }}>{b}</span>
-                    </div>
-                  );
-                })}
-              </div>
-              <div style={{ display: 'flex', gap: 10, marginTop: 14 }}>
-                <button className="btn btn-ghost" onClick={() => { setAddToGroupName(null); setShowAdd(true); }} style={{ flex: 1 }}>➕ Шинэ үг үүсгэх</button>
-                <button className="btn btn-purple" onClick={() => setAddToGroupName(null)} style={{ flex: 1 }}>Болсон</button>
-              </div>
-            </div>
-          </div>
-        );
-      })()}
     </div>
   );
 }
