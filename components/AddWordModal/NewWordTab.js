@@ -1,7 +1,7 @@
 'use client';
 import { useState, useRef } from 'react';
 import api, { uploadUrl } from '@/lib/api';
-import { AI_LANGS, EMPTY_NEW_WORD, POS_OPTIONS, POS_ABBR_MN } from './constants';
+import { AI_LANGS, EMPTY_NEW_WORD, POS_OPTIONS, POS_ABBR_MN, AI_ENABLED } from './constants';
 import PreviewCard from './PreviewCard';
 
 const inputStyle = { width: '100%' };
@@ -34,6 +34,7 @@ export default function NewWordTab({ aiLang, setAiLang, targetGroup, onSaved, on
   }
 
   async function aiFillWord() {
+    if (!AI_ENABLED) return;
     const q = (newWord.front || '').trim();
     if (!q) return;
     const key = `${aiLang}:${q.toLowerCase()}`;
@@ -70,6 +71,7 @@ export default function NewWordTab({ aiLang, setAiLang, targetGroup, onSaved, on
   }
 
   async function regenerateAudio() {
+    if (!AI_ENABLED) return;
     const text = (newWord.example || newWord.front || '').trim();
     if (!text) return;
     try {
@@ -175,7 +177,9 @@ export default function NewWordTab({ aiLang, setAiLang, targetGroup, onSaved, on
             {aiNotice ? (
               <div style={{ fontSize: 11, color: '#D97706', marginTop: 4, fontWeight: 600 }}>{aiNotice}</div>
             ) : (
-              <div style={{ fontSize: 11, color: 'var(--muted)', marginTop: 4 }}>Enter дарах юм уу өөр талбар руу шилжихэд AI автоматаар бөглөнө.</div>
+              <div style={{ fontSize: 11, color: 'var(--muted)', marginTop: 4 }}>
+                {AI_ENABLED ? 'Enter дарах юм уу өөр талбар руу шилжихэд AI автоматаар бөглөнө.' : 'Доорх талбаруудыг гараар бөглөнө үү.'}
+              </div>
             )}
           </div>
 
@@ -268,7 +272,7 @@ export default function NewWordTab({ aiLang, setAiLang, targetGroup, onSaved, on
               {newWord.audioUrl && (
                 <button type="button" onClick={playPreviewAudio} style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: 15, color: 'var(--purple)' }}>▶</button>
               )}
-              {newWord.example && (
+              {AI_ENABLED && newWord.example && (
                 <button type="button" onClick={regenerateAudio} style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: 12, color: 'var(--muted)' }}>🔁 AI-аар дахин үүсгэх</button>
               )}
               <input ref={audioFileRef} type="file" accept=".mp3,.wav,audio/mpeg,audio/wav" onChange={handleAudioFile} style={{ display: 'none' }} />

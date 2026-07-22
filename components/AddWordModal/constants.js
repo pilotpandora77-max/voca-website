@@ -1,4 +1,9 @@
 // AddWordModal-ийн бүх табад хуваалцдаг тогтмолууд.
+
+// AI Auto-Fill / TTS-д зориулсан OpenAI төлбөр одоогоор гаргахгүй байгаа тул
+// түр хугацаагаар унтраасан. Дараа нь төлбөртэй API key нэмэгдэхэд true болгоно.
+export const AI_ENABLED = false;
+
 export const AI_LANGS = [
   { code: 'en', flag: '🇬🇧', label: 'EN', wordLabel: 'Англи үг',     placeholder: 'ж: benevolent',  readingLabel: 'IPA дуудлага' },
   { code: 'zh', flag: '🇨🇳', label: 'ZH', wordLabel: 'Хятад үг',     placeholder: 'ж: 你好',         readingLabel: 'Pinyin' },
