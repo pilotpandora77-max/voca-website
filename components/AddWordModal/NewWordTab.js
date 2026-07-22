@@ -20,6 +20,7 @@ export default function NewWordTab({ aiLang, setAiLang, targetGroup, onSaved, on
   const [addLoading, setAddLoading] = useState(false);
   const [audioUploadBusy, setAudioUploadBusy] = useState(false);
   const [posMenuOpen, setPosMenuOpen] = useState(false);
+  const [aiNotice, setAiNotice] = useState('');
   const audioFileRef = useRef(null);
 
   function togglePos(p) {
@@ -38,6 +39,7 @@ export default function NewWordTab({ aiLang, setAiLang, targetGroup, onSaved, on
     const key = `${aiLang}:${q.toLowerCase()}`;
     if (key === lastFilledKey || aiFillBusy) return;
     setAiFillBusy(true);
+    setAiNotice('');
     try {
       const { data } = await api.post('/api/ai/word-fill', { word: q, lang: aiLang });
       setLastFilledKey(key);
@@ -55,14 +57,14 @@ export default function NewWordTab({ aiLang, setAiLang, targetGroup, onSaved, on
         tags: data.tags || [],
         audioUrl: data.audioUrl || null,
       }));
-      if (data.notFound) alert('AI энэ үгийг мэдэхгүй байна — мэдээллийг өөрөө шалгаж засаарай.');
+      if (data.notFound) setAiNotice('AI энэ үгийг мэдэхгүй байна — мэдээллийг өөрөө шалгаж засаарай.');
     } catch (e) {
       const msg = e.response?.status === 503
         ? 'AI одоогоор ажиллахгүй байна — гараар бөглөнө үү.'
         : e.response?.status === 429
         ? 'Өдрийн AI хязгаарт хүрлээ. Дараа дахин оролдоно уу.'
         : (e.response?.data?.error || 'AI-аар бөглөхөд алдаа гарлаа.');
-      alert(msg);
+      setAiNotice(msg);
     }
     setAiFillBusy(false);
   }
@@ -160,7 +162,7 @@ export default function NewWordTab({ aiLang, setAiLang, targetGroup, onSaved, on
               Yr ({curLang.wordLabel}) <Counter value={newWord.front} max={50} />
             </label>
             <div style={{ position: 'relative' }}>
-              <input type="text" autoFocus value={newWord.front} onChange={e => setNewWord(n => ({ ...n, front: e.target.value }))}
+              <input type="text" autoFocus value={newWord.front} onChange={e => { setNewWord(n => ({ ...n, front: e.target.value })); setAiNotice(''); }}
                 onBlur={aiFillWord}
                 onKeyDown={e => { if (e.key === 'Enter') { e.preventDefault(); aiFillWord(); } }}
                 placeholder={curLang.placeholder} style={{ ...inputStyle, paddingRight: aiFillBusy ? 110 : undefined }} />
@@ -170,7 +172,11 @@ export default function NewWordTab({ aiLang, setAiLang, targetGroup, onSaved, on
                 </span>
               )}
             </div>
-            <div style={{ fontSize: 11, color: 'var(--muted)', marginTop: 4 }}>Enter дарах юм уу өөр талбар руу шилжихэд AI автоматаар бөглөнө.</div>
+            {aiNotice ? (
+              <div style={{ fontSize: 11, color: '#D97706', marginTop: 4, fontWeight: 600 }}>{aiNotice}</div>
+            ) : (
+              <div style={{ fontSize: 11, color: 'var(--muted)', marginTop: 4 }}>Enter дарах юм уу өөр талбар руу шилжихэд AI автоматаар бөглөнө.</div>
+            )}
           </div>
 
           <div>
