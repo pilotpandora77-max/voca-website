@@ -329,7 +329,7 @@ export default function StreakPage() {
             </div>
           ))}
         </div>
-        <Link href="/vocab/practice" className="btn btn-purple" style={{ flexShrink: 0, padding: '11px 22px', textDecoration: 'none' }}>Хичээл хийх →</Link>
+        <Link href="/lessons" className="btn btn-purple" style={{ flexShrink: 0, padding: '11px 22px', textDecoration: 'none' }}>Хичээл хийх →</Link>
       </div>
 
       <style>{`@media (max-width:768px){ .streak-goalbar{ left:0 !important; flex-wrap:wrap; gap:10px !important; } }`}</style>

@@ -5,24 +5,27 @@ import { useAuth } from '@/lib/auth';
 import api from '@/lib/api';
 import PageHeader from '@/components/PageHeader';
 
-// Үнэ/нэр backend-ээс (GET /api/billing/status-ийн plans[]) амьдаар ирнэ — эдгээр нь
-// зөвхөн admin-аас засварлагдахгүй, UI-д зориулсан статик мэдээлэл.
-// wordLimit мөрийг энд хатуу бичихгүй — admin-аас засварласан амьд утгаас
-// (status.plans[].wordLimit) тооцоод доор нь features жагсаалтын эхэнд нэмнэ.
+// Багц бүрийн боломж (features) admin.html-ийн "Багц" таб дээрх мэдэгдлээр
+// удирддаг тул энд id→харагдах нэр map хийнэ (backend/src/plans.js-тэй ижил
+// нэршил — админ хэдийг сонговол хэрэглэгч яг тэрийг харна).
+const FEATURE_LABELS = {
+  social:      '✍️ Пост нийтлэх',
+  reels:       '🎬 Reel',
+  courseBooks: '📚 Хичээл, тоглоом',
+  exams:       '🎓 Шалгалт',
+  groups:      '💬 Группийн чат',
+  friends:     '🤝 Найзуудтай болох',
+  ai:          '🤖 AI багш',
+};
+
+// Багц бүрийн статик (backend-ийн Багц-роль системээр удирдагддаггүй, үргэлж
+// харагдах) нэмэлт зүйлс. wordLimit мөрийг энд хатуу бичихгүй — admin-аас
+// засварласан амьд утгаас (status.plans[].wordLimit) тооцоод features
+// жагсаалтын эхэнд нэмнэ, дунд нь live.features (роль системээс) орно.
 const PLAN_META = [
-  {
-    id: 'free', period: '',
-    features: ['Толь бичиг', 'Суралцах үндсэн статистик'],
-  },
-  {
-    id: 'standard', period: '/сар',
-    features: ['Бүх хичээл, тоглоом', 'Толь бичиг', 'Нийтлэл харах'],
-  },
-  {
-    id: 'premium', period: '/сар', best: true,
-    features: ['✍️ Пост нийтлэх', '💬 Группийн чат үүсгэх',
-               '🤝 Найзуудтай болох', '💎 Premium badge', 'Рекламгүй орчин'],
-  },
+  { id: 'free',     period: '',     extras: ['Толь бичиг', 'Суралцах үндсэн статистик'] },
+  { id: 'standard', period: '/сар', extras: ['Толь бичиг'] },
+  { id: 'premium',  period: '/сар', best: true, extras: ['💎 Premium badge', 'Рекламгүй орчин'] },
 ];
 function formatPrice(n) { return n === 0 ? '0₮' : `${n.toLocaleString('en-US')}₮`; }
 function wordLimitFeature(wordLimit) {
@@ -86,11 +89,12 @@ export default function PricingPage() {
   const currentPlan = status?.plan || 'free';
   const plans = PLAN_META.map(meta => {
     const live = status?.plans?.find(p => p.id === meta.id);
+    const dynamicFeatures = (live?.features || []).map(f => FEATURE_LABELS[f] || f);
     return {
       ...meta,
       name: live?.name || meta.id,
       price: live ? formatPrice(live.price) : '···',
-      features: [live ? wordLimitFeature(live.wordLimit) : 'Үг хадгалах', ...meta.features],
+      features: [live ? wordLimitFeature(live.wordLimit) : 'Үг хадгалах', ...dynamicFeatures, ...meta.extras],
     };
   });
 
@@ -127,7 +131,7 @@ export default function PricingPage() {
               <div style={{ fontSize: 13, fontWeight: 700, opacity: 0.85, marginBottom: 4 }}>Premium болсноор</div>
               <h2 style={{ fontSize: 28, fontWeight: 900, marginBottom: 18, lineHeight: 1.15 }}>хязгааргүй боломж нээгдэнэ!</h2>
               <div className="responsive-cards" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px 20px' }}>
-                {['Хязгааргүй үг нэмэх', 'Пост нийтлэх', 'Группийн чат', 'Найзуудтай болох', 'Premium badge', 'Рекламгүй орчин'].map(f => (
+                {(plans.find(p => p.id === 'premium')?.features || []).map(f => (
                   <div key={f} style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 13.5, fontWeight: 600 }}>
                     <span style={{ color: '#fcd34d' }}>✓</span> {f}
                   </div>
