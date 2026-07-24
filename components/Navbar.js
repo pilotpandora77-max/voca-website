@@ -4,6 +4,7 @@ import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { useAuth } from '@/lib/auth';
 import api, { uploadUrl } from '@/lib/api';
+import TrialBadge from '@/components/TrialBadge';
 
 const NAV = [
   { href: '/',           icon: '🏠', label: 'Нүүр' },
@@ -129,6 +130,8 @@ export default function Navbar() {
             </Link>
           </div>
         )}
+
+        {user && <TrialBadge user={user} style={{ margin: '0 12px 10px', width: 'auto' }} />}
 
         {/* User info */}
         {user && (

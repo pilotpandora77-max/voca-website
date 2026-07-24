@@ -1,6 +1,6 @@
 'use client';
 import { useState, useEffect } from 'react';
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { useAuth } from '@/lib/auth';
 import api from '@/lib/api';
 import PageHeader from '@/components/PageHeader';
@@ -48,6 +48,8 @@ const TESTIMONIALS = [
 export default function PricingPage() {
   const { user, loading: authLoad, refreshUser } = useAuth();
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const trialExpired = searchParams.get('reason') === 'trial_expired';
   const [streak, setStreak]   = useState(0);
   const [status, setStatus]   = useState(null);
   const [payPlan, setPayPlan] = useState(null);   // plan id being paid for (opens modal)
@@ -117,6 +119,13 @@ export default function PricingPage() {
   return (
     <div style={{ paddingBottom: 48 }}>
       <PageHeader title="Төлбөрийн багцууд 👑" subtitle="Суралцах аяллаа дээд түвшинд хүргэе. Илүү их боломж, илүү их амжилт!" streak={streak} />
+
+      {trialExpired && (
+        <div style={{ margin: '0 28px 16px', padding: '14px 18px', borderRadius: 14, background: '#FEF3C7', border: '1.5px solid #F59E0B44', display: 'flex', alignItems: 'center', gap: 10 }}>
+          <span style={{ fontSize: 20 }}>⏰</span>
+          <span style={{ fontSize: 13.5, fontWeight: 700, color: '#92400E' }}>Таны 7 хоногийн Premium туршилт дууслаа — үргэлжлүүлэхийг хүсвэл доороос багц сонгоно уу.</span>
+        </div>
+      )}
 
       <div className="responsive-sidebar" style={{ padding: '0 28px', display: 'grid', gridTemplateColumns: 'minmax(0,1fr) 300px', gap: 18, alignItems: 'start' }}>
         {/* ── Main ── */}

@@ -3,6 +3,7 @@ import { useAuth } from '@/lib/auth';
 import Link from 'next/link';
 import CourseSelector from '@/components/CourseSelector';
 import { uploadUrl } from '@/lib/api';
+import TrialBadge from '@/components/TrialBadge';
 
 export default function PageHeader({ title, subtitle, streak = 0, actions, dark = false }) {
   const { user } = useAuth();
@@ -30,6 +31,8 @@ export default function PageHeader({ title, subtitle, streak = 0, actions, dark 
 
       <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap', paddingTop: 2 }}>
         {actions}
+
+        <TrialBadge user={user} />
 
         {/* Course / language selector */}
         <CourseSelector />
