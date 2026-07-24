@@ -9,31 +9,12 @@ import Mascot from '@/components/Mascot';
 
 const WORD_OF_DAY = { zh: '你好', pinyin: 'nǐ hǎo', mn: 'Сайн уу / Тавтай морил' };
 
-const DAILY_GOALS = [
-  { icon: '🔥', title: 'Өдрийн чек-ин', desc: 'Өнөөдөр апп-д нэвтэрч ор.', xp: 10, key: 'checkin', total: 1 },
-  { icon: '🃏', title: '5 карт давтах', desc: '5 давтах карт гүйцэтгэ.', xp: 20, key: 'reviews', total: 5 },
-  { icon: '✏️', title: 'Шинэ үг нэмэх', desc: 'Шинэ 1 үг нэм.', xp: 15, key: 'words', total: 1 },
-  { icon: '📖', title: '5 хуудас унших', desc: 'Дасгалын номноос 5 хуудас унш.', xp: 5, key: 'pages', total: 5 },
-];
-
 const QUICK_ACTIONS = [
   { icon: '🃏', label: 'Давтах', sub: 'Карт давтах', href: '/vocab/practice', color: '#7C3AED', bg: '#EDE9FF' },
   { icon: '🎓', label: 'Шалгалт', sub: 'Нэртэй шалгалт өгөх', href: '/exams', color: '#10B981', bg: '#ECFDF5' },
   { icon: '🎯', label: 'Дасгал', sub: 'Үгээрээ дасгал хий', href: '/lessons', color: '#3B82F6', bg: '#EFF6FF' },
   { icon: '📖', label: 'Толь', sub: 'Хайх & олох', href: '/dictionary', color: '#F59E0B', bg: '#FEF3C7' },
 ];
-
-function getLevel(xp = 0) {
-  const thresholds = [0, 100, 300, 600, 1000, 1500, 2200, 3000];
-  let level = 1;
-  for (let i = 1; i < thresholds.length; i++) {
-    if (xp >= thresholds[i]) level = i + 1;
-    else break;
-  }
-  const lvlXp = thresholds[Math.min(level - 1, thresholds.length - 1)];
-  const nextXp = thresholds[Math.min(level, thresholds.length - 1)] || lvlXp + 200;
-  return { level, current: xp - lvlXp, needed: nextXp - lvlXp };
-}
 
 export default function HomePage() {
   const { user, loading: authLoad } = useAuth();
@@ -48,6 +29,10 @@ export default function HomePage() {
   const [openHomeFolder, setOpenHomeFolder] = useState(null); // folder id currently expanded
   const [leaderboard, setLB]      = useState([]);
   const [loading, setLoading]     = useState(true);
+  const [quests, setQuests]       = useState([]);
+  const [missionClaimed, setMissionClaimed] = useState(false);
+  const [missionBusy, setMissionBusy]       = useState(false);
+  const [levelUpAt, setLevelUpAt] = useState(null);
 
   useEffect(() => {
     if (!authLoad && !user) router.push('/login');
@@ -57,12 +42,13 @@ export default function HomePage() {
   async function load() {
     setLoading(true);
     try {
-      const [s, cards, st, lb, fold] = await Promise.all([
+      const [s, cards, st, lb, fold, q] = await Promise.all([
         api.get('/api/streak'),
         api.get('/api/cards/due'),
         api.get('/api/stats').catch(() => ({ data: {} })),
         api.get('/api/stats/leaderboard').catch(() => ({ data: [] })),
         api.get('/api/folders/public?limit=5').catch(() => ({ data: [] })),
+        api.get('/api/stats/quests').catch(() => ({ data: [] })),
       ]);
       setStreak(s.data.streak || 0);
       setDue(cards.data);
@@ -70,8 +56,25 @@ export default function HomePage() {
       setStats(st.data);
       setLB(lb.data.slice(0, 5));
       setFolders(fold.data || []);
+      setQuests(q.data || []);
+      setMissionClaimed(!!st.data.missionClaimedToday);
+      if (st.data.leveledUp) setLevelUpAt(st.data.level);
     } catch {}
     setLoading(false);
+  }
+
+  async function claimMission() {
+    if (missionBusy || missionClaimed) return;
+    setMissionBusy(true);
+    try {
+      const { data } = await api.post('/api/stats/mission/claim');
+      if (data.ok) {
+        setMissionClaimed(true);
+        const st = await api.get('/api/stats').catch(() => null);
+        if (st) setStats(st.data);
+      }
+    } catch {}
+    setMissionBusy(false);
   }
 
   async function toggleFolderLike(f) {
@@ -105,15 +108,9 @@ export default function HomePage() {
   );
   if (!user) return null;
 
-  const lvl = getLevel(stats?.xp || 0);
+  const lvl = { level: stats?.level || 1, current: stats?.levelXpCurrent || 0, needed: stats?.levelXpNeeded || 100 };
   const progress = Math.min((lvl.current / lvl.needed) * 100, 100);
-
-  const goalProgress = {
-    checkin: 1,
-    reviews: Math.min(stats?.reviewCount || 0, 5),
-    words: Math.min(stats?.wordCount || 0, 1),
-    pages: Math.min(stats?.pagesReadToday || 0, 5),
-  };
+  const missionDone = quests.length > 0 && quests.every(q => (q.progress || 0) >= q.goal);
 
   return (
     <div style={{ paddingBottom: 32 }}>
@@ -284,21 +281,21 @@ export default function HomePage() {
         {/* ── Row 3: Daily Goals + Right Panel ── */}
         <div className="responsive-sidebar" style={{ display: 'grid', gridTemplateColumns: '1fr 380px', gap: 16 }}>
 
-          {/* Daily Goals */}
+          {/* Daily Mission */}
           <div className="card">
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 18 }}>
-              <h2 style={{ fontWeight: 900, fontSize: 16, color: 'var(--text)' }}>🎯 Өдрийн зорилт</h2>
+              <h2 style={{ fontWeight: 900, fontSize: 16, color: 'var(--text)' }}>🎯 Өнөөдрийн зорилго</h2>
               <span style={{ fontSize: 13, color: 'var(--muted)', fontWeight: 700 }}>
-                {Object.values(goalProgress).filter((v, i) => v >= DAILY_GOALS[i]?.total).length}/{DAILY_GOALS.length}
+                {quests.filter(q => (q.progress || 0) >= q.goal).length}/{quests.length}
               </span>
             </div>
             <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-              {DAILY_GOALS.map(g => {
-                const done = goalProgress[g.key];
-                const pct  = Math.min((done / g.total) * 100, 100);
-                const isDone = done >= g.total;
+              {quests.map(g => {
+                const done = g.progress || 0;
+                const pct  = Math.min((done / g.goal) * 100, 100);
+                const isDone = done >= g.goal;
                 return (
-                  <div key={g.key} style={{
+                  <div key={g.id} style={{
                     display: 'flex', alignItems: 'center', gap: 14, padding: '14px',
                     background: isDone ? 'var(--green-light)' : 'var(--bg-alt)',
                     borderRadius: 14, border: `1.5px solid ${isDone ? '#10B98133' : 'var(--border)'}`,
@@ -309,7 +306,7 @@ export default function HomePage() {
                       border: `1.5px solid ${isDone ? '#10B98144' : 'var(--border)'}`,
                       display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 20,
                     }}>
-                      {g.icon}
+                      {g.emoji}
                     </div>
                     <div style={{ flex: 1, minWidth: 0 }}>
                       <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 4 }}>
@@ -325,13 +322,28 @@ export default function HomePage() {
                         <div style={{ flex: 1, height: 5, background: 'var(--border)', borderRadius: 4, overflow: 'hidden' }}>
                           <div style={{ height: '100%', background: isDone ? 'var(--green)' : 'var(--purple)', borderRadius: 4, width: `${pct}%`, transition: 'width 0.5s' }} />
                         </div>
-                        <span style={{ fontSize: 11, fontWeight: 800, color: 'var(--muted)' }}>{done}/{g.total}</span>
+                        <span style={{ fontSize: 11, fontWeight: 800, color: 'var(--muted)' }}>{done}/{g.goal}</span>
                       </div>
                     </div>
                   </div>
                 );
               })}
             </div>
+            {missionDone && (
+              missionClaimed ? (
+                <div style={{ marginTop: 14, textAlign: 'center', fontSize: 13, fontWeight: 800, color: 'var(--green)' }}>
+                  ✓ Өнөөдрийн шагналыг авсан
+                </div>
+              ) : (
+                <button onClick={claimMission} disabled={missionBusy} style={{
+                  marginTop: 14, width: '100%', padding: '13px', borderRadius: 12, border: 'none',
+                  background: 'linear-gradient(135deg,#7c3aed,#6d28d9)', color: '#fff', fontWeight: 800,
+                  fontSize: 14, cursor: 'pointer', fontFamily: 'inherit',
+                }}>
+                  {missionBusy ? 'Түр хүлээнэ үү…' : '🎁 Шагнал авах (+100 XP)'}
+                </button>
+              )
+            )}
           </div>
 
           {/* Right: Word of day + Leaderboard */}
@@ -408,6 +420,28 @@ export default function HomePage() {
         </div>
 
       </div>
+
+      {levelUpAt != null && (
+        <div style={{ position: 'fixed', inset: 0, background: 'rgba(15,10,30,0.55)', backdropFilter: 'blur(4px)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 100, padding: 20 }}
+          onClick={e => { if (e.target === e.currentTarget) setLevelUpAt(null); }}>
+          <div style={{
+            width: '100%', maxWidth: 360, padding: '32px 28px', borderRadius: 24, textAlign: 'center',
+            background: 'linear-gradient(135deg,#7C3AED,#5B21B6)',
+          }}>
+            <div style={{ fontSize: 56, marginBottom: 10 }}>🎉</div>
+            <div style={{ fontSize: 24, fontWeight: 900, color: '#fff', marginBottom: 6 }}>Level {levelUpAt} боллоо!</div>
+            <div style={{ fontSize: 13.5, fontWeight: 600, color: '#E9D8FD', marginBottom: 20 }}>
+              Үргэлжлүүлж суралцаарай, ахиц гарсаар байна!
+            </div>
+            <button onClick={() => setLevelUpAt(null)} style={{
+              padding: '12px 28px', borderRadius: 14, border: 'none', background: '#fff',
+              color: 'var(--purple)', fontWeight: 900, fontSize: 14, cursor: 'pointer', fontFamily: 'inherit',
+            }}>
+              Үргэлжлүүлэх
+            </button>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

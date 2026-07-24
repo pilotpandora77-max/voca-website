@@ -42,6 +42,7 @@ export default function StreakPage() {
   const [streak, setStreak] = useState(0);
   const [stats, setStats]   = useState(null);
   const [loading, setLoad]  = useState(true);
+  const [freeze, setFreeze] = useState({ allowed: 0, used: 0, remaining: 0 });
 
   useEffect(() => {
     if (!authLoad && !user) router.push('/login');
@@ -57,6 +58,7 @@ export default function StreakPage() {
       ]);
       setStreak(s.data.streak || 0);
       setStats(st.data);
+      setFreeze({ allowed: s.data.freezesAllowed || 0, used: s.data.freezesUsed || 0, remaining: s.data.freezesRemaining || 0 });
     } catch {}
     setLoad(false);
   }
@@ -296,11 +298,14 @@ export default function StreakPage() {
             <div style={{ display: 'flex', alignItems: 'center', gap: 14, marginBottom: 14 }}>
               <div style={{ width: 56, height: 56, borderRadius: 14, background: 'linear-gradient(145deg,#38BDF8,#2563EB)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 28, boxShadow: '0 6px 18px rgba(56,189,248,0.3)' }}>❄️</div>
               <div>
-                <div style={{ fontWeight: 800, fontSize: 14, color: 'var(--text)' }}>Streak Freeze – 3ш</div>
-                <div style={{ fontSize: 12, color: 'var(--muted)', fontWeight: 500, lineHeight: 1.4 }}>Хэрэв өдөр алгассан ч streak-аа хадгалах боломжтой.</div>
+                <div style={{ fontWeight: 800, fontSize: 14, color: 'var(--text)' }}>Streak Freeze – {freeze.remaining}/{freeze.allowed}ш</div>
+                <div style={{ fontSize: 12, color: 'var(--muted)', fontWeight: 500, lineHeight: 1.4 }}>
+                  {freeze.allowed === 0
+                    ? 'Стандарт/Premium багцад сард 1-3 удаа автоматаар олгогдоно.'
+                    : 'Хэрэв өдөр алгаваас автоматаар ашиглагдаж, streak-ийг хадгална.'}
+                </div>
               </div>
             </div>
-            <button onClick={() => alert('Streak Freeze ашиглагдлаа! ❄️\nӨнөөдөр алгассан ч streak хадгалагдана.')} className="btn btn-purple" style={{ width: '100%', padding: '11px' }}>Ашиглах</button>
           </div>
         </div>
       </div>

@@ -18,6 +18,9 @@ const LEAGUES = [
   { name: 'Master', icon: '👑', color: '#A855F7' },
 ];
 
+// Level нь одоо backend-ээс (computeUserXp/levelFromXp-ээр) ирдэг тул row.level-г
+// шууд ашиглана; түүхэн шалтгаанаар xp-г шинээр (ямар нэг row-д level байхгүй
+// нөхцөлд) тооцох fallback-ыг зөвхөн DEMO өгөгдөлд зориулж хадгална.
 function levelOf(xp = 0) {
   const t = [0, 100, 300, 600, 1000, 1500, 2200, 3000, 4000, 5500, 7500, 10000];
   let l = 1; for (let i = 1; i < t.length; i++) { if (xp >= t[i]) l = i + 1; else break; } return l;
@@ -61,20 +64,43 @@ export default function LeaderboardPage() {
 
   useEffect(() => {
     if (!authLoad && !user) router.push('/login');
-    if (!authLoad && user) load();
+    if (!authLoad && user) {
+      api.get('/api/streak').then(r => setStreak(r.data.streak || 0)).catch(() => {});
+    }
   }, [authLoad, user]);
 
-  async function load() {
+  useEffect(() => {
+    if (!authLoad && user) load(tab);
+  }, [authLoad, user, tab]);
+
+  // Таб бүр өөр бодит endpoint рүү явж, ижил {id,username,avatarEmoji,streak,xp,level}
+  // хэлбэрт нормалчлагдана — доорх podium/хүснэгт/"миний байр" бүгд ganц л хэлбэр хүлээнэ.
+  async function load(currentTab) {
     setLoad(true);
     try {
-      const [lb, s] = await Promise.all([
-        api.get('/api/stats/leaderboard').catch(() => ({ data: [] })),
-        api.get('/api/streak').catch(() => ({ data: {} })),
-      ]);
-      let data = lb.data || [];
+      let data = [];
+      if (currentTab === 'Энэ сарын') {
+        const r = await api.get('/api/stats/leaderboard/monthly');
+        data = (r.data?.rankings || []).map(u => ({ ...u, xp: u.monthlyXp }));
+      } else if (currentTab === 'Энэ долоо хоног') {
+        const r = await api.get('/api/stats/leaderboard/weekly');
+        data = (r.data?.rankings || []).map(u => ({ ...u, xp: u.weeklyXp }));
+      } else if (currentTab === 'Өдрийн лидер') {
+        const r = await api.get('/api/stats/leaderboard/daily');
+        data = (r.data?.rankings || []).map(u => ({ ...u, xp: u.dailyXp }));
+      } else if (currentTab === 'Найзууд') {
+        const [lb, fr] = await Promise.all([
+          api.get('/api/stats/leaderboard'),
+          api.get('/api/friends').catch(() => ({ data: [] })),
+        ]);
+        const friendIds = new Set((fr.data || []).map(f => f.id));
+        data = (lb.data || []).filter(u => u.id === user.id || friendIds.has(u.id));
+      } else {
+        const r = await api.get('/api/stats/leaderboard');
+        data = r.data || [];
+      }
       if (data.length < 3) data = DEMO;
       setRows(data);
-      setStreak(s.data.streak || 0);
     } catch { setRows(DEMO); }
     setLoad(false);
   }
@@ -90,6 +116,7 @@ export default function LeaderboardPage() {
   const myIdx = sorted.findIndex(r => r.id === user.id);
   const myRank = myIdx >= 0 ? myIdx + 1 : sorted.length + 1;
   const myXp = myIdx >= 0 ? sorted[myIdx].xp : 0;
+  const myLevel = myIdx >= 0 ? (sorted[myIdx].level ?? levelOf(myXp)) : levelOf(0);
   const myLeague = leagueOf(myXp);
 
   // podium order: 2nd, 1st, 3rd
@@ -154,7 +181,7 @@ export default function LeaderboardPage() {
                   display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: ranks[i] === 1 ? 40 : 30,
                 }}>{p.avatarEmoji || p.username?.[0]?.toUpperCase()}</div>
                 <div style={{ fontWeight: 900, color: '#fff', fontSize: ranks[i] === 1 ? 16 : 14 }}>{p.username}</div>
-                <div style={{ color: '#c4b5fd', fontSize: 12, fontWeight: 600, marginBottom: 8 }}>Level {levelOf(p.xp)}</div>
+                <div style={{ color: '#c4b5fd', fontSize: 12, fontWeight: 600, marginBottom: 8 }}>Level {p.level ?? levelOf(p.xp)}</div>
                 <div style={{
                   height: heights[i], borderRadius: '12px 12px 0 0', display: 'flex', flexDirection: 'column',
                   alignItems: 'center', justifyContent: 'flex-start', paddingTop: 14,
@@ -189,7 +216,7 @@ export default function LeaderboardPage() {
                       <div style={{ fontWeight: 800, fontSize: 14, color: isMe ? 'var(--purple)' : 'var(--text)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{r.username}{isMe ? ' (та)' : ''}</div>
                     </div>
                   </div>
-                  <span className="hide-mobile"><span style={{ background: 'var(--purple-light)', color: 'var(--purple)', borderRadius: 8, padding: '3px 9px', fontSize: 12, fontWeight: 800 }}>Lv.{levelOf(r.xp)}</span></span>
+                  <span className="hide-mobile"><span style={{ background: 'var(--purple-light)', color: 'var(--purple)', borderRadius: 8, padding: '3px 9px', fontSize: 12, fontWeight: 800 }}>Lv.{r.level ?? levelOf(r.xp)}</span></span>
                   <span style={{ fontWeight: 900, color: 'var(--text)', fontSize: 14 }}>{(r.xp || 0).toLocaleString()}</span>
                   <span className="hide-mobile" style={{ fontWeight: 800, color: 'var(--gold-dark)', fontSize: 13 }}>{r.streak ?? 0} 🔥</span>
                   <span className="hide-mobile"><Sparkline seed={rank} /></span>
@@ -209,7 +236,7 @@ export default function LeaderboardPage() {
             <div style={{ fontSize: 12, fontWeight: 700, color: '#c4b5fd', marginBottom: 6 }}>Миний байр</div>
             <div style={{ fontSize: 40, fontWeight: 900, lineHeight: 1 }}>#{myRank}</div>
             <div style={{ fontWeight: 800, fontSize: 16, marginTop: 8 }}>{user.username}</div>
-            <div style={{ color: '#c4b5fd', fontSize: 13, fontWeight: 600 }}>Level {levelOf(myXp)}</div>
+            <div style={{ color: '#c4b5fd', fontSize: 13, fontWeight: 600 }}>Level {myLevel}</div>
             <div style={{ fontSize: 24, fontWeight: 900, marginTop: 10 }}>{(myXp || 0).toLocaleString()} <span style={{ fontSize: 14, color: '#c4b5fd' }}>XP</span></div>
           </div>
 
