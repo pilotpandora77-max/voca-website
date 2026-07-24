@@ -21,20 +21,28 @@ export default function AddWordModal({
 }) {
   const [activeTab, setActiveTab] = useState('new');
   const [aiLang, setAiLang] = useState(defaultLang || 'en');
+  const [stagedCount, setStagedCount] = useState(0);
 
   if (!open) return null;
 
   const targetGroup = activeGroup || defaultGroup;
 
+  // "Шинэ үг нэмэх" табанд хадгалагдаагүй (Дуусгах дараагүй) жагсаалт байвал
+  // топ баруун ×, backdrop дарах зэрэг ямар ч хаах арга үүнийг анхаарна.
+  function handleClose() {
+    if (stagedCount > 0 && !confirm(`Жагсаалтад орсон ${stagedCount} үг хадгалагдаагүй устах болно. Гарах уу?`)) return;
+    onClose();
+  }
+
   return (
     <div style={{
       position: 'fixed', inset: 0, background: 'rgba(15,10,30,0.4)', display: 'flex',
       alignItems: 'center', justifyContent: 'center', zIndex: 500, backdropFilter: 'blur(4px)',
-    }} onClick={e => { if (e.target === e.currentTarget) onClose(); }}>
+    }} onClick={e => { if (e.target === e.currentTarget) handleClose(); }}>
       <div className="card" style={{ width: 760, maxWidth: '95vw', padding: 0, maxHeight: '90vh', display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '18px 24px 0' }}>
           <h2 style={{ fontWeight: 900, fontSize: 18 }}>Үг нэмэх</h2>
-          <button onClick={onClose} style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: 22, color: 'var(--muted)', lineHeight: 1, padding: 4 }}>×</button>
+          <button onClick={handleClose} style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: 22, color: 'var(--muted)', lineHeight: 1, padding: 4 }}>×</button>
         </div>
 
         <div style={{ display: 'flex', gap: 4, padding: '14px 24px 0', borderBottom: '1.5px solid var(--border)', overflowX: 'auto' }}>
@@ -56,7 +64,8 @@ export default function AddWordModal({
           </div>
           <div style={{ display: activeTab === 'new' ? 'block' : 'none' }}>
             <NewWordTab aiLang={aiLang} setAiLang={setAiLang} targetGroup={targetGroup}
-              onSaved={() => { onAdded?.(); onClose(); }} onCancel={onClose} />
+              onSaved={() => { onAdded?.(); onClose(); }} onCancel={handleClose}
+              onStagedCountChange={setStagedCount} />
           </div>
           <div style={{ display: activeTab === 'category' ? 'block' : 'none' }}>
             <CategoryTab aiLang={aiLang} setAiLang={setAiLang} targetGroup={targetGroup} onAdded={onAdded} />

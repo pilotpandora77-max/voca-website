@@ -1,8 +1,9 @@
 'use client';
-import { useState, useRef } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import api, { uploadUrl } from '@/lib/api';
 import { AI_LANGS, EMPTY_NEW_WORD, POS_OPTIONS, POS_ABBR_MN, AI_ENABLED } from './constants';
 import PreviewCard from './PreviewCard';
+import StagedList from './StagedList';
 
 const inputStyle = { width: '100%' };
 const textareaStyle = { width: '100%', resize: 'vertical', fontFamily: 'inherit', fontSize: 14, padding: '10px 12px', borderRadius: 12, border: '1.5px solid var(--border)' };
@@ -13,15 +14,25 @@ function Counter({ value, max }) {
 
 // "Шинэ үг нэмэх" — AI Auto-Fill: үгээ бичээд Enter/blur дээр GPT-4o + OpenAI TTS-ээр
 // бүх мэдээлэл автоматаар бөглөгдөнө, дараа нь хэрэглэгч засаад хадгална.
-export default function NewWordTab({ aiLang, setAiLang, targetGroup, onSaved, onCancel }) {
+export default function NewWordTab({ aiLang, setAiLang, targetGroup, onSaved, onCancel, onStagedCountChange }) {
   const [newWord, setNewWord] = useState(EMPTY_NEW_WORD);
   const [aiFillBusy, setAiFillBusy] = useState(false);
   const [lastFilledKey, setLastFilledKey] = useState('');
-  const [addLoading, setAddLoading] = useState(false);
   const [audioUploadBusy, setAudioUploadBusy] = useState(false);
   const [posMenuOpen, setPosMenuOpen] = useState(false);
   const [aiNotice, setAiNotice] = useState('');
   const audioFileRef = useRef(null);
+
+  // Нэг сессэд олон үг нэмэх: "Хадгалах" дарах бүрд серверт шууд илгээхийн оронд
+  // энэ жагсаалтад нэмээд, маягтыг цэвэрлэж дараагийн үгэнд бэлдэнэ. "Дуусгах"
+  // дарахад л бүгдийг НЭГ /api/words/bulk дуудлагаар илгээнэ.
+  const [stagedWords, setStagedWords] = useState([]);
+  const [submitBusy, setSubmitBusy] = useState(false);
+  const keyRef = useRef(0);
+
+  // Модалын гадна (топ баруун ×, backdrop) хаах товчлуурууд ч энэ жагсаалтыг
+  // шалгаж, баталгаажуулалт асуух ёстой тул тоог index.js руу дамжуулна.
+  useEffect(() => { onStagedCountChange?.(stagedWords.length); }, [stagedWords.length]);
 
   function togglePos(p) {
     setNewWord(n => ({ ...n, pos: n.pos.includes(p) ? n.pos.filter(x => x !== p) : [...n.pos, p] }));
@@ -110,25 +121,39 @@ export default function NewWordTab({ aiLang, setAiLang, targetGroup, onSaved, on
     if (audioFileRef.current) audioFileRef.current.value = '';
   }
 
-  async function addWord() {
+  // "Хадгалах" — серверт шууд илгээхийн оронд жагсаалтад нэмээд маягтыг цэвэрлэнэ.
+  function stageWord() {
     const front = (newWord.front || '').trim();
     const back = (newWord.back || '').trim();
     if (!front || !back) { alert('Үг болон Монгол утгыг бөглөнө үү.'); return; }
-    setAddLoading(true);
-    const payload = {
-      front, back, hint: newWord.hint,
-      word: front, meaning: back, reading: newWord.hint, lang: aiLang, pos: newWord.pos.join(', '),
-      group: targetGroup,
-      example: newWord.example, exampleMeaning: newWord.exampleMeaning,
-      synonyms: newWord.synonyms, antonyms: newWord.antonyms,
-      level: newWord.level, tags: newWord.tags, audioUrl: newWord.audioUrl,
-      starred: newWord.starred,
-      aiGenerated: !!(newWord.example || newWord.level || newWord.tags.length),
-    };
+    keyRef.current += 1;
+    setStagedWords(list => [...list, { ...newWord, front, back, _key: keyRef.current }]);
+    setNewWord(EMPTY_NEW_WORD);
+    setLastFilledKey('');
+    setAiNotice('');
+  }
+
+  function removeStaged(key) {
+    setStagedWords(list => list.filter(w => w._key !== key));
+  }
+
+  // "Дуусгах" — жагсаалтад орсон бүх үгийг НЭГ /api/words/bulk дуудлагаар илгээнэ.
+  async function submitAll() {
+    if (stagedWords.length === 0) return;
+    setSubmitBusy(true);
+    const entries = stagedWords.map(w => ({
+      word: w.front, meaning: w.back, reading: w.hint, pos: w.pos.join(', '),
+      example: w.example, exampleMeaning: w.exampleMeaning,
+      synonyms: w.synonyms, antonyms: w.antonyms,
+      level: w.level, tags: w.tags, audioUrl: w.audioUrl, starred: w.starred,
+      aiGenerated: !!(w.example || w.level || w.tags.length),
+    }));
     try {
-      await api.post('/api/words', payload);
-      setNewWord(EMPTY_NEW_WORD);
-      setLastFilledKey('');
+      const { data } = await api.post('/api/words/bulk', { lang: aiLang, group: targetGroup, entries });
+      if (data.skipped?.length) {
+        alert(`✓ ${data.addedCount} үг нэмэгдлээ, ${data.skipped.length} алгассан (давхцсан эсвэл хязгаарт хүрсэн).`);
+      }
+      setStagedWords([]);
       onSaved?.();
     } catch (e) {
       const msg = e.response?.data?.code === 'WORD_LIMIT'
@@ -136,7 +161,7 @@ export default function NewWordTab({ aiLang, setAiLang, targetGroup, onSaved, on
         : 'Үг хадгалахад алдаа гарлаа. Дахин оролдоно уу.';
       alert(msg);
     }
-    setAddLoading(false);
+    setSubmitBusy(false);
   }
 
   const curLang = AI_LANGS.find(l => l.code === aiLang);
@@ -289,14 +314,20 @@ export default function NewWordTab({ aiLang, setAiLang, targetGroup, onSaved, on
 
           <div style={{ display: 'flex', gap: 10 }}>
             <button className="btn btn-ghost" onClick={onCancel} style={{ flex: 1 }}>Цуцлах</button>
-            <button className="btn btn-purple" onClick={addWord} disabled={addLoading} style={{ flex: 1 }}>
-              {addLoading ? 'Хадгалж байна…' : '✓ Хадгалах үг'}
+            <button className="btn btn-purple" onClick={stageWord} style={{ flex: 1 }}>
+              ✓ Хадгалах үг
             </button>
           </div>
+          <button className="btn btn-light" onClick={submitAll} disabled={stagedWords.length === 0 || submitBusy} style={{ width: '100%' }}>
+            {submitBusy ? 'Хадгалж байна…' : stagedWords.length > 0 ? `🏁 Дуусгах — ${stagedWords.length} үг хадгалах` : '🏁 Дуусгах'}
+          </button>
         </div>
       </div>
 
-      <PreviewCard newWord={newWord} onPlayAudio={playPreviewAudio} onToggleStar={toggleStar} />
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+        <StagedList words={stagedWords} onRemove={removeStaged} />
+        <PreviewCard newWord={newWord} onPlayAudio={playPreviewAudio} onToggleStar={toggleStar} />
+      </div>
     </div>
   );
 }
