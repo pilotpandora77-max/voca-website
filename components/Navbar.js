@@ -19,6 +19,7 @@ const NAV = [
   { href: '/books',      icon: '📖', label: 'Номын сан' },
   { href: '/leaderboard',icon: '🏆', label: 'Эрэмбэ' },
   { href: '/social',     icon: '👥', label: 'Нийгэм' },
+  { href: '/friends',    icon: '🤝', label: 'Найзууд' },
   { href: '/pricing',    icon: '👑', label: 'Төлбөр' },
 ];
 
