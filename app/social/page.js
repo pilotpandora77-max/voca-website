@@ -142,7 +142,9 @@ export default function SocialPage() {
       api.get('/api/friends').then(r => setFriendIds(new Set((r.data || []).map(f => f.id)))).catch(() => {});
       api.get('/api/social/trending').then(r => setTrending(r.data || [])).catch(() => {});
       api.get('/api/social/online').then(r => setOnline(r.data || { count: 0, users: [] })).catch(() => {});
-      api.get('/api/stats/leaderboard/weekly').then(r => setActive((r.data?.rankings || []).slice(0, 3))).catch(() => {});
+      // Leaderboard хуудастай ЯГ ижил (нийт цагийн) XP-г ашиглана — өөр
+      // томьёотой "долоо хоногийн" endpoint ашиглавал хоёр хуудасны тоо зөрдөг байсан.
+      api.get('/api/stats/leaderboard').then(r => setActive((r.data || []).slice(0, 3))).catch(() => {});
       api.get('/api/groups/public').then(r => setNewGroups((r.data || []).slice(0, 3))).catch(() => {});
       api.get('/api/social/notifications').then(r => setNotifs(r.data || { items: [], unread: 0 })).catch(() => {});
       api.get('/api/news').then(r => setAnnouncements(r.data || [])).catch(() => {});
@@ -798,7 +800,7 @@ export default function SocialPage() {
               <h3 style={{ fontWeight: 900, fontSize: 14, color: 'var(--text)' }}>{online.count} онлайн</h3>
               <span style={{ marginLeft: 'auto', fontSize: 11.5, fontWeight: 700, color: 'var(--muted)' }}>Идэвхтэй ⚡</span>
             </div>
-            {active.length === 0 && <div style={{ fontSize: 12.5, color: 'var(--muted)' }}>Энэ 7 хоногт идэвх алга.</div>}
+            {active.length === 0 && <div style={{ fontSize: 12.5, color: 'var(--muted)' }}>Идэвх алга.</div>}
             {active.map((u, i) => (
               <div key={u.id} onClick={() => openProfile(u.id)} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '8px 0', borderBottom: i < active.length - 1 ? '1px solid var(--border)' : 'none', cursor: 'pointer' }}>
                 <span style={{ fontWeight: 900, fontSize: 13, color: i === 0 ? '#F59E0B' : 'var(--muted)', width: 16 }}>{i + 1}</span>
@@ -806,7 +808,7 @@ export default function SocialPage() {
                 <div style={{ flex: 1, minWidth: 0 }}>
                   <div style={{ fontWeight: 800, fontSize: 13, color: 'var(--text)' }}>{u.username}</div>
                 </div>
-                <span style={{ fontSize: 12, fontWeight: 800, color: 'var(--purple)' }}>{u.weeklyXp} XP 🔥</span>
+                <span style={{ fontSize: 12, fontWeight: 800, color: 'var(--purple)' }}>{u.xp} XP 🔥</span>
               </div>
             ))}
           </div>
