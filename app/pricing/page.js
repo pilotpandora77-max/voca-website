@@ -128,6 +128,38 @@ export default function PricingPage() {
     setBusy(null);
   }
 
+  // trialGranted мөнх тэмдэглэгээ (7 хоног дуусаад ч арилдаггүй) тул төлөв 4 янз:
+  // available (авах боломжтой) → active (одоо идэвхтэй) → used (аль хэдийн дуусгасан),
+  // эсвэл unavailable (аль хэдийн жинхэнэ төлбөртэй багцтай тул хэрэггүй).
+  const trialState = user?.trialGranted
+    ? (currentPlan === 'premium' ? 'active' : 'used')
+    : (currentPlan === 'free' ? 'available' : 'unavailable');
+
+  async function startTrial() {
+    setBusy('trial');
+    try {
+      await api.post('/api/billing/start-trial');
+      const s = await api.get('/api/billing/status'); setStatus(s.data);
+      await refreshUser(); // Navbar/PageHeader-ийн TrialBadge countdown шууд эхэлнэ
+    } catch (e) {
+      alert(e.response?.data?.error || 'Туршилт идэвхжүүлж чадсангүй');
+    }
+    setBusy(null);
+  }
+
+  const disabledBtn = { width: '100%', padding: '12px', borderRadius: 12, border: '1.5px solid var(--border)', background: 'var(--bg-alt)', color: 'var(--muted)', fontWeight: 800, fontSize: 14, cursor: 'default', fontFamily: 'inherit' };
+
+  const trialCard = {
+    id: 'trial',
+    name: '7 хоногийн Тест багц',
+    tagline: 'Premium-г үнэгүй турш',
+    price: 'Үнэгүй',
+    period: '',
+    features: plans.find(p => p.id === 'premium')?.features || [],
+  };
+  // Стандарт болон Premium-ий хооронд байрлуулснаар "энэ гуравыг холбосон" дунд шат мэт харагдана.
+  const displayCards = [plans[0], plans[1], trialCard, plans[2]];
+
   return (
     <div style={{ paddingBottom: 48 }}>
       <PageHeader title="Төлбөрийн багцууд 👑" subtitle="Суралцах аяллаа дээд түвшинд хүргэе. Илүү их боломж, илүү их амжилт!" streak={streak} />
@@ -166,22 +198,26 @@ export default function PricingPage() {
           )}
 
           {/* Pricing cards */}
-          <div className="responsive-sidebar" style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 16 }}>
-            {plans.map(p => {
-              const isCurrent = p.id === currentPlan;
+          <div className="responsive-sidebar" style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 16 }}>
+            {displayCards.map(p => {
+              const isTrial   = p.id === 'trial';
+              const isCurrent = !isTrial && p.id === currentPlan;
               return (
                 <div key={p.id} className={p.best ? undefined : 'card'} style={p.best ? {
                   position: 'relative', background: '#fff', border: '2px solid var(--purple)', borderRadius: 20,
                   padding: '20px', display: 'flex', flexDirection: 'column', boxShadow: '0 16px 40px rgba(124,58,237,0.2)',
-                } : { display: 'flex', flexDirection: 'column' }}>
+                } : { position: 'relative', display: 'flex', flexDirection: 'column' }}>
                   {p.best && (
                     <div style={{ position: 'absolute', top: -12, left: '50%', transform: 'translateX(-50%)', background: 'linear-gradient(135deg,#7c3aed,#6d28d9)', color: '#fff', borderRadius: 100, padding: '4px 16px', fontSize: 11, fontWeight: 900, whiteSpace: 'nowrap' }}>ХАМГИЙН АШИГТАЙ</div>
                   )}
-                  <h3 style={{ fontWeight: 900, fontSize: 18, color: 'var(--text)', marginTop: p.best ? 6 : 0 }}>{p.name}</h3>
+                  {isTrial && (
+                    <div style={{ position: 'absolute', top: -12, left: '50%', transform: 'translateX(-50%)', background: 'linear-gradient(135deg,#F59E0B,#D97706)', color: '#fff', borderRadius: 100, padding: '4px 16px', fontSize: 11, fontWeight: 900, whiteSpace: 'nowrap' }}>7 ХОНОГ ҮНЭГҮЙ</div>
+                  )}
+                  <h3 style={{ fontWeight: 900, fontSize: 18, color: 'var(--text)', marginTop: (p.best || isTrial) ? 6 : 0 }}>{p.name}</h3>
                   <p style={{ fontSize: 12.5, color: 'var(--muted)', fontWeight: 600, marginBottom: 14 }}>
-                    {p.id === 'free' ? 'Үндсэн боломжууд' : 'Илүү их боломж'}
+                    {isTrial ? p.tagline : p.id === 'free' ? 'Үндсэн боломжууд' : 'Илүү их боломж'}
                   </p>
-                  <div style={{ fontSize: 34, fontWeight: 900, color: p.best ? 'var(--purple)' : 'var(--text)', marginBottom: 18 }}>
+                  <div style={{ fontSize: 34, fontWeight: 900, color: (p.best || isTrial) ? 'var(--purple)' : 'var(--text)', marginBottom: 18 }}>
                     {p.price} <span style={{ fontSize: 14, color: 'var(--muted)', fontWeight: 600 }}>{p.period}</span>
                   </div>
                   <div style={{ display: 'flex', flexDirection: 'column', gap: 10, marginBottom: 20, flex: 1 }}>
@@ -191,10 +227,22 @@ export default function PricingPage() {
                       </div>
                     ))}
                   </div>
-                  {isCurrent ? (
-                    <button disabled style={{ width: '100%', padding: '12px', borderRadius: 12, border: '1.5px solid var(--border)', background: 'var(--bg-alt)', color: 'var(--muted)', fontWeight: 800, fontSize: 14, cursor: 'default', fontFamily: 'inherit' }}>Идэвхтэй багц</button>
+                  {isTrial ? (
+                    trialState === 'available' ? (
+                      <button onClick={startTrial} disabled={busy !== null} style={{ width: '100%', padding: '13px', borderRadius: 12, border: 'none', background: 'linear-gradient(135deg,#F59E0B,#D97706)', color: '#fff', fontWeight: 800, fontSize: 14, cursor: 'pointer', fontFamily: 'inherit' }}>
+                        {busy === 'trial' ? 'Түр хүлээнэ үү…' : 'Үнэгүй турших →'}
+                      </button>
+                    ) : trialState === 'active' ? (
+                      <button disabled style={disabledBtn}>Идэвхтэй байна</button>
+                    ) : trialState === 'used' ? (
+                      <button disabled style={disabledBtn}>Ашигласан</button>
+                    ) : (
+                      <button disabled style={disabledBtn}>Танд хэрэггүй</button>
+                    )
+                  ) : isCurrent ? (
+                    <button disabled style={disabledBtn}>Идэвхтэй багц</button>
                   ) : p.id === 'free' ? (
-                    <button disabled style={{ width: '100%', padding: '12px', borderRadius: 12, border: '1.5px solid var(--border)', background: 'var(--bg-alt)', color: 'var(--muted)', fontWeight: 800, fontSize: 14, cursor: 'default', fontFamily: 'inherit' }}>Үндсэн багц</button>
+                    <button disabled style={disabledBtn}>Үндсэн багц</button>
                   ) : p.best ? (
                     <button onClick={() => buy(p.id)} disabled={busy !== null} className="btn btn-purple" style={{ width: '100%', padding: '13px', fontSize: 14 }}>
                       {busy === p.id ? 'Түр хүлээнэ үү…' : 'Сонгох →'}
