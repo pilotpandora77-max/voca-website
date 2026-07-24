@@ -15,7 +15,6 @@ const FEATURE_LABELS = {
   exams:       '🎓 Шалгалт',
   groups:      '💬 Группийн чат',
   friends:     '🤝 Найзуудтай болох',
-  ai:          '🤖 AI багш',
 };
 
 // Багц бүрийн статик (backend-ийн Багц-роль системээр удирдагддаггүй, үргэлж
@@ -103,7 +102,9 @@ export default function PricingPage() {
   const currentPlan = status?.plan || 'free';
   const plans = PLAN_META.map(meta => {
     const live = status?.plans?.find(p => p.id === meta.id);
-    const dynamicFeatures = (live?.features || []).map(f => FEATURE_LABELS[f] || f);
+    // 'ai' (AI багш) FEATURES каталогоос хассан ч зарим багцад хуучин
+    // хадгалагдсан утга үлдсэн байж болзошгүй тул харагдахаас илүү шүүнэ.
+    const dynamicFeatures = (live?.features || []).filter(f => f !== 'ai').map(f => FEATURE_LABELS[f] || f);
     return {
       ...meta,
       name: live?.name || meta.id,
