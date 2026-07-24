@@ -3,8 +3,14 @@ import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { useAuth } from '@/lib/auth';
-import api from '@/lib/api';
+import api, { uploadUrl } from '@/lib/api';
 import PageHeader from '@/components/PageHeader';
+
+function Avatar({ u }) {
+  return u?.avatarPhotoUrl
+    ? <img src={uploadUrl(u.avatarPhotoUrl)} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover', borderRadius: '50%' }} />
+    : (u?.avatarEmoji || u?.username?.[0]?.toUpperCase());
+}
 
 const TABS = ['Нийт эрэмбэ', 'Энэ сарын', 'Энэ долоо хоног', 'Өдрийн лидер', 'Найзууд'];
 
@@ -178,8 +184,8 @@ export default function LeaderboardPage() {
                 <div className={ranks[i] === 1 ? 'lb-podium-1' : ranks[i] === 2 ? 'lb-podium-2' : 'lb-podium-3'} style={{
                   width: ranks[i] === 1 ? 82 : 64, height: ranks[i] === 1 ? 82 : 64, borderRadius: '50%', margin: '0 auto 8px',
                   background: 'rgba(168,85,247,0.3)', border: `3px solid ${ranks[i] === 1 ? '#fcd34d' : '#c4b5fd'}`,
-                  display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: ranks[i] === 1 ? 40 : 30,
-                }}>{p.avatarEmoji || p.username?.[0]?.toUpperCase()}</div>
+                  display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: ranks[i] === 1 ? 40 : 30, overflow: 'hidden',
+                }}><Avatar u={p} /></div>
                 <div style={{ fontWeight: 900, color: '#fff', fontSize: ranks[i] === 1 ? 16 : 14 }}>{p.username}</div>
                 <div style={{ color: '#c4b5fd', fontSize: 12, fontWeight: 600, marginBottom: 8 }}>Level {p.level ?? levelOf(p.xp)}</div>
                 <div style={{
@@ -211,7 +217,7 @@ export default function LeaderboardPage() {
                 }}>
                   <span style={{ fontWeight: 900, color: isMe ? 'var(--purple)' : 'var(--text-sub)', fontSize: 15 }}>{rank}</span>
                   <div style={{ display: 'flex', alignItems: 'center', gap: 10, minWidth: 0 }}>
-                    <div style={{ width: 34, height: 34, borderRadius: '50%', background: 'var(--purple-light)', border: '1.5px solid var(--purple-mid)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 17, flexShrink: 0 }}>{r.avatarEmoji || r.username?.[0]?.toUpperCase()}</div>
+                    <div style={{ width: 34, height: 34, borderRadius: '50%', background: 'var(--purple-light)', border: '1.5px solid var(--purple-mid)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 17, flexShrink: 0, overflow: 'hidden' }}><Avatar u={r} /></div>
                     <div style={{ minWidth: 0 }}>
                       <div style={{ fontWeight: 800, fontSize: 14, color: isMe ? 'var(--purple)' : 'var(--text)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{r.username}{isMe ? ' (та)' : ''}</div>
                     </div>
@@ -270,7 +276,7 @@ export default function LeaderboardPage() {
             {top3.map((p, i) => (
               <div key={p.id} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '7px 0' }}>
                 <span style={{ fontSize: 15 }}>{['🥇','🥈','🥉'][i]}</span>
-                <div style={{ width: 28, height: 28, borderRadius: '50%', background: 'var(--purple-light)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 14 }}>{p.avatarEmoji || p.username?.[0]}</div>
+                <div style={{ width: 28, height: 28, borderRadius: '50%', background: 'var(--purple-light)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 14, overflow: 'hidden' }}><Avatar u={p} /></div>
                 <span style={{ flex: 1, fontWeight: 700, fontSize: 13, color: 'var(--text)' }}>{p.username}</span>
                 <span style={{ fontWeight: 800, fontSize: 12, color: 'var(--green)' }}>+{Math.round((p.xp || 0) / 8)} XP</span>
               </div>

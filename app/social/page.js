@@ -2,7 +2,7 @@
 import { useState, useEffect, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/lib/auth';
-import api from '@/lib/api';
+import api, { uploadUrl } from '@/lib/api';
 import PageHeader from '@/components/PageHeader';
 import { useLang } from '@/lib/LangContext';
 import { detectMentionQuery, insertMention, resolveMentions, renderMentionText } from '@/lib/mentions';
@@ -62,6 +62,11 @@ function relTime(iso) {
   return `${Math.floor(d / 86400)} өдрийн өмнө`;
 }
 function imgUrl(p) { return p?.startsWith('http') || p?.startsWith('data:') ? p : API_BASE + p; }
+function Avatar({ u }) {
+  return u?.avatarPhotoUrl
+    ? <img src={uploadUrl(u.avatarPhotoUrl)} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+    : (u?.avatarEmoji || u?.username?.[0]?.toUpperCase());
+}
 
 function MentionDropdown({ results, onPick }) {
   if (!results.length) return null;
@@ -477,7 +482,7 @@ export default function SocialPage() {
 
           <div className="card">
             <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 10 }}>
-              <div style={{ width: 42, height: 42, borderRadius: '50%', background: 'var(--purple-light)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 20 }}>{user?.avatarEmoji || user?.username?.[0]?.toUpperCase()}</div>
+              <div style={{ width: 42, height: 42, borderRadius: '50%', background: 'var(--purple-light)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 20, overflow: 'hidden' }}><Avatar u={user} /></div>
               <div style={{ minWidth: 0 }}>
                 <div style={{ fontWeight: 900, fontSize: 14, color: 'var(--text)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{user?.username}</div>
                 <div style={{ fontSize: 11.5, color: 'var(--muted)', fontWeight: 700 }}>Level {myLevel?.level ?? 1}</div>
@@ -545,7 +550,7 @@ export default function SocialPage() {
               </div>
             ) : (
               <div style={{ display: 'flex', gap: 12, marginBottom: 12 }}>
-                <div style={{ width: 40, height: 40, borderRadius: '50%', background: 'var(--purple-light)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 19, flexShrink: 0 }}>{user?.avatarEmoji || user?.username?.[0]?.toUpperCase()}</div>
+                <div style={{ width: 40, height: 40, borderRadius: '50%', background: 'var(--purple-light)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 19, flexShrink: 0, overflow: 'hidden' }}><Avatar u={user} /></div>
                 <div style={{ flex: 1, position: 'relative' }}>
                   <input ref={composerRef} value={input} onChange={e => { setInput(e.target.value); onMentionInput('post', e.target.value); }} onKeyDown={e => { if (e.key === 'Enter') publish(); }} placeholder="Юу шинэ байна? (#hashtag, @хэрэглэгч ашиглаж болно)" style={{ width: '100%', background: 'var(--bg-alt)', borderRadius: 14 }} />
                   {mentionTarget === 'post' && <MentionDropdown results={mentionResults} onPick={u => pickMention('post', u)} />}
@@ -597,7 +602,7 @@ export default function SocialPage() {
                 return (
                   <div key={p.id} id={p.id} className="card">
                     <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 12 }}>
-                      <div onClick={() => openProfile(p.userId)} style={{ width: 44, height: 44, borderRadius: '50%', background: 'var(--purple-light)', border: '2px solid var(--purple-mid)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 19, flexShrink: 0, cursor: 'pointer' }}>{p.avatarEmoji || p.username?.[0]?.toUpperCase()}</div>
+                      <div onClick={() => openProfile(p.userId)} style={{ width: 44, height: 44, borderRadius: '50%', background: 'var(--purple-light)', border: '2px solid var(--purple-mid)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 19, flexShrink: 0, cursor: 'pointer', overflow: 'hidden' }}><Avatar u={p} /></div>
                       <div style={{ flex: 1, minWidth: 0 }}>
                         <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
                           <span onClick={() => openProfile(p.userId)} style={{ fontWeight: 800, fontSize: 14.5, color: 'var(--text)', cursor: 'pointer' }}>{p.username}</span>
@@ -708,7 +713,7 @@ export default function SocialPage() {
                       <div style={{ marginTop: 12, paddingTop: 12, borderTop: '1px solid var(--border)' }}>
                         {(comments[p.id] || []).map(c => (
                           <div key={c.id} style={{ display: 'flex', gap: 10, marginBottom: 10 }}>
-                            <div style={{ width: 30, height: 30, borderRadius: '50%', background: 'var(--purple-light)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 14, flexShrink: 0 }}>{c.avatarEmoji || c.username?.[0]?.toUpperCase()}</div>
+                            <div style={{ width: 30, height: 30, borderRadius: '50%', background: 'var(--purple-light)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 14, flexShrink: 0, overflow: 'hidden' }}><Avatar u={c} /></div>
                             <div style={{ background: 'var(--bg-alt)', borderRadius: 12, padding: '8px 12px', flex: 1 }}>
                               <div style={{ fontWeight: 800, fontSize: 12.5, color: 'var(--text)' }}>{c.username}</div>
                               <div style={{ fontSize: 13, color: 'var(--text-sub)' }}>{renderMentionText(c.text)}</div>
@@ -804,7 +809,7 @@ export default function SocialPage() {
             {active.map((u, i) => (
               <div key={u.id} onClick={() => openProfile(u.id)} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '8px 0', borderBottom: i < active.length - 1 ? '1px solid var(--border)' : 'none', cursor: 'pointer' }}>
                 <span style={{ fontWeight: 900, fontSize: 13, color: i === 0 ? '#F59E0B' : 'var(--muted)', width: 16 }}>{i + 1}</span>
-                <div style={{ width: 32, height: 32, borderRadius: '50%', background: 'var(--purple-light)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 15 }}>{u.avatarEmoji || u.username?.[0]?.toUpperCase()}</div>
+                <div style={{ width: 32, height: 32, borderRadius: '50%', background: 'var(--purple-light)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 15, overflow: 'hidden' }}><Avatar u={u} /></div>
                 <div style={{ flex: 1, minWidth: 0 }}>
                   <div style={{ fontWeight: 800, fontSize: 13, color: 'var(--text)' }}>{u.username}</div>
                 </div>
@@ -858,7 +863,7 @@ export default function SocialPage() {
         <div onClick={() => setProfileCard(null)} style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', zIndex: 200, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 20 }}>
           <div onClick={e => e.stopPropagation()} className="card" style={{ width: 380, maxWidth: '100%', maxHeight: '85vh', overflowY: 'auto' }}>
             <div style={{ textAlign: 'center', marginBottom: 14 }}>
-              <div style={{ width: 72, height: 72, borderRadius: '50%', background: 'var(--purple-light)', border: '3px solid var(--purple-mid)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 34, margin: '0 auto 10px' }}>{profileCard.avatarEmoji || profileCard.username?.[0]?.toUpperCase()}</div>
+              <div style={{ width: 72, height: 72, borderRadius: '50%', background: 'var(--purple-light)', border: '3px solid var(--purple-mid)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 34, margin: '0 auto 10px', overflow: 'hidden' }}><Avatar u={profileCard} /></div>
               <div style={{ fontWeight: 900, fontSize: 17, color: 'var(--text)' }}>{profileCard.username} {profileCard.isPremium && '👑'}</div>
               <div style={{ fontSize: 12.5, color: 'var(--muted)', marginTop: 2 }}>Level {levelFromXp(profileCard.xp)} · Нийт #{profileCard.rank}-р байр</div>
             </div>
