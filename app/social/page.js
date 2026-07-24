@@ -5,6 +5,7 @@ import { useAuth } from '@/lib/auth';
 import api from '@/lib/api';
 import PageHeader from '@/components/PageHeader';
 import { useLang } from '@/lib/LangContext';
+import { detectMentionQuery, insertMention, resolveMentions, renderMentionText } from '@/lib/mentions';
 
 const API_BASE = process.env.NEXT_PUBLIC_API_URL || '';
 const TABS = ['Бүгд', 'Дагаж буй', 'Шилдэг', 'Зөвлөгөө', 'Асуулт', 'Хуваалцсан'];
@@ -62,6 +63,27 @@ function relTime(iso) {
 }
 function imgUrl(p) { return p?.startsWith('http') || p?.startsWith('data:') ? p : API_BASE + p; }
 
+function MentionDropdown({ results, onPick }) {
+  if (!results.length) return null;
+  return (
+    <div style={{
+      position: 'absolute', top: '100%', left: 0, marginTop: 4, zIndex: 30, minWidth: 200,
+      background: '#fff', border: '1.5px solid var(--border)', borderRadius: 12,
+      boxShadow: '0 8px 24px rgba(0,0,0,0.12)', overflow: 'hidden',
+    }}>
+      {results.map(u => (
+        <div key={u.id} onClick={() => onPick(u)} style={{
+          display: 'flex', alignItems: 'center', gap: 8, padding: '8px 12px', cursor: 'pointer',
+        }} onMouseDown={e => e.preventDefault()}>
+          <span style={{ fontSize: 15 }}>{u.avatarEmoji || u.username?.[0]?.toUpperCase()}</span>
+          <span style={{ fontWeight: 700, fontSize: 13, color: u.official ? 'var(--purple)' : 'var(--text)' }}>{u.username}</span>
+          {u.official && <span style={{ fontSize: 10.5, color: 'var(--purple)', fontWeight: 700 }}>Админ</span>}
+        </div>
+      ))}
+    </div>
+  );
+}
+
 export default function SocialPage() {
   const { user, loading: authLoad } = useAuth();
   const router = useRouter();
@@ -87,6 +109,12 @@ export default function SocialPage() {
   const [openComments, setOpenComments] = useState(null);
   const [comments, setComments] = useState({});
   const [commentText, setCommentText] = useState('');
+  // @mention autocomplete — shared resolver map (username -> {id,username}) built up as
+  // suggestions are shown/picked; `mentionTarget` tracks which input ('post' | commentPostId) is active.
+  const mentionMapRef = useRef({});
+  const [mentionTarget, setMentionTarget] = useState(null);
+  const [mentionResults, setMentionResults] = useState([]);
+  const mentionDebounce = useRef(null);
   // Community v2
   const [trending, setTrending]   = useState([]);
   const [online, setOnline]       = useState({ count: 0, users: [] });
@@ -181,7 +209,7 @@ export default function SocialPage() {
     } else {
       const text = input.trim();
       if (!text && !pendingImg) return;
-      body = { text, images: pendingImg ? [pendingImg] : [], category };
+      body = { text, images: pendingImg ? [pendingImg] : [], category, mentions: resolveMentions(text, mentionMapRef.current) };
     }
     try {
       const { data } = await api.post('/api/posts', body);
@@ -248,6 +276,27 @@ export default function SocialPage() {
     try { await api.post(`/api/posts/${post.id}/share`); } catch {}
   }
 
+  function onMentionInput(target, text) {
+    const query = detectMentionQuery(text);
+    setMentionTarget(query === null ? null : target);
+    clearTimeout(mentionDebounce.current);
+    if (query === null) { setMentionResults([]); return; }
+    mentionDebounce.current = setTimeout(async () => {
+      let results = [];
+      if (query.trim()) {
+        try { const { data } = await api.get('/api/friends/search', { params: { q: query.trim() } }); results = data || []; } catch {}
+      }
+      results.forEach(u => { mentionMapRef.current[u.username.toLowerCase()] = { id: u.id, username: u.username }; });
+      const vocaMatch = !query.trim() || 'voca'.includes(query.toLowerCase());
+      setMentionResults(vocaMatch ? [{ id: 'VOCA', username: 'VOCA', avatarEmoji: '🌐', official: true }, ...results] : results);
+    }, 250);
+  }
+  function pickMention(target, u) {
+    if (target === 'post') setInput(t => insertMention(t, u.username));
+    else setCommentText(t => insertMention(t, u.username));
+    setMentionTarget(null); setMentionResults([]);
+  }
+
   function toggleSave(id) {
     setSaved(prev => { const n = { ...prev, [id]: !prev[id] }; localStorage.setItem('voca_social_saved', JSON.stringify(n)); return n; });
     showToast(saved[id] ? 'Хадгалснаас хаслаа' : 'Хадгаллаа 🔖');
@@ -264,7 +313,7 @@ export default function SocialPage() {
     const text = commentText.trim(); if (!text) return;
     setCommentText('');
     try {
-      const { data } = await api.post(`/api/posts/${id}/comments`, { text });
+      const { data } = await api.post(`/api/posts/${id}/comments`, { text, mentions: resolveMentions(text, mentionMapRef.current) });
       setComments(c => ({ ...c, [id]: [...(c[id] || []), data] }));
       setPosts(ps => ps.map(p => p.id === id ? { ...p, commentCount: (p.commentCount || 0) + 1 } : p));
       if (data.earnedXp) showToast(`Сэтгэгдэл +${data.earnedXp} XP ✨`);
@@ -495,7 +544,10 @@ export default function SocialPage() {
             ) : (
               <div style={{ display: 'flex', gap: 12, marginBottom: 12 }}>
                 <div style={{ width: 40, height: 40, borderRadius: '50%', background: 'var(--purple-light)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 19, flexShrink: 0 }}>{user?.avatarEmoji || user?.username?.[0]?.toUpperCase()}</div>
-                <input ref={composerRef} value={input} onChange={e => setInput(e.target.value)} onKeyDown={e => { if (e.key === 'Enter') publish(); }} placeholder="Юу шинэ байна? (#hashtag ашиглаж болно)" style={{ flex: 1, background: 'var(--bg-alt)', borderRadius: 14 }} />
+                <div style={{ flex: 1, position: 'relative' }}>
+                  <input ref={composerRef} value={input} onChange={e => { setInput(e.target.value); onMentionInput('post', e.target.value); }} onKeyDown={e => { if (e.key === 'Enter') publish(); }} placeholder="Юу шинэ байна? (#hashtag, @хэрэглэгч ашиглаж болно)" style={{ width: '100%', background: 'var(--bg-alt)', borderRadius: 14 }} />
+                  {mentionTarget === 'post' && <MentionDropdown results={mentionResults} onPick={u => pickMention('post', u)} />}
+                </div>
               </div>
             )}
             {pendingImg && (
@@ -556,7 +608,7 @@ export default function SocialPage() {
                       {p.userId === user.id && <button onClick={() => deletePost(p.id)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--muted)', fontSize: 16 }}>🗑️</button>}
                     </div>
 
-                    {p.text && <div style={{ fontSize: 14.5, color: 'var(--text)', lineHeight: 1.6, whiteSpace: 'pre-wrap', marginBottom: p.images?.length ? 12 : 14 }}>{p.text}</div>}
+                    {p.text && <div style={{ fontSize: 14.5, color: 'var(--text)', lineHeight: 1.6, whiteSpace: 'pre-wrap', marginBottom: p.images?.length ? 12 : 14 }}>{renderMentionText(p.text)}</div>}
                     {(p.images || []).map((im, i) => (
                       <img key={i} src={imgUrl(im)} alt="" style={{ width: '100%', maxHeight: 440, objectFit: 'cover', borderRadius: 12, marginBottom: 12 }} />
                     ))}
@@ -657,13 +709,14 @@ export default function SocialPage() {
                             <div style={{ width: 30, height: 30, borderRadius: '50%', background: 'var(--purple-light)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 14, flexShrink: 0 }}>{c.avatarEmoji || c.username?.[0]?.toUpperCase()}</div>
                             <div style={{ background: 'var(--bg-alt)', borderRadius: 12, padding: '8px 12px', flex: 1 }}>
                               <div style={{ fontWeight: 800, fontSize: 12.5, color: 'var(--text)' }}>{c.username}</div>
-                              <div style={{ fontSize: 13, color: 'var(--text-sub)' }}>{c.text}</div>
+                              <div style={{ fontSize: 13, color: 'var(--text-sub)' }}>{renderMentionText(c.text)}</div>
                             </div>
                           </div>
                         ))}
-                        <div style={{ display: 'flex', gap: 8, marginTop: 8 }}>
-                          <input value={commentText} onChange={e => setCommentText(e.target.value)} onKeyDown={e => { if (e.key === 'Enter') sendComment(p.id); }} placeholder="Сэтгэгдэл бичих... (+3 XP)" style={{ flex: 1, background: 'var(--bg-alt)' }} />
+                        <div style={{ display: 'flex', gap: 8, marginTop: 8, position: 'relative' }}>
+                          <input value={commentText} onChange={e => { setCommentText(e.target.value); onMentionInput('comment', e.target.value); }} onKeyDown={e => { if (e.key === 'Enter') sendComment(p.id); }} placeholder="Сэтгэгдэл бичих... (+3 XP, @хэрэглэгч дуудаж болно)" style={{ flex: 1, background: 'var(--bg-alt)' }} />
                           <button onClick={() => sendComment(p.id)} className="btn btn-purple" style={{ padding: '8px 16px' }}>Илгээх</button>
+                          {mentionTarget === 'comment' && <MentionDropdown results={mentionResults} onPick={u => pickMention('comment', u)} />}
                         </div>
                       </div>
                     )}
