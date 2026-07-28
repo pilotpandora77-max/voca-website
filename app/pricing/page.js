@@ -47,13 +47,13 @@ const TESTIMONIALS = [
 // useSearchParams() forces this piece into a Suspense boundary at the call
 // site (Next.js App Router requirement for prerendered pages) — isolated
 // into its own component so the rest of the page stays statically prerendered.
-function TrialExpiredBanner() {
+function TrialExpiredBanner({ trialDays }) {
   const searchParams = useSearchParams();
   if (searchParams.get('reason') !== 'trial_expired') return null;
   return (
     <div style={{ margin: '0 28px 16px', padding: '14px 18px', borderRadius: 14, background: '#FEF3C7', border: '1.5px solid #F59E0B44', display: 'flex', alignItems: 'center', gap: 10 }}>
       <span style={{ fontSize: 20 }}>⏰</span>
-      <span style={{ fontSize: 13.5, fontWeight: 700, color: '#92400E' }}>Таны 7 хоногийн Premium туршилт дууслаа — үргэлжлүүлэхийг хүсвэл доороос багц сонгоно уу.</span>
+      <span style={{ fontSize: 13.5, fontWeight: 700, color: '#92400E' }}>Таны {trialDays} хоногийн Premium туршилт дууслаа — үргэлжлүүлэхийг хүсвэл доороос багц сонгоно уу.</span>
     </div>
   );
 }
@@ -150,9 +150,10 @@ export default function PricingPage() {
 
   const disabledBtn = { width: '100%', padding: '12px', borderRadius: 12, border: '1.5px solid var(--border)', background: 'var(--bg-alt)', color: 'var(--muted)', fontWeight: 800, fontSize: 14, cursor: 'default', fontFamily: 'inherit' };
 
+  const trialDays = status?.trialDays ?? 7;
   const trialCard = {
     id: 'trial',
-    name: '7 хоногийн Тест багц',
+    name: `${trialDays} хоногийн Тест багц`,
     tagline: 'Premium-г үнэгүй турш',
     price: 'Үнэгүй',
     period: '',
@@ -166,7 +167,7 @@ export default function PricingPage() {
       <PageHeader title="Төлбөрийн багцууд 👑" subtitle="Суралцах аяллаа дээд түвшинд хүргэе. Илүү их боломж, илүү их амжилт!" streak={streak} />
 
       <Suspense fallback={null}>
-        <TrialExpiredBanner />
+        <TrialExpiredBanner trialDays={trialDays} />
       </Suspense>
 
       <div className="responsive-sidebar" style={{ padding: '0 28px', display: 'grid', gridTemplateColumns: 'minmax(0,1fr) 300px', gap: 18, alignItems: 'start' }}>
