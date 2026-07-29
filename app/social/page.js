@@ -100,15 +100,10 @@ export default function SocialPage() {
   const [loading, setLoad]  = useState(true);
   const [input, setInput]   = useState('');
   const [category, setCategory] = useState('general');
-  const [postMode, setPostMode] = useState('text'); // text | poll | word
+  const [postMode, setPostMode] = useState('text'); // text | poll
   const [pendingImg, setPendingImg] = useState(null);
   const [pollQ, setPollQ]   = useState('');
   const [pollOpts, setPollOpts] = useState(['', '']);
-  const [wfTitle, setWfTitle] = useState('');
-  const [wfWords, setWfWords] = useState([{ word: '', meaning: '', extra: '' }]);
-  const [openFolders, setOpenFolders] = useState({}); // postId -> bool (expand word list)
-  const [myFolders, setMyFolders] = useState([]); // caller's own vocab folders, for the word-post picker
-  const [pickedFolder, setPickedFolder] = useState(null); // name of the folder currently filled into wfTitle/wfWords
   const [saved, setSaved]   = useState({});
   const [toast, setToast]   = useState('');
   const [openComments, setOpenComments] = useState(null);
@@ -153,7 +148,6 @@ export default function SocialPage() {
       api.get('/api/groups/public').then(r => setNewGroups((r.data || []).slice(0, 3))).catch(() => {});
       api.get('/api/social/notifications').then(r => setNotifs(r.data || { items: [], unread: 0 })).catch(() => {});
       api.get('/api/news').then(r => setAnnouncements(r.data || [])).catch(() => {});
-      loadMyFolders();
     }
     try { setSaved(JSON.parse(localStorage.getItem('voca_social_saved') || '{}')); } catch {}
   }, [authLoad, user]);
@@ -172,35 +166,13 @@ export default function SocialPage() {
     setLoad(false);
   }
 
-  // Миний "Үгсийн сан"-ны бүлгүүд — Үг хуваалцах composer-ийн сонголтод зориулав.
-  const DEFAULT_GROUP = 'Ерөнхий';
-  async function loadMyFolders() {
-    try {
-      const [{ data: wds }, { data: meta }] = await Promise.all([
-        api.get('/api/words'), api.get('/api/folders'),
-      ]);
-      const metaByName = {}; (meta || []).forEach(f => { metaByName[f.name] = f; });
-      const byName = {};
-      (wds || []).forEach(w => { const g = w.group || DEFAULT_GROUP; if (g !== DEFAULT_GROUP) (byName[g] = byName[g] || []).push(w); });
-      const folders = Object.entries(byName).map(([name, ws]) => ({ name, words: ws }));
-      setMyFolders(folders);
-    } catch { setMyFolders([]); }
-  }
-
-  function pickFolder(f) {
-    if (pickedFolder === f.name) { setPickedFolder(null); setWfTitle(''); setWfWords([{ word: '', meaning: '', extra: '' }]); return; }
-    setPickedFolder(f.name);
-    setWfTitle(f.name);
-    setWfWords(f.words.map(w => ({ word: w.front || w.word || '', meaning: w.back || w.meaning || '', extra: w.hint || w.reading || w.pos || '' })));
-  }
-
   if (authLoad) return null;
 
   function showToast(t) { setToast(t); clearTimeout(toastT.current); toastT.current = setTimeout(() => setToast(''), 2600); }
 
   function resetComposer() {
     setInput(''); setPendingImg(null); setCategory('general'); setPostMode('text');
-    setPollQ(''); setPollOpts(['', '']); setWfTitle(''); setWfWords([{ word: '', meaning: '', extra: '' }]); setPickedFolder(null);
+    setPollQ(''); setPollOpts(['', '']);
   }
 
   async function publish() {
@@ -209,10 +181,6 @@ export default function SocialPage() {
       const opts = pollOpts.map(o => o.trim()).filter(Boolean);
       if (!pollQ.trim() || opts.length < 2) { showToast('Асуулт болон 2+ сонголт бичнэ үү'); return; }
       body = { category: 'poll', poll: { question: pollQ.trim(), options: opts } };
-    } else if (postMode === 'word') {
-      const words = wfWords.map(w => ({ word: w.word.trim(), meaning: w.meaning.trim(), extra: w.extra.trim() })).filter(w => w.word);
-      if (!wfTitle.trim() || !words.length) { showToast('Багцын нэр болон дор хаяж нэг үг бичнэ үү'); return; }
-      body = { text: input.trim(), category: 'word', wordFolder: { title: wfTitle.trim(), words } };
     } else {
       const text = input.trim();
       if (!text && !pendingImg) return;
@@ -520,34 +488,6 @@ export default function SocialPage() {
                 ))}
                 {pollOpts.length < 4 && <button onClick={() => setPollOpts(ps => [...ps, ''])} style={{ background: 'none', border: 'none', color: 'var(--purple)', fontWeight: 700, fontSize: 12.5, cursor: 'pointer', padding: '4px 0' }}>+ Сонголт нэмэх</button>}
               </div>
-            ) : postMode === 'word' ? (
-              <div style={{ display: 'flex', flexDirection: 'column', gap: 8, marginBottom: 12 }}>
-                <input value={input} onChange={e => setInput(e.target.value)} placeholder="Хэдэн үг хэлэх үү? (заавал биш)" style={{ background: 'var(--bg-alt)' }} />
-                {myFolders.length > 0 && (
-                  <div style={{ display: 'flex', gap: 6, overflowX: 'auto', paddingBottom: 2 }}>
-                    {myFolders.map(f => (
-                      <button key={f.name} onClick={() => pickFolder(f)} style={{
-                        flexShrink: 0, padding: '6px 12px', borderRadius: 100, fontSize: 12, fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit', whiteSpace: 'nowrap',
-                        border: pickedFolder === f.name ? '1.5px solid var(--purple)' : '1.5px solid var(--border)',
-                        background: pickedFolder === f.name ? 'var(--purple-light)' : 'var(--bg-alt)',
-                        color: pickedFolder === f.name ? 'var(--purple)' : 'var(--text-sub)',
-                      }}>{pickedFolder === f.name ? '✓ ' : '📁 '}{f.name} ({f.words.length})</button>
-                    ))}
-                  </div>
-                )}
-                <input value={wfTitle} onChange={e => { setWfTitle(e.target.value); setPickedFolder(null); }} placeholder="Багцын нэр (жш: Онгоцны буудал)" style={{ background: 'var(--bg-alt)', fontWeight: 700 }} />
-                {wfWords.map((w, i) => (
-                  <div key={i} style={{ display: 'flex', gap: 6, alignItems: 'center', background: 'var(--bg-alt)', borderRadius: 10, padding: '8px 10px' }}>
-                    <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: 6 }}>
-                      <input value={w.word} onChange={e => setWfWords(ws => ws.map((x, j) => j === i ? { ...x, word: e.target.value } : x))} placeholder="Үг (жш: 你好 / hello)" style={{ background: '#fff', fontWeight: 700, fontSize: 13.5 }} />
-                      <input value={w.meaning} onChange={e => setWfWords(ws => ws.map((x, j) => j === i ? { ...x, meaning: e.target.value } : x))} placeholder="Утга (жш: сайн байна уу)" style={{ background: '#fff', fontSize: 13 }} />
-                      <input value={w.extra} onChange={e => setWfWords(ws => ws.map((x, j) => j === i ? { ...x, extra: e.target.value } : x))} placeholder="Дуудлага/тайлбар (заавал биш)" style={{ background: '#fff', fontSize: 13 }} />
-                    </div>
-                    {wfWords.length > 1 && <button onClick={() => setWfWords(ws => ws.filter((_, j) => j !== i))} style={{ background: 'none', border: 'none', color: 'var(--muted)', cursor: 'pointer', fontSize: 15 }}>✕</button>}
-                  </div>
-                ))}
-                {wfWords.length < 30 && <button onClick={() => setWfWords(ws => [...ws, { word: '', meaning: '', extra: '' }])} style={{ background: 'none', border: 'none', color: 'var(--purple)', fontWeight: 700, fontSize: 12.5, cursor: 'pointer', padding: '4px 0', alignSelf: 'flex-start' }}>+ Үг нэмэх</button>}
-              </div>
             ) : (
               <div style={{ display: 'flex', gap: 12, marginBottom: 12 }}>
                 <div style={{ width: 40, height: 40, borderRadius: '50%', background: 'var(--purple-light)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 19, flexShrink: 0, overflow: 'hidden' }}><Avatar u={user} /></div>
@@ -580,7 +520,6 @@ export default function SocialPage() {
               <button onClick={() => imageInputRef.current?.click()} style={composerToolBtn(postMode === 'text' && !!pendingImg)}>🖼️ Зураг</button>
               <button onClick={() => showToast('Reel нийтлэх тун удахгүй нэмэгдэнэ 🎬')} style={composerToolBtn(false)}>🎬 Reel</button>
               <button onClick={() => setPostMode(m => m === 'poll' ? 'text' : 'poll')} style={composerToolBtn(postMode === 'poll')}>📊 Санал асуулга</button>
-              <button onClick={() => setPostMode(m => m === 'word' ? 'text' : 'word')} style={composerToolBtn(postMode === 'word')}>📖 Үг хуваалцах</button>
               <span style={{ flex: 1 }} />
               <button onClick={publish} className="btn btn-purple" style={{ padding: '9px 22px' }}>Нийтлэх</button>
             </div>
@@ -631,39 +570,6 @@ export default function SocialPage() {
                         </div>
                       </div>
                     )}
-
-                    {/* Word folder — a titled collection of words */}
-                    {p.wordFolder && (() => {
-                      const isOpen = !!openFolders[p.id];
-                      const shown  = isOpen ? p.wordFolder.words : p.wordFolder.words.slice(0, 3);
-                      const rest   = p.wordFolder.words.length - shown.length;
-                      return (
-                        <div style={{ background: 'linear-gradient(135deg, var(--purple-light), transparent)', border: '1.5px solid var(--purple-mid)', borderRadius: 14, padding: '14px 18px', marginBottom: 12 }}>
-                          <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 10 }}>
-                            <span style={{ fontSize: 22 }}>📁</span>
-                            <div style={{ flex: 1, minWidth: 0 }}>
-                              <div style={{ fontWeight: 900, fontSize: 15.5, color: 'var(--text)' }}>{p.wordFolder.title}</div>
-                              <div style={{ fontSize: 11.5, color: 'var(--muted)', fontWeight: 700 }}>{p.wordFolder.words.length} үг</div>
-                            </div>
-                          </div>
-                          <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-                            {shown.map((w, i) => (
-                              <div key={i} style={{ display: 'flex', alignItems: 'baseline', gap: 8, background: '#fff', borderRadius: 10, padding: '8px 12px' }}>
-                                <span style={{ fontWeight: 800, fontSize: 14, color: 'var(--text)' }}>{w.word}</span>
-                                {w.extra && <span style={{ fontSize: 11, color: 'var(--muted)', fontWeight: 600 }}>{w.extra}</span>}
-                                {w.meaning && <span style={{ fontSize: 12.5, color: 'var(--text-sub)', fontWeight: 600, marginLeft: 'auto' }}>{w.meaning}</span>}
-                              </div>
-                            ))}
-                          </div>
-                          {rest > 0 && (
-                            <button onClick={() => setOpenFolders(o => ({ ...o, [p.id]: true }))} style={{ background: 'none', border: 'none', color: 'var(--purple)', fontWeight: 700, fontSize: 12.5, cursor: 'pointer', padding: '8px 0 0' }}>+{rest} илүү үг харах</button>
-                          )}
-                          {isOpen && p.wordFolder.words.length > 3 && (
-                            <button onClick={() => setOpenFolders(o => ({ ...o, [p.id]: false }))} style={{ background: 'none', border: 'none', color: 'var(--muted)', fontWeight: 700, fontSize: 12.5, cursor: 'pointer', padding: '8px 0 0' }}>Хураах</button>
-                          )}
-                        </div>
-                      );
-                    })()}
 
                     {/* Poll */}
                     {p.poll && (() => {

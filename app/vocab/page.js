@@ -68,20 +68,19 @@ export default function VocabPage() {
   // (яг апп шиг) — тусад нь wordIds массив хадгалдаггүй болсон тул апп/вэб хоёр
   // үргэлж ижил өгөгдлөөр (backend-ийн word.group) фолдэрлэдэг. `groupMeta`
   // нь зөвхөн харагдах өнгө зэрэг нэмэлт мэдээллийг хадгална.
-  const [groupMeta, setGroupMeta] = useState({});      // { [name]: { color, public } }
+  const [groupMeta, setGroupMeta] = useState({});      // { [name]: { color } }
   const [legacyGroups, setLegacyGroups] = useState(null); // хуучин wordIds-based өгөгдөл — нэг удаагийн шилжилтэд
   const [activeGroup, setActiveGr]= useState(null);    // фолдэрийн нэр (string) | null
   const [showGroupModal, setShowGroupModal] = useState(false);
   const [editingGroupName, setEditingGroupName] = useState(null); // null = creating, else editing this name
   const [newGroupName, setNewGroupName] = useState('');
   const [newGroupColor, setNewGroupColor] = useState('#7C3AED');
-  const [newGroupPublic, setNewGroupPublic] = useState(false);
 
   useEffect(() => {
     if (!authLoad && !user) router.push('/login');
     if (user) loadData();
     // legacyGroups зөвхөн доорх word.group migration effect-д зориулж хадгална —
-    // фолдэрийн metadata (өнгө/public) нь одоо backend /api/folders-с ирнэ.
+    // фолдэрийн metadata (өнгө) нь одоо backend /api/folders-с ирнэ.
     loadUserData('wordGroups', []).then(raw => { if (Array.isArray(raw)) setLegacyGroups(raw); });
     if (user) loadFolders();
   }, [authLoad, user]);
@@ -91,7 +90,7 @@ export default function VocabPage() {
       const { data } = await api.get('/api/folders');
       if (Array.isArray(data) && data.length) {
         const meta = {};
-        data.forEach(f => { meta[f.name] = { color: f.color, public: !!f.public }; });
+        data.forEach(f => { meta[f.name] = { color: f.color }; });
         setGroupMeta(meta);
         return;
       }
@@ -138,12 +137,10 @@ export default function VocabPage() {
   function openCreateGroup() {
     setEditingGroupName(null); setNewGroupName('');
     setNewGroupColor(GROUP_COLORS[Object.keys(groupMeta).length % GROUP_COLORS.length]);
-    setNewGroupPublic(false);
     setShowGroupModal(true);
   }
   function openEditGroup(g) {
     setEditingGroupName(g.name); setNewGroupName(g.name); setNewGroupColor(g.color);
-    setNewGroupPublic(!!g.public);
     setShowGroupModal(true);
   }
 
@@ -166,7 +163,7 @@ export default function VocabPage() {
 
     if (editingGroupName == null) {
       // Шинэ хоосон бүлэг — зөвхөн metadata-д бүртгэнэ, үг нэмэгдэх хүртэл хоосон харагдана
-      const meta = { color: newGroupColor, public: newGroupPublic };
+      const meta = { color: newGroupColor };
       setGroupMeta({ ...groupMeta, [name]: meta });
       api.put(`/api/folders/${encodeURIComponent(name)}`, meta).catch(() => {});
       setActiveGr(name);
@@ -175,7 +172,7 @@ export default function VocabPage() {
     }
 
     const oldName = editingGroupName;
-    const meta = { color: newGroupColor, public: newGroupPublic };
+    const meta = { color: newGroupColor };
     const nextMeta = { ...groupMeta };
     delete nextMeta[oldName];
     nextMeta[name] = meta;
@@ -271,7 +268,7 @@ export default function VocabPage() {
   Object.keys(groupMeta).forEach(n => { if (n !== DEFAULT_GROUP && !namedGroups[n]) namedGroups[n] = []; });
   const ungroupedWords = words.filter(w => !w.group || w.group === DEFAULT_GROUP);
   const derivedGroups = Object.entries(namedGroups)
-    .map(([name, ws]) => ({ name, color: groupMeta[name]?.color || hashColor(name), public: !!groupMeta[name]?.public, words: ws }))
+    .map(([name, ws]) => ({ name, color: groupMeta[name]?.color || hashColor(name), words: ws }))
     .sort((a, b) => b.words.length - a.words.length);
 
   const filtered = words.filter(w => {
@@ -643,26 +640,7 @@ export default function VocabPage() {
                 <button key={c} onClick={() => setNewGroupColor(c)} style={{ width: 30, height: 30, borderRadius: '50%', background: c, cursor: 'pointer', border: newGroupColor === c ? '3px solid #fff' : '2px solid transparent', boxShadow: newGroupColor === c ? `0 0 0 2px ${c}` : 'none' }} />
               ))}
             </div>
-            <label style={{ fontWeight: 700, fontSize: 13, color: 'var(--text-sub)', display: 'block', marginBottom: 8 }}>Нууцлал</label>
-            <div style={{ display: 'flex', gap: 10, marginBottom: 22 }}>
-              {[{ k: false, t: 'Зөвхөн би', d: 'Хувийн бүлэг', ic: '🔒' }, { k: true, t: 'Нийтэд', d: 'Бусадтай хуваалцах', ic: '🌍' }].map(p => {
-                const a = newGroupPublic === p.k;
-                return (
-                  <button key={String(p.k)} onClick={() => setNewGroupPublic(p.k)} style={{
-                    flex: 1, display: 'flex', alignItems: 'center', gap: 8, padding: '10px 12px', borderRadius: 12,
-                    border: `1.5px solid ${a ? 'var(--purple)' : 'var(--border)'}`, background: a ? 'var(--purple-light)' : '#fff',
-                    cursor: 'pointer', fontFamily: 'inherit', textAlign: 'left',
-                  }}>
-                    <span style={{ fontSize: 18 }}>{p.ic}</span>
-                    <span>
-                      <div style={{ fontWeight: 800, fontSize: 12.5, color: a ? 'var(--purple)' : 'var(--text)' }}>{p.t}</div>
-                      <div style={{ fontSize: 10.5, color: 'var(--muted)', fontWeight: 600 }}>{p.d}</div>
-                    </span>
-                  </button>
-                );
-              })}
-            </div>
-            <div style={{ display: 'flex', gap: 10 }}>
+            <div style={{ display: 'flex', gap: 10, marginTop: 22 }}>
               <button className="btn btn-ghost" onClick={() => setShowGroupModal(false)} style={{ flex: 1 }}>Болих</button>
               <button className="btn btn-purple" onClick={confirmGroupModal} style={{ flex: 1 }}>{editingGroupName == null ? 'Үүсгэх' : 'Хадгалах'}</button>
             </div>

@@ -25,8 +25,6 @@ export default function HomePage() {
   const [current, setCurrent]     = useState(null);
   const [showBack, setShowBack]   = useState(false);
   const [stats, setStats]         = useState(null);
-  const [folders, setFolders]     = useState([]);
-  const [openHomeFolder, setOpenHomeFolder] = useState(null); // folder id currently expanded
   const [leaderboard, setLB]      = useState([]);
   const [loading, setLoading]     = useState(true);
   const [quests, setQuests]       = useState([]);
@@ -42,12 +40,11 @@ export default function HomePage() {
   async function load() {
     setLoading(true);
     try {
-      const [s, cards, st, lb, fold, q] = await Promise.all([
+      const [s, cards, st, lb, q] = await Promise.all([
         api.get('/api/streak'),
         api.get('/api/cards/due'),
         api.get('/api/stats').catch(() => ({ data: {} })),
         api.get('/api/stats/leaderboard').catch(() => ({ data: [] })),
-        api.get('/api/folders/public?limit=5').catch(() => ({ data: [] })),
         api.get('/api/stats/quests').catch(() => ({ data: [] })),
       ]);
       setStreak(s.data.streak || 0);
@@ -55,7 +52,6 @@ export default function HomePage() {
       setCurrent(cards.data[0] || null);
       setStats(st.data);
       setLB(lb.data.slice(0, 5));
-      setFolders(fold.data || []);
       setQuests(q.data || []);
       setMissionClaimed(!!st.data.missionClaimedToday);
       if (st.data.leveledUp) setLevelUpAt(st.data.level);
@@ -75,13 +71,6 @@ export default function HomePage() {
       }
     } catch {}
     setMissionBusy(false);
-  }
-
-  async function toggleFolderLike(f) {
-    setFolders(fs => fs.map(x => x.id === f.id
-      ? { ...x, liked: !x.liked, likeCount: x.likeCount + (x.liked ? -1 : 1) }
-      : x));
-    try { await api.post(`/api/folders/${f.id}/like`); } catch {}
   }
 
   async function addWordToVocab() {
@@ -232,51 +221,6 @@ export default function HomePage() {
             </Link>
           ))}
         </div>
-
-        {/* ── Хамт олны үгийн багцууд (folder posts, news-style) ── */}
-        {folders.length > 0 && (
-          <div style={{ marginBottom: 16 }}>
-            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12 }}>
-              <h2 style={{ fontWeight: 900, fontSize: 16, color: 'var(--text)' }}>📁 Хамт олны үгийн багцууд</h2>
-              <Link href="/social" style={{ fontSize: 12, color: 'var(--purple)', fontWeight: 700, textDecoration: 'none' }}>
-                Бүгд харах →
-              </Link>
-            </div>
-            <div className="responsive-cards" style={{ display: 'grid', gridTemplateColumns: `repeat(${Math.min(folders.length, 3)}, 1fr)`, gap: 12 }}>
-              {folders.map(f => {
-                const open = openHomeFolder === f.id;
-                return (
-                  <div key={f.id} className="stat-card" style={{ cursor: 'pointer' }} onClick={() => setOpenHomeFolder(open ? null : f.id)}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-                      <div style={{ width: 40, height: 40, borderRadius: 12, background: f.color ? `${f.color}22` : 'linear-gradient(145deg,#EDE9FF,#DDD6FE)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 20, flexShrink: 0 }}>📁</div>
-                      <div style={{ minWidth: 0, flex: 1 }}>
-                        <div style={{ fontWeight: 800, fontSize: 14, color: 'var(--text)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{f.name}</div>
-                        <div style={{ fontSize: 11, color: 'var(--muted)', fontWeight: 600 }}>{f.username} • {f.wordCount} үг</div>
-                      </div>
-                      <button onClick={e => { e.stopPropagation(); toggleFolderLike(f); }} style={{
-                        display: 'flex', alignItems: 'center', gap: 4, background: 'none', border: 'none', cursor: 'pointer',
-                        color: f.liked ? '#EF4444' : 'var(--muted)', fontWeight: 700, fontSize: 12.5, flexShrink: 0,
-                      }}>
-                        {f.liked ? '❤️' : '🤍'} {f.likeCount}
-                      </button>
-                    </div>
-                    {open && (
-                      <div style={{ marginTop: 10, paddingTop: 10, borderTop: '1px solid var(--border)', display: 'flex', flexDirection: 'column', gap: 4, maxHeight: 180, overflowY: 'auto' }}>
-                        {f.words.length === 0 && <div style={{ fontSize: 12, color: 'var(--muted)' }}>Хоосон багц</div>}
-                        {f.words.map((w, i) => (
-                          <div key={i} style={{ display: 'flex', justifyContent: 'space-between', gap: 8, fontSize: 12.5 }}>
-                            <span style={{ fontWeight: 700, color: 'var(--text)' }}>{w.word}</span>
-                            <span style={{ color: 'var(--muted)' }}>{w.meaning}</span>
-                          </div>
-                        ))}
-                      </div>
-                    )}
-                  </div>
-                );
-              })}
-            </div>
-          </div>
-        )}
 
         {/* ── Row 3: Daily Goals + Right Panel ── */}
         <div className="responsive-sidebar" style={{ display: 'grid', gridTemplateColumns: '1fr 380px', gap: 16 }}>
