@@ -5,15 +5,32 @@ import { useAuth } from '@/lib/auth';
 import { useLang } from '@/lib/LangContext';
 import api from '@/lib/api';
 import useStudyPing from '@/lib/useStudyPing';
-import { shuffle, FlashQ, ChoiceQ, TypeQ, FillBlankQ, PronounceQ } from '@/components/exercises/WordQuestions';
+import { shuffle, FlashQ, ChoiceQ, TypeQ, FillBlankQ, PronounceQ, MatchQ } from '@/components/exercises/WordQuestions';
 import { examTypeMeta } from '@/lib/examTypes';
 
 function norm(w) { return { ...w, front: w.word, back: w.meaning, hint: w.reading }; }
 
+// 'match' асуулт нэг үгэнд биш, 4 үгийн багцад ажилладаг тул тэдгээрийг
+// нэг "groupId"-аар холбоно — навигатор дээр багц тус бүрийн гишүүн үг өөрийн
+// нүдтэй хэвээр байгаа (missed-word/perType статистик хуучин ёсоороо ажиллана),
+// гэхдээ Running дэлгэц дээр groupId ижил бүх нүдийг НЭГ MatchQ асуулт болгож харуулна.
+const MATCH_BATCH = 4;
+
 function buildSession(exam) {
   const pool  = shuffle(exam.words).slice(0, Math.min(exam.questionCount, exam.words.length));
   const cycle = shuffle(pool.map((_, i) => exam.questionTypes[i % exam.questionTypes.length]));
-  return pool.map((word, i) => ({ qId: word.id, word, type: cycle[i] }));
+
+  const matchIdxs = cycle.map((t, i) => (t === 'match' ? i : -1)).filter(i => i !== -1);
+  const groupOf = {};
+  for (let g = 0; g < matchIdxs.length; g += MATCH_BATCH) {
+    const chunk = matchIdxs.slice(g, g + MATCH_BATCH);
+    // Ганцаараа үлдсэн үгийг тааруулах боломжгүй тул флаш карт болгоно.
+    if (chunk.length < 2) { chunk.forEach(i => { cycle[i] = 'flashcard'; }); continue; }
+    const gid = `grp-${g}`;
+    chunk.forEach(i => { groupOf[i] = gid; });
+  }
+
+  return pool.map((word, i) => ({ qId: word.id, word, type: cycle[i], groupId: groupOf[i] || null }));
 }
 
 function statusColor(status, current) {
@@ -93,6 +110,15 @@ export default function ExamTakePage() {
 
   function advance() { setIdx(i => Math.min(i + 1, session.length - 1)); }
 
+  // groupId-той бүх session нүдэд нэг зэрэг статус тавиад, багцын ХАМГИЙН СҮҮЛИЙН
+  // нүднээс цааш үсэрнэ (завсрын гишүүн нүд рүү буцаж очихгүй байхын тулд).
+  function advancePastGroup(groupId) {
+    const lastIdx = session.reduce((max, q, i) => (q.groupId === groupId ? i : max), idx);
+    if (lastIdx >= session.length - 1) return 'end';
+    setIdx(lastIdx + 1);
+    return 'more';
+  }
+
   function recordAnswer(correct) {
     const qId = session[idx].qId;
     const nextAnswers = { ...answers, [qId]: correct ? 'correct' : 'wrong' };
@@ -100,12 +126,28 @@ export default function ExamTakePage() {
     if (idx === session.length - 1) finish(nextAnswers);
     else advance();
   }
+  function recordMatchGroup(groupId) {
+    const groupQIds = session.filter(q => q.groupId === groupId).map(q => q.qId);
+    const nextAnswers = { ...answers };
+    groupQIds.forEach(id => { nextAnswers[id] = 'correct'; });
+    setAnswers(nextAnswers);
+    if (advancePastGroup(groupId) === 'end') finish(nextAnswers);
+  }
   function skip() {
-    const qId = session[idx].qId;
+    const cur = session[idx];
+    if (cur.type === 'match') return skipGroup(cur.groupId);
+    const qId = cur.qId;
     const nextAnswers = { ...answers, [qId]: 'skipped' };
     setAnswers(nextAnswers);
     if (idx === session.length - 1) finish(nextAnswers);
     else advance();
+  }
+  function skipGroup(groupId) {
+    const groupQIds = session.filter(q => q.groupId === groupId).map(q => q.qId);
+    const nextAnswers = { ...answers };
+    groupQIds.forEach(id => { nextAnswers[id] = 'skipped'; });
+    setAnswers(nextAnswers);
+    if (advancePastGroup(groupId) === 'end') finish(nextAnswers);
   }
 
   function finish(answersOverride) {
@@ -262,6 +304,7 @@ export default function ExamTakePage() {
   const mm = String(Math.floor(remaining / 60)).padStart(2, '0');
   const ss = String(remaining % 60).padStart(2, '0');
   const meta = examTypeMeta(cur.type);
+  const matchGroupWords = cur.type === 'match' ? session.filter(q => q.groupId === cur.groupId).map(q => q.word) : null;
 
   return (
     <div style={{ maxWidth: 560, margin: '0 auto', padding: '20px 24px 40px' }}>
@@ -283,6 +326,7 @@ export default function ExamTakePage() {
         {cur.type === 'writing'   && <TypeQ word={cur.word} typed={typed} setTyped={setTyped} revealed={revealed} onCheck={() => setRevealed(true)} onNext={recordAnswer} />}
         {cur.type === 'fill'      && <FillBlankQ key={cur.qId} word={norm(cur.word)} onNext={recordAnswer} />}
         {cur.type === 'pronounce' && <PronounceQ key={cur.qId} word={norm(cur.word)} speechLang={speechLang} onNext={recordAnswer} />}
+        {cur.type === 'match'     && <MatchQ key={cur.groupId} words={matchGroupWords} onDone={() => recordMatchGroup(cur.groupId)} />}
       </div>
 
       <div style={{ display: 'flex', gap: 10, marginBottom: 18 }}>
@@ -292,7 +336,8 @@ export default function ExamTakePage() {
 
       <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', justifyContent: 'center' }}>
         {session.map((q, i) => {
-          const c = statusColor(answers[q.qId], i === idx);
+          const isCurrent = cur.groupId && q.groupId === cur.groupId ? true : i === idx;
+          const c = statusColor(answers[q.qId], isCurrent);
           return (
             <button key={q.qId} onClick={() => setIdx(i)} style={{
               width: 30, height: 30, borderRadius: 8, border: `1.5px solid ${c.border}`, background: c.bg, color: c.color,
