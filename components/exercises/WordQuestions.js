@@ -297,35 +297,35 @@ export function MatchQ({ words, onDone }) {
   return (
     <div>
       <div style={{ fontSize: 14, color: 'var(--muted)', fontWeight: 700, marginBottom: 16 }}>Үгийг утгатай нь холбоно уу. ({bi + 1}/{batches.length})</div>
-      <div style={{ display: 'flex', gap: 12 }}>
-        <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: 10 }}>
-          {curBatch.map((w, i) => {
-            const m = matched[idOf(w)]; const sel = selL === i;
-            return (
-              <div key={idOf(w)} onClick={() => !m && setSelL(i)} style={{
-                borderRadius: 12, border: `2px solid ${m ? 'var(--green)' : sel ? 'var(--purple)' : 'var(--border)'}`,
-                background: m ? 'var(--green-light)' : sel ? 'var(--purple-light)' : 'var(--bg-alt)',
-                padding: 14, minHeight: 52, display: 'flex', alignItems: 'center', cursor: m ? 'default' : 'pointer',
-              }}>
-                <span style={{ fontSize: 14, fontWeight: (sel || m) ? 800 : 700, color: m ? 'var(--green-dark)' : sel ? 'var(--purple)' : 'var(--text)' }}>{w.word}</span>
-              </div>
-            );
-          })}
-        </div>
-        <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: 10 }}>
-          {rights.map(r => {
-            const m = matched[idOf(r)]; const bad = wrongFlash === idOf(r);
-            return (
-              <div key={idOf(r)} onClick={() => !m && tapRight(r)} style={{
-                borderRadius: 12, border: `2px solid ${m ? 'var(--green)' : bad ? 'var(--red)' : 'var(--border)'}`,
-                background: m ? 'var(--green-light)' : bad ? 'var(--red-light)' : 'var(--bg-alt)',
-                padding: 14, minHeight: 52, display: 'flex', alignItems: 'center', cursor: m ? 'default' : 'pointer',
-              }}>
-                <span style={{ fontSize: 13.5, fontWeight: m ? 800 : 700, color: m ? 'var(--green-dark)' : 'var(--text)' }}>{r.meaning}</span>
-              </div>
-            );
-          })}
-        </div>
+      {/* Grid (2 багана, ижил мөрийн дугаараар эгнэлдэнэ) — ингэснээр урт орчуулга 2 мөр
+          болж өргөссөн ч эсрэг талын мөр адилхан өндөр болж, багана хоорондоо зэрэгцэнэ. */}
+      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gridAutoRows: 'minmax(52px, auto)', gap: 10, alignItems: 'stretch' }}>
+        {curBatch.map((w, i) => {
+          const m = matched[idOf(w)]; const sel = selL === i;
+          return (
+            <div key={idOf(w)} onClick={() => !m && setSelL(i)} style={{
+              gridColumn: 1, gridRow: i + 1,
+              borderRadius: 12, border: `2px solid ${m ? 'var(--green)' : sel ? 'var(--purple)' : 'var(--border)'}`,
+              background: m ? 'var(--green-light)' : sel ? 'var(--purple-light)' : 'var(--bg-alt)',
+              padding: 14, display: 'flex', alignItems: 'center', cursor: m ? 'default' : 'pointer',
+            }}>
+              <span style={{ fontSize: 14, fontWeight: (sel || m) ? 800 : 700, color: m ? 'var(--green-dark)' : sel ? 'var(--purple)' : 'var(--text)' }}>{w.word}</span>
+            </div>
+          );
+        })}
+        {rights.map((r, i) => {
+          const m = matched[idOf(r)]; const bad = wrongFlash === idOf(r);
+          return (
+            <div key={idOf(r)} onClick={() => !m && tapRight(r)} style={{
+              gridColumn: 2, gridRow: i + 1,
+              borderRadius: 12, border: `2px solid ${m ? 'var(--green)' : bad ? 'var(--red)' : 'var(--border)'}`,
+              background: m ? 'var(--green-light)' : bad ? 'var(--red-light)' : 'var(--bg-alt)',
+              padding: 14, display: 'flex', alignItems: 'center', cursor: m ? 'default' : 'pointer',
+            }}>
+              <span style={{ fontSize: 13.5, fontWeight: m ? 800 : 700, color: m ? 'var(--green-dark)' : 'var(--text)' }}>{r.meaning}</span>
+            </div>
+          );
+        })}
       </div>
     </div>
   );
