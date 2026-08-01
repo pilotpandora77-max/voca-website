@@ -58,6 +58,16 @@ function TrialExpiredBanner({ trialDays }) {
   );
 }
 
+function LockedBanner({ locked }) {
+  if (!locked) return null;
+  return (
+    <div style={{ margin: '0 28px 16px', padding: '14px 18px', borderRadius: 14, background: '#FEE2E2', border: '1.5px solid #EF444444', display: 'flex', alignItems: 'center', gap: 10 }}>
+      <span style={{ fontSize: 20 }}>🔒</span>
+      <span style={{ fontSize: 13.5, fontWeight: 700, color: '#B91C1C' }}>Үнэгүй ашиглах боломж хаагдсан байна — үргэлжлүүлэхийн тулд доороос багц сонгоно уу.</span>
+    </div>
+  );
+}
+
 export default function PricingPage() {
   const { user, loading: authLoad, refreshUser } = useAuth();
   const router = useRouter();
@@ -160,7 +170,9 @@ export default function PricingPage() {
     features: plans.find(p => p.id === 'premium')?.features || [],
   };
   // Стандарт болон Premium-ий хооронд байрлуулснаар "энэ гуравыг холбосон" дунд шат мэт харагдана.
-  const displayCards = [plans[0], plans[1], trialCard, plans[2]];
+  // Админ "Үнэгүй багц"-ыг унтраасан үед (status.freePlanEnabled === false) энэ картыг огт харуулахгүй.
+  const freePlanEnabled = status?.freePlanEnabled ?? true;
+  const displayCards = freePlanEnabled ? [plans[0], plans[1], trialCard, plans[2]] : [plans[1], trialCard, plans[2]];
 
   return (
     <div style={{ paddingBottom: 48 }}>
@@ -169,6 +181,7 @@ export default function PricingPage() {
       <Suspense fallback={null}>
         <TrialExpiredBanner trialDays={trialDays} />
       </Suspense>
+      <LockedBanner locked={!!status?.locked} />
 
       <div className="responsive-sidebar" style={{ padding: '0 28px', display: 'grid', gridTemplateColumns: 'minmax(0,1fr) 300px', gap: 18, alignItems: 'start' }}>
         {/* ── Main ── */}
@@ -200,7 +213,7 @@ export default function PricingPage() {
           )}
 
           {/* Pricing cards */}
-          <div className="responsive-sidebar" style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 16 }}>
+          <div className="responsive-sidebar" style={{ display: 'grid', gridTemplateColumns: `repeat(${displayCards.length}, 1fr)`, gap: 16 }}>
             {displayCards.map(p => {
               const isTrial   = p.id === 'trial';
               const isCurrent = !isTrial && p.id === currentPlan;
