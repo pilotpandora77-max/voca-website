@@ -8,11 +8,13 @@ const SKIP_REASON_MN = {
   'ai-limit': 'AI-ийн өдрийн хязгаарт хүрсэн', 'ai-unavailable': 'AI ажиллахгүй байна', 'ai-failed': 'AI боловсруулж чадсангүй',
 };
 
-// .txt/.csv файлаас олон үгийг нэг дор оруулна. Meaning дутуу мөрүүдийг backend
-// GPT-4o-оор автоматаар баяжуулна.
+// .txt/.csv файлаас, эсвэл гар бичмэл/тольны хуудасны ЗУРГААС (OCR-оор,
+// төлбөргүй, локал tesseract.js) олон үгийг нэг дор оруулна. Meaning дутуу
+// мөрүүдийг backend GPT-4o-оор автоматаар баяжуулна (боломжтой бол).
 export default function FileImportTab({ aiLang, setAiLang, targetGroup, onAdded }) {
   const [file, setFile] = useState(null);
   const [lineCount, setLineCount] = useState(0);
+  const [preview, setPreview] = useState(null); // зурган файлын thumbnail
   const [busy, setBusy] = useState(false);
   const [result, setResult] = useState(null);
   const fileRef = useRef(null);
@@ -20,8 +22,16 @@ export default function FileImportTab({ aiLang, setAiLang, targetGroup, onAdded 
   function onFileChange(e) {
     const f = e.target.files?.[0];
     setResult(null);
-    if (!f) { setFile(null); setLineCount(0); return; }
+    if (!f) { setFile(null); setLineCount(0); setPreview(null); return; }
     setFile(f);
+    if (f.type.startsWith('image/')) {
+      setLineCount(0);
+      const reader = new FileReader();
+      reader.onload = () => setPreview(String(reader.result || ''));
+      reader.readAsDataURL(f);
+      return;
+    }
+    setPreview(null);
     const reader = new FileReader();
     reader.onload = () => {
       const lines = String(reader.result || '').split(/\r?\n/).map(l => l.trim()).filter(l => l && !l.startsWith('#'));
@@ -65,21 +75,29 @@ export default function FileImportTab({ aiLang, setAiLang, targetGroup, onAdded 
 
       <div className="card" style={{ background: 'var(--bg-alt)', marginBottom: 14 }}>
         <p style={{ fontSize: 12.5, color: 'var(--text-sub)', lineHeight: 1.6, marginBottom: 0 }}>
-          <strong>Файлын формат:</strong> мөр бүрт нэг үг. <code>үг</code>, эсвэл <code>үг,утга</code>, эсвэл <code>үг,утга,жишээ өгүүлбэр</code>.
-          Утга дутуу мөрүүдийг AI автоматаар бөглөнө. Хамгийн ихдээ 40 мөр.
+          <strong>Текст файл:</strong> мөр бүрт нэг үг. <code>үг</code>, эсвэл <code>үг,утга</code>, эсвэл <code>үг,утга,жишээ өгүүлбэр</code>. Утга дутуу мөрүүдийг AI автоматаар бөглөнө.<br />
+          <strong>Зурган файл:</strong> гар бичмэл жагсаалт эсвэл тольны хуудасны зураг — үг болон орчуулга ХОЁУЛАА зурган дээр бичигдсэн байх ёстой (таних л хийнэ, орчуулахгүй). Хамгийн ихдээ 40 мөр.
         </p>
       </div>
 
       <button type="button" onClick={() => fileRef.current?.click()} className="btn btn-light" style={{ padding: '8px 14px', fontSize: 12.5, marginBottom: 8 }}>
-        📁 Файл сонгох
+        📁 Файл сонгох (текст эсвэл зураг)
       </button>
-      <input ref={fileRef} type="file" accept=".txt,.csv" onChange={onFileChange} style={{ display: 'none' }} />
-      <div style={{ fontSize: 12.5, color: 'var(--muted)', marginBottom: 16 }}>
-        {file ? `${file.name} — ${lineCount} мөр олдлоо` : 'Файл сонгогдоогүй'}
-      </div>
+      <input ref={fileRef} type="file" accept=".txt,.csv,image/*" onChange={onFileChange} style={{ display: 'none' }} />
+
+      {preview ? (
+        <div style={{ marginBottom: 16 }}>
+          <img src={preview} alt="" style={{ maxWidth: '100%', maxHeight: 160, borderRadius: 10, border: '1.5px solid var(--border)', display: 'block', marginBottom: 6 }} />
+          <div style={{ fontSize: 12.5, color: 'var(--muted)' }}>{file?.name}</div>
+        </div>
+      ) : (
+        <div style={{ fontSize: 12.5, color: 'var(--muted)', marginBottom: 16 }}>
+          {file ? `${file.name} — ${lineCount} мөр олдлоо` : 'Файл сонгогдоогүй'}
+        </div>
+      )}
 
       <button className="btn btn-purple" onClick={doImport} disabled={!file || busy} style={{ width: '100%' }}>
-        {busy ? 'AI-аар баяжуулж байна…' : 'Импортлох'}
+        {busy ? (file?.type?.startsWith('image/') ? 'Зургийг таньж байна…' : 'AI-аар баяжуулж байна…') : 'Импортлох'}
       </button>
 
       {result && (
