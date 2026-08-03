@@ -83,7 +83,7 @@ export default function FileImportTab({ aiLang, setAiLang, targetGroup, onAdded 
       <button type="button" onClick={() => fileRef.current?.click()} className="btn btn-light" style={{ padding: '8px 14px', fontSize: 12.5, marginBottom: 8 }}>
         📁 Файл сонгох (текст эсвэл зураг)
       </button>
-      <input ref={fileRef} type="file" accept=".txt,.csv,image/*" onChange={onFileChange} style={{ display: 'none' }} />
+      <input ref={fileRef} type="file" accept=".txt,.csv,.png,.jpg,.jpeg,.heic,.heif,.webp,image/*" onChange={onFileChange} style={{ display: 'none' }} />
 
       {preview ? (
         <div style={{ marginBottom: 16 }}>
