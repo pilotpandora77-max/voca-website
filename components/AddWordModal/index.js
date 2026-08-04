@@ -6,12 +6,15 @@ import CategoryTab from './CategoryTab';
 import MyWordsTab from './MyWordsTab';
 import FileImportTab from './FileImportTab';
 
+// import: тун удахгүй (OCR-ийн чанар хангалтгүй тул AI vision-той болтол
+// түр хаасан) — FileImportTab.js-ийг УСТГААГҮЙ, зөвхөн энэ тохиргоог
+// soon:false болгоход л шууд буцаад идэвхжинэ.
 const TABS = [
   { id: 'search',   label: 'Хайж нэмэх' },
   { id: 'new',      label: 'Шинэ үг нэмэх' },
   { id: 'category', label: 'Ангилаас нэмэх' },
   { id: 'mywords',  label: 'Миний үгс' },
-  { id: 'import',   label: 'Файл оруулах' },
+  { id: 'import',   label: 'Файл оруулах', soon: true },
 ];
 
 // 5-табтай "Үг нэмэх" модал. Таб бүр өөрийн гэсэн орон нутгийн draft/state-тэй,
@@ -47,13 +50,13 @@ export default function AddWordModal({
 
         <div style={{ display: 'flex', gap: 4, padding: '14px 24px 0', borderBottom: '1.5px solid var(--border)', overflowX: 'auto' }}>
           {TABS.map(t => (
-            <button key={t.id} onClick={() => setActiveTab(t.id)} style={{
+            <button key={t.id} onClick={() => t.soon ? alert('Файл (зурган) оруулах боломж тун удахгүй нэмэгдэнэ.') : setActiveTab(t.id)} style={{
               padding: '8px 14px', background: 'none', border: 'none',
               borderBottom: `2px solid ${activeTab === t.id ? 'var(--purple)' : 'transparent'}`,
-              color: activeTab === t.id ? 'var(--purple)' : 'var(--text-sub)', fontWeight: 800, fontSize: 13,
+              color: t.soon ? 'var(--muted)' : activeTab === t.id ? 'var(--purple)' : 'var(--text-sub)', fontWeight: 800, fontSize: 13,
               cursor: 'pointer', fontFamily: 'inherit', whiteSpace: 'nowrap', marginBottom: -1.5,
             }}>
-              {t.label}
+              {t.label}{t.soon ? ' (тун удахгүй)' : ''}
             </button>
           ))}
         </div>
