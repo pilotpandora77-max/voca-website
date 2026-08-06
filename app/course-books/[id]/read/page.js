@@ -54,10 +54,7 @@ export default function CourseBookReader() {
     setAiReply(null); setAiError(false); setSelection(null);
     clearTimeout(saveTimer.current);
     saveTimer.current = setTimeout(async () => {
-      try {
-        const { data } = await api.put(`/api/course-books/${id}/progress`, { page: clamped });
-        if (data.earnedXp) showToast(`+${data.earnedXp} XP 📖`);
-      } catch {}
+      try { await api.put(`/api/course-books/${id}/progress`, { page: clamped }); } catch {}
     }, 600);
   }
 

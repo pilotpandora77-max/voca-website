@@ -300,8 +300,8 @@ export default function SocialPage() {
     try {
       const { data } = await api.post('/api/social/challenge/submit', { text, course: challenge.course });
       setChInput('');
-      if (data.wonXp) showToast(`🏆 Өнөөдрийн ялагч! +${data.xp + data.wonXp} XP`);
-      else showToast(`Челленж: ${data.used.length} үг +${data.xp} XP 🎯`);
+      if (data.justWon) showToast('🏆 Өнөөдрийн ялагч боллоо!');
+      else showToast(`Челленж: ${data.used.length} үг ашиглалаа 🎯`);
       const r = await api.get(`/api/social/challenge?course=${challenge.course}`);
       setChallenge(r.data);
     } catch (e) { showToast(e.response?.data?.error || 'Алдаа гарлаа'); }
@@ -559,15 +559,11 @@ export default function SocialPage() {
                       <img key={i} src={imgUrl(im)} alt="" style={{ width: '100%', maxHeight: 440, objectFit: 'cover', borderRadius: 12, marginBottom: 12 }} />
                     ))}
 
-                    {/* Word card — legacy single-word posts */}
+                    {/* Word card — legacy single-word posts. Орчуулгыг ил гаргахгүй. */}
                     {p.wordCard && (
                       <div style={{ display: 'flex', alignItems: 'center', gap: 14, background: 'linear-gradient(135deg, var(--purple-light), transparent)', border: '1.5px solid var(--purple-mid)', borderRadius: 14, padding: '14px 18px', marginBottom: 12 }}>
                         <span style={{ fontSize: 26 }}>📖</span>
-                        <div>
-                          <div style={{ fontWeight: 900, fontSize: 19, color: 'var(--text)' }}>{p.wordCard.word}</div>
-                          {p.wordCard.extra && <div style={{ fontSize: 12, color: 'var(--muted)', fontWeight: 600 }}>{p.wordCard.extra}</div>}
-                          {p.wordCard.meaning && <div style={{ fontSize: 13.5, color: 'var(--text-sub)', fontWeight: 600, marginTop: 2 }}>{p.wordCard.meaning}</div>}
-                        </div>
+                        <div style={{ fontWeight: 900, fontSize: 19, color: 'var(--text)' }}>{p.wordCard.word}</div>
                       </div>
                     )}
 
@@ -675,7 +671,7 @@ export default function SocialPage() {
                 <h3 style={{ fontWeight: 900, fontSize: 14, color: 'var(--purple)' }}>🎯 Өдрийн Challenge</h3>
                 <span style={{ fontSize: 11, fontWeight: 800, color: 'var(--purple)', background: 'var(--purple-light)', borderRadius: 100, padding: '2px 9px' }}>{challenge.participants} оролцогч</span>
               </div>
-              <p style={{ fontSize: 12.5, color: 'var(--text-sub)', marginBottom: 10 }}>Доорх 5 үгийг өгүүлбэрт ашиглаарай — үг тус бүр +10 XP, эхэлж бүгдийг ашигласан хүн <b>+{challenge.winXp} XP</b>!</p>
+              <p style={{ fontSize: 12.5, color: 'var(--text-sub)', marginBottom: 10 }}>Доорх 5 үгийг өгүүлбэрт ашиглаарай — эхэлж бүгдийг ашигласан хүн өдрийн ялагч болно!</p>
               <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginBottom: 10 }}>
                 {challenge.words.map(w => {
                   const used = challenge.myUsedWords?.includes(w.word);
@@ -695,7 +691,7 @@ export default function SocialPage() {
                 <div style={{ fontSize: 12.5, fontWeight: 700, color: 'var(--text-sub)', marginBottom: 8 }}>🏆 Өнөөдрийн ялагч: <span style={{ color: 'var(--purple)' }}>{challenge.winner.username}</span></div>
               )}
               {challengeDone ? (
-                <div style={{ fontSize: 13, fontWeight: 800, color: 'var(--purple)', textAlign: 'center', padding: '6px 0' }}>✅ Бүх үгийг ашигласан! {challenge.myXp ? `+${challenge.myXp} XP` : ''}</div>
+                <div style={{ fontSize: 13, fontWeight: 800, color: 'var(--purple)', textAlign: 'center', padding: '6px 0' }}>✅ Бүх үгийг ашигласан!</div>
               ) : (
                 <div style={{ display: 'flex', gap: 6 }}>
                   <input value={chInput} onChange={e => setChInput(e.target.value)} onKeyDown={e => { if (e.key === 'Enter') submitChallenge(); }} placeholder="Өгүүлбэрээ бичээрэй..." style={{ flex: 1, background: 'var(--bg)', fontSize: 12.5 }} />
