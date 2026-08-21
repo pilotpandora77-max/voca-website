@@ -129,6 +129,18 @@ export default function WordPage() {
                 </div>
                 <div style={{ fontSize: 18, color: 'var(--muted)', marginTop: 4 }}>[{word.ipa}]</div>
                 <div style={{ fontSize: 22, fontWeight: 700, color: 'var(--text)', marginTop: 8 }}>{word.mn}</div>
+                {word.pastSimple && (
+                  <div style={{ display: 'flex', gap: 10, marginTop: 12 }}>
+                    <div style={{ padding: '6px 12px', borderRadius: 8, background: 'var(--bg-alt)' }}>
+                      <span style={{ fontSize: 10, color: 'var(--muted)', fontWeight: 700, textTransform: 'uppercase' }}>Past Simple</span>{' '}
+                      <span style={{ fontSize: 14, color: 'var(--text)', fontWeight: 800 }}>{word.pastSimple}</span>
+                    </div>
+                    <div style={{ padding: '6px 12px', borderRadius: 8, background: 'var(--bg-alt)' }}>
+                      <span style={{ fontSize: 10, color: 'var(--muted)', fontWeight: 700, textTransform: 'uppercase' }}>Participle</span>{' '}
+                      <span style={{ fontSize: 14, color: 'var(--text)', fontWeight: 800 }}>{word.pastParticiple}</span>
+                    </div>
+                  </div>
+                )}
               </div>
             </div>
             {/* Definition */}

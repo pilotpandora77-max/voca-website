@@ -17,6 +17,8 @@ export default function LearnPage() {
   const [prog, setProg]     = useState({});
 
   const CATEGORIES = getCourses(lang);
+  const verbCat = CATEGORIES.find(c => c.id === 'irregular-verbs' && c.words.length > 0);
+  const topicCats = CATEGORIES.filter(c => c.id !== 'irregular-verbs');
 
   useEffect(() => {
     if (!authLoad && !user) router.push('/login');
@@ -28,16 +30,34 @@ export default function LearnPage() {
   if (authLoad) return null;
 
   const lp = k => prog[`${lang}:${k}`] || {};
-  const totalLearned = CATEGORIES.reduce((a, c) => a + Object.values(lp(c.id)).filter(w => w.learned).length, 0);
+  const totalLearned = topicCats.reduce((a, c) => a + Object.values(lp(c.id)).filter(w => w.learned).length, 0);
   const todayGoal = 20;
 
   return (
     <div style={{ paddingBottom: 90 }}>
       <PageHeader title={`Ангилалууд ${langInfo.flag}`} subtitle={`${langInfo.name} хэлний өдөр тутмын хэрэгтэй үгсийг сэдвээр нь судлаарай.`} streak={streak} />
 
+      {verbCat && (
+        <div style={{ padding: '0 28px', marginBottom: 8 }}>
+          <Link href={`/learn/${verbCat.id}`} className="card" style={{
+            display: 'flex', alignItems: 'center', gap: 16, padding: '18px 20px', textDecoration: 'none',
+            background: `linear-gradient(160deg, ${verbCat.color}14, ${verbCat.color}06)`, border: `1.5px solid ${verbCat.color}30`,
+          }}>
+            <div style={{ width: 56, height: 56, borderRadius: 16, background: `${verbCat.color}22`, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 28, flexShrink: 0 }}>{verbCat.emoji}</div>
+            <div style={{ flex: 1 }}>
+              <div style={{ fontWeight: 900, fontSize: 17, color: 'var(--text)' }}>{verbCat.name}</div>
+              <div style={{ fontSize: 13, color: 'var(--muted)', marginTop: 2 }}>{verbCat.desc}</div>
+              <div style={{ fontSize: 12.5, fontWeight: 800, color: verbCat.color, marginTop: 6 }}>{verbCat.words.length} үйл үг</div>
+            </div>
+            <div style={{ fontSize: 20, color: verbCat.color }}>→</div>
+          </Link>
+        </div>
+      )}
+
       <div style={{ padding: '0 28px' }}>
+        <h2 style={{ fontSize: 16, fontWeight: 900, color: 'var(--text)', marginBottom: 14 }}>Хэрэглээний үгс <span style={{ color: 'var(--muted)', fontWeight: 700 }}>({topicCats.length})</span></h2>
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(210px, 1fr))', gap: 16 }}>
-          {CATEGORIES.map(c => {
+          {topicCats.map(c => {
             const learned = Object.values(lp(c.id)).filter(w => w.learned).length;
             const pct = c.words.length ? Math.round((learned / c.words.length) * 100) : 0;
             return (
@@ -79,7 +99,7 @@ export default function LearnPage() {
           </div>
           <div style={{ fontSize: 12, color: 'var(--muted)', fontWeight: 600, marginTop: 4 }}>Цуврал: 🔥 {streak} өдөр</div>
         </div>
-        <Link href={`/learn/${CATEGORIES[0].id}`} className="btn btn-purple" style={{ flexShrink: 0, padding: '12px 24px', textDecoration: 'none' }}>Үргэлжлүүлэх →</Link>
+        <Link href={`/learn/${topicCats[0]?.id || CATEGORIES[0].id}`} className="btn btn-purple" style={{ flexShrink: 0, padding: '12px 24px', textDecoration: 'none' }}>Үргэлжлүүлэх →</Link>
       </div>
       <style>{`@media (max-width:768px){ .learn-goalbar{ left:0 !important; } }`}</style>
     </div>

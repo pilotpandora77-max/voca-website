@@ -121,6 +121,18 @@ export default function CategoryPage() {
                       </div>
                       <div style={{ fontSize: 13, color: 'var(--text-sub)' }}>{word.mn}{word.examples[0] ? ` · ${word.examples[0].en}` : ''}</div>
                     </div>
+                    {word.pastSimple && (
+                      <div style={{ display: 'flex', gap: 18, flexShrink: 0 }}>
+                        <div style={{ textAlign: 'center', minWidth: 64 }}>
+                          <div style={{ fontSize: 10, color: 'var(--muted)', fontWeight: 700, textTransform: 'uppercase' }}>Past Simple</div>
+                          <div style={{ fontSize: 14, color: 'var(--text)', fontWeight: 800 }}>{word.pastSimple}</div>
+                        </div>
+                        <div style={{ textAlign: 'center', minWidth: 64 }}>
+                          <div style={{ fontSize: 10, color: 'var(--muted)', fontWeight: 700, textTransform: 'uppercase' }}>Participle</div>
+                          <div style={{ fontSize: 14, color: 'var(--text)', fontWeight: 800 }}>{word.pastParticiple}</div>
+                        </div>
+                      </div>
+                    )}
                     <button onClick={e => { e.stopPropagation(); speak(word.word); }} style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: 18, color: 'var(--purple)' }}>🔊</button>
                     <button onClick={e => { e.stopPropagation(); toggleFav(word.id); }} style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: 18, color: isFav ? '#F59E0B' : 'var(--border)' }}>{isFav ? '⭐' : '☆'}</button>
                   </div>
@@ -193,6 +205,7 @@ function Ring({ pct, color, sub }) {
 
 function QuizTab({ category }) {
   const words = category.words;
+  const isVerbForms = category.id === 'irregular-verbs';
   const [questions] = useState(() => {
     const shuffle = a => [...a].sort(() => Math.random() - 0.5);
     return shuffle(words).slice(0, Math.min(8, words.length)).map(correct => {
@@ -218,13 +231,13 @@ function QuizTab({ category }) {
       <div style={{ textAlign: 'center', padding: '20px 0' }}>
         <div style={{ fontSize: 34, fontWeight: 900, color: 'var(--text)' }}>{Q.word.word}</div>
         <div style={{ color: 'var(--muted)', fontSize: 13 }}>[{Q.word.ipa}]</div>
-        <div style={{ fontSize: 12, color: 'var(--muted)', fontWeight: 700, marginTop: 10 }}>Зөв орчуулгыг сонго</div>
+        <div style={{ fontSize: 12, color: 'var(--muted)', fontWeight: 700, marginTop: 10 }}>{isVerbForms ? 'Зөв Past Simple / Past Participle хосыг сонго' : 'Зөв орчуулгыг сонго'}</div>
       </div>
       <div className="responsive-cards" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
         {Q.opts.map((o, k) => {
           let bg = 'var(--bg-alt)', bd = 'var(--border)', cl = 'var(--text)';
           if (conf) { if (k === Q.answer) { bg = 'var(--green-bg)'; bd = 'var(--green)'; cl = 'var(--green-dark)'; } else if (k === sel) { bg = 'var(--red-light)'; bd = 'var(--red)'; cl = 'var(--red)'; } }
-          return <button key={k} disabled={conf} onClick={() => pick(k)} style={{ padding: '14px', borderRadius: 12, border: `2px solid ${bd}`, background: bg, color: cl, fontWeight: 800, fontSize: 15, cursor: conf ? 'default' : 'pointer', fontFamily: 'inherit' }}>{o.mn}</button>;
+          return <button key={k} disabled={conf} onClick={() => pick(k)} style={{ padding: '14px', borderRadius: 12, border: `2px solid ${bd}`, background: bg, color: cl, fontWeight: 800, fontSize: 15, cursor: conf ? 'default' : 'pointer', fontFamily: 'inherit' }}>{isVerbForms ? `${o.pastSimple} — ${o.pastParticiple}` : o.mn}</button>;
         })}
       </div>
       {conf && <button onClick={next} className="btn btn-purple" style={{ width: '100%', marginTop: 14 }}>{i + 1 >= questions.length ? 'Дүн' : 'Дараах →'}</button>}
