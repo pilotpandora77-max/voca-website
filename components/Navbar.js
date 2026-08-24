@@ -183,12 +183,12 @@ export default function Navbar() {
         )}
 
         {/* App Store / Play Store download badges */}
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 8, margin: '0 12px 16px' }}>
+        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 8, margin: '0 12px 16px' }}>
           <a href="https://apps.apple.com/app/id6789113720" target="_blank" rel="noopener noreferrer">
-            <img src="/badges/app-store-badge.svg" alt="Download on the App Store" style={{ width: '100%', height: 44, display: 'block' }} />
+            <img src="/badges/app-store-badge.svg" alt="Download on the App Store" style={{ height: 42, width: 'auto', display: 'block' }} />
           </a>
           <a href="https://play.google.com/store/apps/details?id=mn.voca.app" target="_blank" rel="noopener noreferrer">
-            <img src="/badges/google-play-badge.png" alt="Get it on Google Play" style={{ width: '100%', height: 44, display: 'block', objectFit: 'contain' }} />
+            <img src="/badges/google-play-badge.png" alt="Get it on Google Play" style={{ height: 42, width: 'auto', display: 'block' }} />
           </a>
         </div>
       </aside>
