@@ -188,7 +188,7 @@ export default function Navbar() {
             <img src="/badges/app-store-badge.svg" alt="Download on the App Store" style={{ height: 42, width: 'auto', display: 'block' }} />
           </a>
           <a href="https://play.google.com/store/apps/details?id=mn.voca.app" target="_blank" rel="noopener noreferrer">
-            <img src="/badges/google-play-badge.png" alt="Get it on Google Play" style={{ height: 42, width: 'auto', display: 'block' }} />
+            <img src="/badges/google-play-badge-v2.png" alt="Get it on Google Play" style={{ height: 42, width: 'auto', display: 'block' }} />
           </a>
         </div>
       </aside>
