@@ -185,7 +185,7 @@ export default function Navbar() {
         {/* App Store download promo */}
         <a href="https://apps.apple.com/app/id6789113720" target="_blank" rel="noopener noreferrer" style={{
           display: 'flex', alignItems: 'center', gap: 10,
-          margin: '0 12px 16px', padding: '12px 14px', borderRadius: 16,
+          margin: '0 12px 10px', padding: '12px 14px', borderRadius: 16,
           background: 'linear-gradient(135deg, #1C1C1E, #3A3A3C)',
           textDecoration: 'none',
         }}>
@@ -193,6 +193,21 @@ export default function Navbar() {
           <div style={{ flex: 1, minWidth: 0 }}>
             <div style={{ fontSize: 9.5, color: 'rgba(255,255,255,0.65)', fontWeight: 600 }}>Татаж авах боломжтой</div>
             <div style={{ fontSize: 13, color: '#fff', fontWeight: 800 }}>App Store-с татах</div>
+          </div>
+          <span style={{ fontSize: 16, color: 'rgba(255,255,255,0.65)' }}>›</span>
+        </a>
+
+        {/* Play Store download promo */}
+        <a href="https://play.google.com/store/apps/details?id=mn.voca.app" target="_blank" rel="noopener noreferrer" style={{
+          display: 'flex', alignItems: 'center', gap: 10,
+          margin: '0 12px 16px', padding: '12px 14px', borderRadius: 16,
+          background: 'linear-gradient(135deg, #01875f, #0f9d58)',
+          textDecoration: 'none',
+        }}>
+          <span style={{ fontSize: 24 }}>▶️</span>
+          <div style={{ flex: 1, minWidth: 0 }}>
+            <div style={{ fontSize: 9.5, color: 'rgba(255,255,255,0.65)', fontWeight: 600 }}>Татаж авах боломжтой</div>
+            <div style={{ fontSize: 13, color: '#fff', fontWeight: 800 }}>Play Store-с татах</div>
           </div>
           <span style={{ fontSize: 16, color: 'rgba(255,255,255,0.65)' }}>›</span>
         </a>
