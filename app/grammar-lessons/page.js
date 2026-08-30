@@ -57,6 +57,19 @@ export default function GrammarLessonsPage() {
         </div>
 
         {lang === 'en' && (
+          <Link href="/test" style={{ textDecoration: 'none', display: 'block', marginBottom: 16 }}>
+            <div style={{ borderRadius: 16, padding: '16px 20px', background: 'linear-gradient(135deg, #7C3AED 0%, #6D28D9 100%)', color: '#fff', display: 'flex', alignItems: 'center', gap: 16, flexWrap: 'wrap', boxShadow: '0 4px 16px rgba(124,58,237,0.32)' }}>
+              <div style={{ width: 42, height: 42, borderRadius: 11, background: 'rgba(255,255,255,0.18)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 20, flexShrink: 0 }}>🏆</div>
+              <div style={{ flex: 1, minWidth: 200 }}>
+                <div style={{ fontWeight: 900, fontSize: 15 }}>Дүрмийн эцсийн шалгалт</div>
+                <div style={{ fontSize: 12.5, opacity: 0.85 }}>36 холимог асуулт — бүх сэдвээ нэг дор бататга</div>
+              </div>
+              <span style={{ background: '#fff', color: 'var(--purple-dark)', borderRadius: 10, padding: '9px 16px', fontWeight: 800, fontSize: 13, flexShrink: 0 }}>Эхлүүлэх →</span>
+            </div>
+          </Link>
+        )}
+
+        {lang === 'en' && (
           <Link href="/essential-grammar" style={{ textDecoration: 'none', display: 'block', marginBottom: 24 }}>
             <div style={{ borderRadius: 16, padding: '16px 20px', background: 'linear-gradient(120deg,#1E293B,#0F172A)', color: '#fff', display: 'flex', alignItems: 'center', gap: 16, flexWrap: 'wrap' }}>
               <div style={{ width: 42, height: 42, borderRadius: 11, background: 'rgba(255,255,255,0.12)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 20, flexShrink: 0 }}>📗</div>
