@@ -455,6 +455,10 @@ export default function VocabPage() {
                   <a href={`/vocab/print?group=${encodeURIComponent(g.name)}`} target="_blank" rel="noopener noreferrer"
                     className="btn btn-ghost" style={{ padding: '8px 14px', fontSize: 12.5, textDecoration: 'none' }}>📄 PDF татах</a>
                 )}
+                {g.words.length > 0 && (
+                  <button onClick={() => downloadGroupAudio(g.name)} disabled={ttsLoading === g.name}
+                    className="btn btn-ghost" style={{ padding: '8px 14px', fontSize: 12.5 }}>{ttsLoading === g.name ? '⏳ Үүсгэж байна…' : '🎧 MP3 татах'}</button>
+                )}
                 <button onClick={() => openEditGroup(g)} className="btn btn-ghost" style={{ padding: '8px 12px', fontSize: 12.5 }}>✏️ Засах</button>
                 <button onClick={() => deleteGroup(g.name)} className="btn btn-ghost" style={{ padding: '8px 12px', fontSize: 12.5, color: 'var(--red)' }}>🗑️</button>
               </div>
