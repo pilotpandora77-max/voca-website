@@ -227,6 +227,18 @@ export default function VocabPage() {
     }
   }
 
+  // Тухайн бүлгээ найздаа хуваалцах линк үүсгэж, clipboard-т хуулна — найз тэрхүү
+  // линкээр орж "Импорт хийх" дарвал үгс шууд түүний "Үгс" хуудсанд нэмэгдэнэ.
+  async function shareGroup(groupName) {
+    try {
+      const { data } = await api.post('/api/shared-groups', { group: groupName, lang });
+      if (navigator.clipboard) await navigator.clipboard.writeText(data.url);
+      alert(`Холбоос хуулагдлаа!\n${data.url}\n\nЭнэ холбоосыг найздаа илгээгээрэй.`);
+    } catch (err) {
+      alert(err?.response?.data?.error || 'Хуваалцахад алдаа гарлаа');
+    }
+  }
+
   // Үгийг заасан бүлэгт шилжүүлнэ (нэг үг зэрэг зөвхөн НЭГ бүлэгт байна — апп шиг)
   async function setWordGroup(word, groupName) {
     const wid = word._id || word.id;
@@ -435,6 +447,9 @@ export default function VocabPage() {
                 <button onClick={() => downloadGroupAudio(DEFAULT_GROUP)} disabled={ttsLoading === DEFAULT_GROUP}
                   className="btn btn-ghost" style={{ padding: '8px 14px', fontSize: 12.5 }}>{ttsLoading === DEFAULT_GROUP ? '⏳ Үүсгэж байна…' : '🎧 MP3 татах'}</button>
               )}
+              {ungroupedWords.length > 0 && (
+                <button onClick={() => shareGroup(DEFAULT_GROUP)} className="btn btn-ghost" style={{ padding: '8px 14px', fontSize: 12.5 }}>🔗 Хуваалцах</button>
+              )}
             </div>
           )}
           {activeGroup && activeGroup !== DEFAULT_GROUP && (() => {
@@ -458,6 +473,9 @@ export default function VocabPage() {
                 {g.words.length > 0 && (
                   <button onClick={() => downloadGroupAudio(g.name)} disabled={ttsLoading === g.name}
                     className="btn btn-ghost" style={{ padding: '8px 14px', fontSize: 12.5 }}>{ttsLoading === g.name ? '⏳ Үүсгэж байна…' : '🎧 MP3 татах'}</button>
+                )}
+                {g.words.length > 0 && (
+                  <button onClick={() => shareGroup(g.name)} className="btn btn-ghost" style={{ padding: '8px 14px', fontSize: 12.5 }}>🔗 Хуваалцах</button>
                 )}
                 <button onClick={() => openEditGroup(g)} className="btn btn-ghost" style={{ padding: '8px 12px', fontSize: 12.5 }}>✏️ Засах</button>
                 <button onClick={() => deleteGroup(g.name)} className="btn btn-ghost" style={{ padding: '8px 12px', fontSize: 12.5, color: 'var(--red)' }}>🗑️</button>
