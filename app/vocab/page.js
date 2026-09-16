@@ -75,6 +75,7 @@ export default function VocabPage() {
   const [editingGroupName, setEditingGroupName] = useState(null); // null = creating, else editing this name
   const [newGroupName, setNewGroupName] = useState('');
   const [newGroupColor, setNewGroupColor] = useState('#7C3AED');
+  const [ttsLoading, setTtsLoading] = useState(null); // downloadGroupAudio-д ажиллаж буй бүлгийн нэр | null
 
   useEffect(() => {
     if (!authLoad && !user) router.push('/login');
@@ -199,6 +200,31 @@ export default function VocabPage() {
     if (activeGroup === name) setActiveGr(null);
     await Promise.all(affected.filter(w => !String(w._id || w.id).startsWith('local-'))
       .map(w => api.patch(`/api/words/${w._id || w.id}`, { group: DEFAULT_GROUP }).catch(() => {})));
+  }
+
+  // Тухайн бүлгийн үг+утгыг (backend-ийн OpenAI TTS-ээр эгшиглүүлсэн) нэг MP3
+  // болгож шууд татна (browser Blob → object URL → түр <a download>) — мобайл
+  // апп дээрх "🎧 MP3 татах" цэсний товчтой ижил backend route ашиглана.
+  async function downloadGroupAudio(groupName) {
+    if (ttsLoading) return;
+    setTtsLoading(groupName);
+    try {
+      const { data } = await api.post('/api/tts/group', { group: groupName, lang });
+      const byteChars = atob(data.audioBase64);
+      const bytes = new Uint8Array(byteChars.length);
+      for (let i = 0; i < byteChars.length; i++) bytes[i] = byteChars.charCodeAt(i);
+      const url = URL.createObjectURL(new Blob([bytes], { type: 'audio/mpeg' }));
+      const a = document.createElement('a');
+      a.href = url; a.download = `${groupName}.mp3`;
+      document.body.appendChild(a); a.click(); document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+      if (data.truncated) alert(`Бүлэгт үг олон байсан тул эхний ${data.count} үгийг эгшиглүүлэв.`);
+    } catch (err) {
+      if (err?.response?.status === 403 && err?.response?.data?.code === 'FEATURE_LOCKED') { router.push('/pricing'); return; }
+      alert(err?.response?.data?.error || 'MP3 үүсгэхэд алдаа гарлаа');
+    } finally {
+      setTtsLoading(null);
+    }
   }
 
   // Үгийг заасан бүлэгт шилжүүлнэ (нэг үг зэрэг зөвхөн НЭГ бүлэгт байна — апп шиг)
@@ -404,6 +430,10 @@ export default function VocabPage() {
               {ungroupedWords.length > 0 && (
                 <a href={`/vocab/print?group=${encodeURIComponent(DEFAULT_GROUP)}`} target="_blank" rel="noopener noreferrer"
                   className="btn btn-ghost" style={{ padding: '8px 14px', fontSize: 12.5, textDecoration: 'none' }}>📄 PDF татах</a>
+              )}
+              {ungroupedWords.length > 0 && (
+                <button onClick={() => downloadGroupAudio(DEFAULT_GROUP)} disabled={ttsLoading === DEFAULT_GROUP}
+                  className="btn btn-ghost" style={{ padding: '8px 14px', fontSize: 12.5 }}>{ttsLoading === DEFAULT_GROUP ? '⏳ Үүсгэж байна…' : '🎧 MP3 татах'}</button>
               )}
             </div>
           )}
